@@ -4,7 +4,7 @@ import { config } from "@/middleware";
 const re = new RegExp("^" + config.matcher[0] + "$");
 
 describe("middleware matcher", () => {
-  it.each(["/api/logosvg", "/api/export/png", "/api/x.png", "/faviconXico/a", "/", "/api/quotes"])(
+  it.each(["/api/logosvg", "/api/export/png", "/api/x.png", "/faviconXico/a", "/", "/api/quotes", "/dashboardpng", "/foosvg", "/faviconXico"])(
     "runs middleware for %s",
     (p) => expect(re.test(p)).toBe(true),
   );
