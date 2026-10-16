@@ -38,3 +38,19 @@ describe("parseHistoryWorkbook", () => {
     expect(report.unknownHeaders).toEqual(["FOO"]);
   });
 });
+
+describe("date gaps", () => {
+  it("reports missing weekdays only", async () => {
+    const wb = new ExcelJS.Workbook();
+    const s = wb.addWorksheet("OCT");
+    s.addRow(["Date ", "NIFTY"]);
+    s.addRow([utc(10, 5), 0.01]);
+    s.addRow([utc(10, 7), 0.01]);
+    s.addRow([utc(10, 12), 0.01]);
+    const { report } = await parseHistoryWorkbook(Buffer.from(await wb.xlsx.writeBuffer()));
+    expect(report.gaps).toContain("2026-10-06");
+    expect(report.gaps).not.toContain("2026-10-10");
+    expect(report.gaps).not.toContain("2026-10-11");
+    expect(report.gaps).toEqual(["2026-10-06", "2026-10-08", "2026-10-09"]);
+  });
+});

@@ -23,6 +23,8 @@ export interface ImportReport {
   blanks: number;
   outliers: ImportedRow[];
   unknownHeaders: string[];
+  /** Mon-Fri dates between first and last workbook date with no row on any sheet. */
+  gaps: string[];
 }
 
 const OUTLIER = 0.1;
@@ -53,7 +55,8 @@ export async function parseHistoryWorkbook(
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf as unknown as ArrayBuffer);
   const rows: ImportedRow[] = [];
-  const report: ImportReport = { sheets: 0, dates: 0, values: 0, blanks: 0, outliers: [], unknownHeaders: [] };
+  const report: ImportReport = { sheets: 0, dates: 0, values: 0, blanks: 0, outliers: [], unknownHeaders: [], gaps: [] };
+  const seen = new Set<string>();
   const unknown = new Set<string>();
 
   wb.eachSheet((ws) => {
@@ -74,6 +77,7 @@ export async function parseHistoryWorkbook(
       if (!(d instanceof Date) || Number.isNaN(d.getTime())) continue;
       const date = ymd(d);
       report.dates++;
+      seen.add(date);
       for (const { col, key } of cols) {
         const v = unwrap(row.getCell(col).value);
         if (v === null || v === undefined || v === "") { report.blanks++; continue; }
@@ -86,5 +90,19 @@ export async function parseHistoryWorkbook(
     }
   });
   report.unknownHeaders = [...unknown];
+  report.gaps = findGaps(seen);
   return { rows, report };
+}
+
+function findGaps(seen: Set<string>): string[] {
+  if (seen.size === 0) return [];
+  const sorted = [...seen].sort();
+  const end = Date.parse(sorted[sorted.length - 1]);
+  const gaps: string[] = [];
+  for (let t = Date.parse(sorted[0]); t <= end; t += 86_400_000) {
+    const dow = new Date(t).getUTCDay();
+    const iso = new Date(t).toISOString().slice(0, 10);
+    if (dow !== 0 && dow !== 6 && !seen.has(iso)) gaps.push(iso);
+  }
+  return gaps;
 }

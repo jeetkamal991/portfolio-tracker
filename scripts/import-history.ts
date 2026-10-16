@@ -10,6 +10,7 @@ async function main() {
   console.log(`outliers (|pct|>0.1): ${report.outliers.length}`);
   for (const o of report.outliers) console.log(`  ${o.key} ${o.date} ${o.pct}`);
   console.log(`unknown headers: ${report.unknownHeaders.length ? report.unknownHeaders.join(", ") : "none"}`);
+  console.log(`date gaps (Mon-Fri with no row; holidays expected): ${report.gaps.length ? report.gaps.join(", ") : "none"}`);
   if (dry) { console.log("dry run: nothing written"); return; }
 
   process.loadEnvFile(".env.local");

@@ -24,4 +24,4 @@ async function main() {
   console.log(`compared=${compared} mismatches=${mismatches}`);
 }
 
-main().catch((e) => { console.error(e instanceof Error ? e.message : e); }).finally(() => { process.exitCode = 0; });
+main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
