@@ -26,13 +26,15 @@ export async function loadCloses(repo: Repo, instrumentId: number): Promise<Map<
 
 /**
  * Recompute indicators over the instrument's full stored history (so values are identical whichever
- * job wrote them), persist the last 10 rows, and refresh auto levels for stocks.
+ * job wrote them), persist the last 10 rows (every row with `upsertAll`), and refresh auto levels
+ * for stocks.
  * Also used by back-fill / add-stock.
  */
 export async function recomputeInstrument(
   repo: Repo,
   inst: Instrument,
   niftyCloses: Map<string, number>,
+  opts: { upsertAll?: boolean } = {},
 ): Promise<void> {
   const stored = await repo.getDays(inst.id, FULL_HISTORY);
   const priced: { date: string; close: number }[] = [];
@@ -40,7 +42,7 @@ export async function recomputeInstrument(
   if (priced.length === 0) return;
 
   const rows = computeIndicators(priced, niftyCloses);
-  await repo.upsertIndicators(inst.id, rows.slice(-INDICATOR_TAIL));
+  await repo.upsertIndicators(inst.id, opts.upsertAll ? rows : rows.slice(-INDICATOR_TAIL));
 
   if (inst.type === "stock") {
     const bars: { high: number; low: number }[] = [];

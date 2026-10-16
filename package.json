@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed-instruments.ts",
+    "backfill": "tsx scripts/backfill.ts",
     "verify-tickers": "tsx scripts/verify-tickers.ts"
   },
   "dependencies": {
