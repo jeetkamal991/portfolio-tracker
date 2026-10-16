@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { Instrument, InstrumentType, JobRun, JobStatus, Levels, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -38,6 +38,12 @@ const toJobRun = (r: Row): JobRun => ({
   finishedAt: r.finished_at as string,
   status: r.status as JobStatus,
   message: (r.message as string | null) ?? "",
+});
+const toSummary = (r: Row): DailySummary => ({
+  date: r.date as string,
+  summary: r.summary as string,
+  marketEvents: (r.market_events as unknown[] | null) ?? [],
+  watchlistNews: (r.watchlist_news as unknown[] | null) ?? [],
 });
 // ---------------------------------------------------------
 
@@ -181,6 +187,10 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         "lastJobRun",
       );
       return r ? toJobRun(r as Row) : null;
+    },
+    async getDailySummary(date) {
+      const r = check(await db.from("daily_summaries").select("*").eq("date", date).maybeSingle(), "getDailySummary");
+      return r ? toSummary(r as Row) : null;
     },
   };
 }

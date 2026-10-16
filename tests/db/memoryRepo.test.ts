@@ -108,4 +108,12 @@ describe("memoryRepo", () => {
     expect(days).toHaveLength(1);
     expect(days[0].close).toBe(110);
   });
+
+  it("getDailySummary returns the row for a date or null", async () => {
+    const r = createMemoryRepo();
+    expect(await r.getDailySummary("2026-01-01")).toBeNull();
+    r._summaries.set("2026-01-01", { date: "2026-01-01", summary: "hi", marketEvents: [], watchlistNews: [] });
+    expect((await r.getDailySummary("2026-01-01"))?.summary).toBe("hi");
+    expect(await r.getDailySummary("2026-01-02")).toBeNull();
+  });
 });

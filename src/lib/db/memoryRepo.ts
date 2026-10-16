@@ -1,6 +1,6 @@
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { Instrument, JobRun, Levels, StoredDay } from "./types";
+import type { DailySummary, Instrument, JobRun, Levels, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -8,7 +8,7 @@ const emptyDay = (date: string): StoredDay => ({
 });
 const emptyLevels = (): Levels => ({ autoSupport: null, autoResistance: null, manualSupport: null, manualResistance: null });
 
-export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & { _days: Map<number, Map<string, StoredDay>> } {
+export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & { _days: Map<number, Map<string, StoredDay>>; _summaries: Map<string, DailySummary> } {
   const instruments = new Map<number, Instrument>();
   for (const i of seed?.instruments ?? []) instruments.set(i.id, { ...i });
   let nextId = Math.max(0, ...instruments.keys()) + 1;
@@ -16,6 +16,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const watchlist = new Set<number>();
   const levels = new Map<number, Levels>();
   const jobRuns: JobRun[] = [];
+  const summaries = new Map<string, DailySummary>();
 
   const dayFor = (id: number, date: string): StoredDay => {
     let m = days.get(id);
@@ -33,6 +34,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
 
   return {
     _days: days,
+    _summaries: summaries,
     async listInstruments(f) {
       return [...instruments.values()]
         .filter((i) => (!f?.types || f.types.includes(i.type)) && (!f?.activeOnly || i.active))
@@ -96,6 +98,10 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async lastJobRun(job) {
       const runs = jobRuns.filter((r) => r.job === job);
       return runs.length ? { ...runs[runs.length - 1] } : null;
+    },
+    async getDailySummary(date) {
+      const s = summaries.get(date);
+      return s ? { ...s } : null;
     },
   };
 }

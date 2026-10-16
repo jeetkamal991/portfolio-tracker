@@ -40,6 +40,13 @@ export interface Levels {
   manualResistance: number | null;
 }
 
+export interface DailySummary {
+  date: string;
+  summary: string;
+  marketEvents: unknown[];
+  watchlistNews: unknown[];
+}
+
 export type JobStatus = "ok" | "partial" | "no_session" | "failed";
 
 export interface JobRun {

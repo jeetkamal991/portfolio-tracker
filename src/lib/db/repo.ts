@@ -1,5 +1,5 @@
 import type { Candle } from "@/lib/provider/types";
-import type { Instrument, InstrumentType, IndicatorRow, JobRun, Levels, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, Levels, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -27,4 +27,5 @@ export interface Repo {
   setManualLevels(instrumentId: number, support: number | null, resistance: number | null): Promise<void>;
   logJobRun(run: JobRun): Promise<void>;
   lastJobRun(job: string): Promise<JobRun | null>;
+  getDailySummary(date: string): Promise<DailySummary | null>;
 }
