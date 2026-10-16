@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed-instruments.ts",
     "backfill": "tsx scripts/backfill.ts",
-    "verify-tickers": "tsx scripts/verify-tickers.ts"
+    "verify-tickers": "tsx scripts/verify-tickers.ts",
+    "import-history": "tsx scripts/import-history.ts",
+    "compare-import": "tsx scripts/compare-import.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
