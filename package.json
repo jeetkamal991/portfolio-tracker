@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx scripts/seed-instruments.ts",
+    "verify-tickers": "tsx scripts/verify-tickers.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
