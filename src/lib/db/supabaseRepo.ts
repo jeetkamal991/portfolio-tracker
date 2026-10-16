@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/provider/types";
+import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
 import type { Instrument, InstrumentType, JobRun, JobStatus, Levels, StoredDay } from "./types";
 
@@ -52,7 +53,8 @@ function check<T>(res: { data: T; error: { message: string } | null }, what: str
 
 export function createSupabaseRepo(db: SupabaseClient): Repo {
   const upsertDays = async (rows: Row[], what: string) => {
-    for (const c of chunks(rows)) {
+    const unique = dedupeLastWins(rows, (r) => `${r.instrument_id}|${r.date}`);
+    for (const c of chunks(unique)) {
       check(await db.from("daily_prices").upsert(c, { onConflict: "instrument_id,date" }), what);
     }
   };
@@ -81,7 +83,7 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       return rows.map(toInstrument);
     },
     async upsertInstruments(rows) {
-      for (const c of chunks(rows)) {
+      for (const c of chunks(dedupeLastWins(rows, (r) => r.key))) {
         check(await db.from("instruments").upsert(c.map(fromInstrument), { onConflict: "key" }), "upsertInstruments");
       }
     },

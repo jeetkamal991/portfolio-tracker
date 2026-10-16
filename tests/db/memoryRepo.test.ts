@@ -100,4 +100,12 @@ describe("memoryRepo", () => {
     await r.logJobRun({ job: "eod", startedAt: "2026-01-02T10:00:00Z", finishedAt: "2026-01-02T10:01:00Z", status: "failed", message: "b" });
     expect((await r.lastJobRun("eod"))?.message).toBe("b");
   });
+
+  it("last write wins for duplicate dates in one upsertCandles call", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    await r.upsertCandles(1, [candle("2026-01-01", 100), candle("2026-01-01", 110)]);
+    const days = await r.getDays(1, 10);
+    expect(days).toHaveLength(1);
+    expect(days[0].close).toBe(110);
+  });
 });
