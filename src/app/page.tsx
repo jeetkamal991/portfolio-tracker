@@ -5,6 +5,9 @@ import { isMarketOpen, istDate } from "@/lib/time/ist";
 import { buildAsOf, buildSectorRows, buildTodaySummary, latestPctDate } from "@/lib/view/dashboard";
 import { AsOfBadge } from "./components/AsOfBadge";
 import { ClaudeCard } from "./components/ClaudeCard";
+import { AddStock } from "./components/AddStock";
+import { QuotesProvider } from "./components/QuotesProvider";
+import { WatchlistTable, type WatchItem } from "./components/WatchlistTable";
 import { LiveStrip, type StripItem } from "./components/LiveStrip";
 import { SectorHeatmap } from "./components/SectorHeatmap";
 import { TodaySummary } from "./components/TodaySummary";
@@ -33,6 +36,17 @@ export default async function Home() {
     repo.getDailySummary(istDate(now)),
   ]);
 
+  const watchInstruments = await repo.listWatchlist();
+  const watchItems: WatchItem[] = (
+    await Promise.all(
+      watchInstruments.map(async (i) => {
+        const [days, levels] = await Promise.all([repo.getDays(i.id, 3), repo.getLevels(i.id)]);
+        const lastDay = [...days].filter((d) => d.close !== null).sort((a, b) => b.date.localeCompare(a.date))[0];
+        return lastDay ? { key: i.key, name: i.name, ticker: i.yahooTicker, lastDay, levels } : null;
+      }),
+    )
+  ).flatMap((w) => w ?? []);
+
   const stripItems: StripItem[] = STRIP_KEYS.map((k, n) => {
     const days = stripDays[n];
     const lastPriced = [...days].reverse().find((d) => d.close !== null);
@@ -43,6 +57,12 @@ export default async function Home() {
       pct: buildTodaySummary(days),
     };
   });
+  const watchStrip: StripItem[] = watchItems.map((w) => ({
+    ticker: w.ticker,
+    name: w.name,
+    close: w.lastDay.close,
+    pct: w.lastDay.pctChange ?? w.lastDay.importedPct,
+  }));
   const bankDays = stripDays[STRIP_KEYS.indexOf("NIFTY_BANK")];
   const asOf = buildAsOf(latestPctDate(niftyDays), lastRun);
 
@@ -59,10 +79,14 @@ export default async function Home() {
           </form>
         </div>
       </header>
-      <LiveStrip items={stripItems} marketOpen={isMarketOpen(now)} />
-      <ClaudeCard summary={summary} />
-      <TodaySummary nifty={buildTodaySummary(niftyDays)} bankNifty={buildTodaySummary(bankDays)} />
-      <SectorHeatmap rows={buildSectorRows(sectors)} />
+      <QuotesProvider initialOpen={isMarketOpen(now)}>
+        <LiveStrip items={[...stripItems, ...watchStrip]} />
+        <ClaudeCard summary={summary} />
+        <TodaySummary nifty={buildTodaySummary(niftyDays)} bankNifty={buildTodaySummary(bankDays)} />
+        <SectorHeatmap rows={buildSectorRows(sectors)} />
+        <AddStock />
+        <WatchlistTable items={watchItems} />
+      </QuotesProvider>
     </main>
   );
 }

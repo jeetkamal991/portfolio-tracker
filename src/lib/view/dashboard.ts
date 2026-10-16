@@ -1,6 +1,14 @@
 import { periodReturn, PERIODS } from "@/lib/calc/returns";
-import { trendTag, type Trend } from "@/lib/calc/levels";
-import type { JobRun, StoredDay } from "@/lib/db/types";
+import {
+  distanceToResistance,
+  distanceToSupport,
+  effectiveLevel,
+  isNearLevel,
+  pctFrom,
+  trendTag,
+  type Trend,
+} from "@/lib/calc/levels";
+import type { JobRun, Levels, StoredDay } from "@/lib/db/types";
 import { SECTOR_KEYS } from "@/lib/instruments";
 
 export type HeatPeriod = "d1" | "w1" | "m1" | "m3";
@@ -86,3 +94,62 @@ export function fmtDate(iso: string): string {
 
 export const pctTone = (v: number | null): string =>
   v === null || v === 0 ? "text-neutral-500" : v > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
+
+export interface WatchlistRow {
+  key: string;
+  name: string;
+  cmp: number;
+  dayPct: number | null;
+  ema50: number | null;
+  ema200: number | null;
+  fromEma50: number | null;
+  fromEma200: number | null;
+  trend: Trend | null;
+  support: number | null;
+  resistance: number | null;
+  supportIsManual: boolean;
+  resistanceIsManual: boolean;
+  toSupport: number | null;
+  toResistance: number | null;
+  nearLevel: boolean;
+  notEnoughHistory: boolean;
+}
+
+/** `cmp` is the live price when available, else the last close; `liveChangePct` is the live day change (fraction). */
+export function buildWatchlistRow(
+  input: { key: string; name: string; lastDay: StoredDay; levels: Levels },
+  cmp: number,
+  liveChangePct?: number | null,
+): WatchlistRow {
+  const { lastDay: d, levels: l } = input;
+  const support = effectiveLevel(l.autoSupport, l.manualSupport);
+  const resistance = effectiveLevel(l.autoResistance, l.manualResistance);
+  return {
+    key: input.key,
+    name: input.name,
+    cmp,
+    dayPct: liveChangePct ?? d.pctChange ?? d.importedPct,
+    ema50: d.ema50,
+    ema200: d.ema200,
+    fromEma50: d.ema50 === null ? null : pctFrom(cmp, d.ema50),
+    fromEma200: d.ema200 === null ? null : pctFrom(cmp, d.ema200),
+    trend: trendTag(cmp, d.ema50, d.ema200),
+    support,
+    resistance,
+    supportIsManual: l.manualSupport !== null,
+    resistanceIsManual: l.manualResistance !== null,
+    toSupport: support === null ? null : distanceToSupport(cmp, support),
+    toResistance: resistance === null ? null : distanceToResistance(cmp, resistance),
+    nearLevel: isNearLevel(cmp, support) || isNearLevel(cmp, resistance),
+    notEnoughHistory: d.ema200 === null,
+  };
+}
+
+/** Inline level input: empty clears the override (null); otherwise a positive finite number. */
+export function parseLevelInput(raw: string): { ok: true; value: number | null } | { ok: false } {
+  const t = raw.trim();
+  if (t === "") return { ok: true, value: null };
+  if (!/^\d+(\.\d+)?$/.test(t)) return { ok: false };
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? { ok: true, value: n } : { ok: false };
+}

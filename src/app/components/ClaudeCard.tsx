@@ -4,7 +4,7 @@ import type { DailySummary } from "@/lib/db/types";
 export function ClaudeCard({ summary }: { summary: DailySummary | null }) {
   return (
     <section aria-label="Claude's daily summary" className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-neutral-500">Claude</h2>
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-neutral-500">Today by Claude</h2>
       {summary ? (
         <p className="whitespace-pre-line text-sm">{summary.summary}</p>
       ) : (

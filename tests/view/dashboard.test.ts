@@ -71,3 +71,56 @@ describe("buildAsOf", () => {
     expect(buildAsOf(null, null)).toEqual({ date: null, stale: false });
   });
 });
+
+import { buildWatchlistRow, parseLevelInput } from "@/lib/view/dashboard";
+import type { Levels } from "@/lib/db/types";
+
+const lv = (o: Partial<Levels> = {}): Levels => ({
+  autoSupport: null, autoResistance: null, manualSupport: null, manualResistance: null, ...o,
+});
+const input = (d: Partial<StoredDay> = {}, l: Partial<Levels> = {}) => ({
+  key: "TCS", name: "TCS", lastDay: day(0, { close: 100, ema50: 90, ema200: 80, ...d }), levels: lv(l),
+});
+
+describe("buildWatchlistRow", () => {
+  it("manual support overrides auto and flags manual", () => {
+    const r = buildWatchlistRow(input({}, { autoSupport: 95, manualSupport: 92 }), 100);
+    expect(r.support).toBe(92);
+    expect(r.supportIsManual).toBe(true);
+    expect(r.resistanceIsManual).toBe(false);
+  });
+  it("near level within 1%", () => {
+    expect(buildWatchlistRow(input({}, { autoSupport: 99.2 }), 100).nearLevel).toBe(true);
+    expect(buildWatchlistRow(input({}, { autoSupport: 90 }), 100).nearLevel).toBe(false);
+  });
+  it("computes distances from EMAs and levels", () => {
+    const r = buildWatchlistRow(input({}, { autoSupport: 95, autoResistance: 110 }), 100);
+    expect(r.fromEma50).toBeCloseTo((100 - 90) / 90, 12);
+    expect(r.fromEma200).toBeCloseTo((100 - 80) / 80, 12);
+    expect(r.toResistance).toBeCloseTo(0.1, 12);
+    expect(r.toSupport).toBeCloseTo(0.05, 12);
+    expect(r.trend).toBe("above_both");
+  });
+  it("null ema200 means not enough history and no trend", () => {
+    const r = buildWatchlistRow(input({ ema200: null }), 100);
+    expect(r.notEnoughHistory).toBe(true);
+    expect(r.trend).toBeNull();
+    expect(r.fromEma200).toBeNull();
+  });
+  it("dayPct falls back to imported pct", () => {
+    expect(buildWatchlistRow(input({ pctChange: null, importedPct: 0.02 }), 100).dayPct).toBe(0.02);
+    expect(buildWatchlistRow(input({ pctChange: 0.01 }), 100, 0.03).dayPct).toBe(0.03);
+  });
+});
+
+describe("parseLevelInput", () => {
+  it("parses empty, valid and invalid", () => {
+    expect(parseLevelInput("")).toEqual({ ok: true, value: null });
+    expect(parseLevelInput("  ")).toEqual({ ok: true, value: null });
+    expect(parseLevelInput("95")).toEqual({ ok: true, value: 95 });
+    expect(parseLevelInput("95.5")).toEqual({ ok: true, value: 95.5 });
+    expect(parseLevelInput("-3").ok).toBe(false);
+    expect(parseLevelInput("0").ok).toBe(false);
+    expect(parseLevelInput("abc").ok).toBe(false);
+  });
+});
