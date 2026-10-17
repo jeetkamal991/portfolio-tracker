@@ -47,12 +47,25 @@ export interface DailySummary {
   watchlistNews: unknown[];
 }
 
-export type JobStatus = "ok" | "partial" | "no_session" | "failed";
+/** `running`: started and not yet finished (or died before it could, e.g. a function timeout). */
+export type JobStatus = "running" | "ok" | "partial" | "no_session" | "failed";
 
 export interface JobRun {
   job: string;
   startedAt: string;
-  finishedAt: string;
+  /** Null while the run is still `running`. */
+  finishedAt: string | null;
   status: JobStatus;
   message: string;
+}
+
+/** What a finished run writes onto its job_runs row. */
+export type JobRunResult = { finishedAt: string; status: Exclude<JobStatus, "running">; message: string };
+
+/** The only daily_prices columns the indicator/levels recompute needs. */
+export interface PriceBar {
+  date: string;
+  close: number | null;
+  high: number | null;
+  low: number | null;
 }

@@ -194,6 +194,58 @@ describe("runEod", () => {
   });
 });
 
+describe("runEod job_runs bookkeeping", () => {
+  it("leaves exactly one job_runs row, finished (not running)", async () => {
+    const { repo, instruments } = setup();
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(repo._jobRuns).toHaveLength(1);
+    expect(repo._jobRuns[0]).toMatchObject({ job: "eod", status: "ok", startedAt: run.startedAt });
+    expect(repo._jobRuns[0]!.finishedAt).not.toBeNull();
+  });
+
+  it("the row is 'running' while the job is in flight", async () => {
+    const { repo } = setup();
+    let seen: unknown = undefined;
+    const provider: MarketDataProvider = {
+      async getDailyHistory() {
+        seen ??= await repo.lastJobRun("eod");
+        return [];
+      },
+      async getQuotes() { return []; },
+    };
+    await runEod({ repo, provider, now: NOW });
+    expect(seen).toMatchObject({ job: "eod", status: "running", finishedAt: null });
+    expect(repo._jobRuns).toHaveLength(1);
+    expect(repo._jobRuns[0]!.status).not.toBe("running");
+  });
+
+  it("a thrown error mid-run still finishes the row as failed", async () => {
+    const { repo } = setup();
+    repo.listWatchlist = async () => { throw new Error("db down"); };
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("failed");
+    expect(repo._jobRuns).toHaveLength(1);
+    expect(repo._jobRuns[0]).toMatchObject({ status: "failed" });
+    expect(repo._jobRuns[0]!.message).toContain("db down");
+    expect(repo._jobRuns[0]!.finishedAt).not.toBeNull();
+  });
+
+  it("reads lean price bars only, and NIFTY50's history once", async () => {
+    const { repo, instruments } = setup();
+    await repo.addToWatchlist(3);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const reads: number[] = [];
+    const getPriceBars = repo.getPriceBars.bind(repo);
+    repo.getPriceBars = async (id, limit) => { reads.push(id); return getPriceBars(id, limit); };
+    repo.getDays = async () => { throw new Error("getDays should not be used by EOD"); };
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("ok");
+    expect(reads.filter((id) => id === 1)).toHaveLength(1);
+    expect(reads.sort()).toEqual([1, 2, 3]);
+  });
+});
+
 describe("isAuthorized", () => {
   it("accepts only the exact bearer secret", () => {
     expect(isAuthorized("Bearer s3", "s3")).toBe(true);

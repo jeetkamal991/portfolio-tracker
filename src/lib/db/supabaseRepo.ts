@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -28,6 +28,7 @@ const toDay = (r: Row): StoredDay => ({
   pctChange: num(r.pct_change), importedPct: num(r.imported_pct),
   ema50: num(r.ema50), ema200: num(r.ema200), rsi14: num(r.rsi14), rsVsNifty: num(r.rs_vs_nifty),
 });
+const toBar = (r: Row): PriceBar => ({ date: r.date as string, close: num(r.close), high: num(r.high), low: num(r.low) });
 const toLevels = (r: Row | null): Levels => ({
   autoSupport: num(r?.auto_support), autoResistance: num(r?.auto_resistance),
   manualSupport: num(r?.manual_support), manualResistance: num(r?.manual_resistance),
@@ -35,7 +36,7 @@ const toLevels = (r: Row | null): Levels => ({
 const toJobRun = (r: Row): JobRun => ({
   job: r.job as string,
   startedAt: r.started_at as string,
-  finishedAt: r.finished_at as string,
+  finishedAt: (r.finished_at as string | null) ?? null,
   status: r.status as JobStatus,
   message: (r.message as string | null) ?? "",
 });
@@ -65,6 +66,21 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     }
   };
   const now = () => new Date().toISOString();
+  /** Newest `limit` rows of `columns`, ascending. Pages newest-first with .range() because PostgREST caps responses at 1000 rows. */
+  const readDays = async (instrumentId: number, limit: number, columns: string, what: string): Promise<Row[]> => {
+    const out: Row[] = [];
+    while (out.length < limit) {
+      const size = Math.min(PAGE, limit - out.length);
+      const page = check(
+        await db.from("daily_prices").select(columns).eq("instrument_id", instrumentId)
+          .order("date", { ascending: false }).range(out.length, out.length + size - 1),
+        what,
+      ) as unknown as Row[];
+      out.push(...page);
+      if (page.length < size) break;
+    }
+    return out.reverse();
+  };
 
   return {
     async listInstruments(f) {
@@ -103,19 +119,10 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       );
     },
     async getDays(instrumentId, limit) {
-      // Page newest-first with .range() because PostgREST caps responses at 1000 rows.
-      const out: Row[] = [];
-      while (out.length < limit) {
-        const size = Math.min(PAGE, limit - out.length);
-        const page = check(
-          await db.from("daily_prices").select("*").eq("instrument_id", instrumentId)
-            .order("date", { ascending: false }).range(out.length, out.length + size - 1),
-          "getDays",
-        ) as Row[];
-        out.push(...page);
-        if (page.length < size) break;
-      }
-      return out.reverse().map(toDay);
+      return (await readDays(instrumentId, limit, "*", "getDays")).map(toDay);
+    },
+    async getPriceBars(instrumentId, limit) {
+      return (await readDays(instrumentId, limit, "date,close,high,low", "getPriceBars")).map(toBar);
     },
     async upsertIndicators(instrumentId, rows) {
       await upsertDays(
@@ -179,6 +186,21 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
           job: run.job, started_at: run.startedAt, finished_at: run.finishedAt, status: run.status, message: run.message,
         }),
         "logJobRun",
+      );
+    },
+    async startJobRun(job, startedAt) {
+      const r = check(
+        await db.from("job_runs").insert({ job, started_at: startedAt, status: "running", message: "" }).select("id").single(),
+        "startJobRun",
+      ) as Row;
+      return Number(r.id);
+    },
+    async finishJobRun(id, result) {
+      check(
+        await db.from("job_runs")
+          .update({ finished_at: result.finishedAt, status: result.status, message: result.message })
+          .eq("id", id),
+        "finishJobRun",
       );
     },
     async lastJobRun(job) {

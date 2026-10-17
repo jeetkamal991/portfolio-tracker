@@ -101,6 +101,40 @@ describe("memoryRepo", () => {
     expect((await r.lastJobRun("eod"))?.message).toBe("b");
   });
 
+  it("startJobRun writes a running row that finishJobRun completes; lastJobRun includes running rows", async () => {
+    const r = createMemoryRepo();
+    const id = await r.startJobRun("eod", "2026-01-03T10:00:00Z");
+    expect(await r.lastJobRun("eod")).toEqual({
+      job: "eod", startedAt: "2026-01-03T10:00:00Z", finishedAt: null, status: "running", message: "",
+    });
+    await r.finishJobRun(id, { finishedAt: "2026-01-03T10:00:30Z", status: "ok", message: "done" });
+    expect(await r.lastJobRun("eod")).toEqual({
+      job: "eod", startedAt: "2026-01-03T10:00:00Z", finishedAt: "2026-01-03T10:00:30Z", status: "ok", message: "done",
+    });
+    expect(r._jobRuns).toHaveLength(1);
+  });
+
+  it("lastJobRun picks the latest started_at, not the latest insert", async () => {
+    const r = createMemoryRepo();
+    await r.startJobRun("eod", "2026-01-05T10:00:00Z");
+    const older = await r.startJobRun("eod", "2026-01-04T10:00:00Z");
+    await r.finishJobRun(older, { finishedAt: "2026-01-04T10:01:00Z", status: "failed", message: "x" });
+    await r.startJobRun("other", "2026-01-09T10:00:00Z");
+    expect(await r.lastJobRun("eod")).toMatchObject({ startedAt: "2026-01-05T10:00:00Z", status: "running" });
+  });
+
+  it("getPriceBars returns only date/close/high/low, newest `limit` ascending", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    await r.upsertCandles(1, [candle("2026-01-03", 3), candle("2026-01-01", 1), candle("2026-01-02", 2)]);
+    await r.upsertImportedPct([{ instrumentId: 1, date: "2025-12-31", importedPct: 0.1 }]);
+    expect(await r.getPriceBars(1, 2)).toEqual([
+      { date: "2026-01-02", close: 2, high: 3, low: 0 },
+      { date: "2026-01-03", close: 3, high: 4, low: 1 },
+    ]);
+    expect((await r.getPriceBars(1, 100_000)).map((b) => b.date)).toEqual(["2025-12-31", "2026-01-01", "2026-01-02", "2026-01-03"]);
+    expect((await r.getPriceBars(1, 100_000))[0]).toEqual({ date: "2025-12-31", close: null, high: null, low: null });
+  });
+
   it("last write wins for duplicate dates in one upsertCandles call", async () => {
     const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
     await r.upsertCandles(1, [candle("2026-01-01", 100), candle("2026-01-01", 110)]);

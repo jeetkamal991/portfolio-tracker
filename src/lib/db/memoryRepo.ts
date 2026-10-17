@@ -8,7 +8,11 @@ const emptyDay = (date: string): StoredDay => ({
 });
 const emptyLevels = (): Levels => ({ autoSupport: null, autoResistance: null, manualSupport: null, manualResistance: null });
 
-export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & { _days: Map<number, Map<string, StoredDay>>; _summaries: Map<string, DailySummary> } {
+export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & {
+  _days: Map<number, Map<string, StoredDay>>;
+  _summaries: Map<string, DailySummary>;
+  _jobRuns: JobRun[];
+} {
   const instruments = new Map<number, Instrument>();
   for (const i of seed?.instruments ?? []) instruments.set(i.id, { ...i });
   let nextId = Math.max(0, ...instruments.keys()) + 1;
@@ -16,6 +20,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const watchlist = new Set<number>();
   const levels = new Map<number, Levels>();
   const jobRuns: JobRun[] = [];
+  const jobRunsById = new Map<number, JobRun>();
   const summaries = new Map<string, DailySummary>();
 
   const dayFor = (id: number, date: string): StoredDay => {
@@ -35,6 +40,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   return {
     _days: days,
     _summaries: summaries,
+    _jobRuns: jobRuns,
     async listInstruments(f) {
       return [...instruments.values()]
         .filter((i) => (!f?.types || f.types.includes(i.type)) && (!f?.activeOnly || i.active))
@@ -71,6 +77,11 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       const all = [...(days.get(id)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date));
       return (limit >= all.length ? all : all.slice(all.length - limit)).map((d) => ({ ...d }));
     },
+    async getPriceBars(id, limit) {
+      const all = [...(days.get(id)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+      return (limit >= all.length ? all : all.slice(all.length - limit))
+        .map(({ date, close, high, low }) => ({ date, close, high, low }));
+    },
     async upsertIndicators(id, rows) {
       for (const r of rows) {
         const d = dayFor(id, r.date);
@@ -95,9 +106,24 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       l.manualSupport = support; l.manualResistance = resistance;
     },
     async logJobRun(run) { jobRuns.push({ ...run }); },
+    async startJobRun(job, startedAt) {
+      const row: JobRun = { job, startedAt, finishedAt: null, status: "running", message: "" };
+      jobRuns.push(row);
+      const id = jobRuns.length;
+      jobRunsById.set(id, row);
+      return id;
+    },
+    async finishJobRun(id, result) {
+      const row = jobRunsById.get(id);
+      if (!row) throw new Error(`finishJobRun: no job run ${id}`);
+      Object.assign(row, result);
+    },
     async lastJobRun(job) {
-      const runs = jobRuns.filter((r) => r.job === job);
-      return runs.length ? { ...runs[runs.length - 1] } : null;
+      // Latest started_at (ISO strings compare chronologically); ties go to the later insert.
+      const run = jobRuns
+        .filter((r) => r.job === job)
+        .reduce<JobRun | undefined>((a, r) => (!a || r.startedAt >= a.startedAt ? r : a), undefined);
+      return run ? { ...run } : null;
     },
     async getDailySummary(date) {
       const s = summaries.get(date);
