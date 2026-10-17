@@ -61,10 +61,13 @@ npm run build
 3. Set the four env vars from the table above (use the generated `CRON_SECRET`).
 4. Deploy.
 5. Verify the cron route:
+   ```powershell
+   curl.exe -H "Authorization: Bearer <CRON_SECRET>" https://<app>.vercel.app/api/cron/eod
    ```
-   curl -H "Authorization: Bearer <CRON_SECRET>" https://<app>.vercel.app/api/cron/eod
+   It should return a JobRun with status `ok` (or `no_session` on a holiday or weekend). Without the header it should return 401:
+   ```powershell
+   curl.exe -i https://<app>.vercel.app/api/cron/eod
    ```
-   It should return a JobRun with status `ok` (or `no_session` on a holiday or weekend). Without the header it should return 401.
 6. In Vercel, Settings > Cron Jobs should list `/api/cron/eod` at `0 11 * * 1-5` (11:00 UTC, 4:30 PM IST, Mon-Fri). On the Hobby plan the job can fire at any time within that hour.
 
 ## First-week check
