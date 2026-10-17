@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { startQuotesPoller } from "@/lib/live/quotesPoller";
 import { isMarketOpen } from "@/lib/time/ist";
 
 export interface LiveQuote { ticker: string; price: number; changePct: number }
@@ -13,8 +14,10 @@ const POLL_MS = 60_000;
 
 /**
  * Single 60 s poller of /api/quotes shared by the live strip and the watchlist.
- * The open/closed check is re-evaluated on every tick, so a page opened before 09:15 IST
- * starts fetching once the market opens. After close the last live quotes are kept.
+ * Fetches once on mount regardless of market hours (so after 15:30 IST the strip shows today's
+ * close, not yesterday's stored one), then polls only while open. The open/closed check is
+ * re-evaluated on every tick, so a page opened before 09:15 IST starts polling once the market
+ * opens. After close the last live quotes are kept.
  */
 export function QuotesProvider({ initialOpen, children }: { initialOpen: boolean; children: ReactNode }) {
   const [state, setState] = useState<QuotesState>({ quotes: {}, open: initialOpen });
@@ -35,17 +38,17 @@ export function QuotesProvider({ initialOpen, children }: { initialOpen: boolean
         // keep the last known values; retry on the next tick
       }
     };
-    const tick = () => {
-      if (isMarketOpen(new Date())) void fetchQuotes();
-      else setState((s) => (s.open ? { ...s, open: false } : s));
-    };
-    if (initialOpen) void fetchQuotes();
-    const timer = setInterval(tick, POLL_MS);
+    const stop = startQuotesPoller({
+      fetchQuotes,
+      isOpen: () => isMarketOpen(new Date()),
+      onClosed: () => setState((s) => (s.open ? { ...s, open: false } : s)),
+      intervalMs: POLL_MS,
+    });
     return () => {
       stopped = true;
-      clearInterval(timer);
+      stop();
     };
-  }, [initialOpen]);
+  }, []);
 
   return <QuotesContext.Provider value={state}>{children}</QuotesContext.Provider>;
 }
