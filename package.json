@@ -13,6 +13,7 @@
     "backfill": "tsx scripts/backfill.ts",
     "verify-tickers": "tsx scripts/verify-tickers.ts",
     "import-history": "tsx scripts/import-history.ts",
+    "import-niftyindices": "tsx scripts/import-niftyindices.ts",
     "compare-import": "tsx scripts/compare-import.ts"
   },
   "dependencies": {

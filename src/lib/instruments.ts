@@ -28,7 +28,7 @@ export const STRIP_KEYS = ["NIFTY50", "NIFTY_BANK", "INDIAVIX"] as const;
 /** Sector keys in workbook column order: AUTO, BANK, FIN, FMCG, IT, MEDIA, METAL, PHARMA, PSU BANK, PVT BANK, HEALTHCARE. */
 export const SECTOR_KEYS: string[] = INDEX_INSTRUMENTS.filter((i) => i.type === "sector").map((i) => i.key);
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const out: string[] = [];
   let cur = "";
   let quoted = false;
