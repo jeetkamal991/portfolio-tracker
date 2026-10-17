@@ -216,6 +216,7 @@ export function StockModal() {
       });
       if (res.ok) {
         setAdded(k);
+        setReload((n) => n + 1); // re-read the pop-up: the stock now has history and a score
         router.refresh();
       } else {
         const body: { error?: string } = await res.json().catch(() => ({}));
