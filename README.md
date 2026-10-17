@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nifty Market Dashboard
 
-## Getting Started
+A private, single-user dashboard for Indian market data (Nifty indices, sector heatmap, watchlist with level overrides). It runs on free tiers of Vercel and Supabase. Prices come from Yahoo Finance (`yahoo-finance2`), and a daily Vercel cron stores the end-of-day candles. It does not call the Claude API.
 
-First, run the development server:
+## Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20 or newer
+- A Supabase project
+- A Vercel account (for deploy)
+
+## Environment
+
+Copy the keys from `.env.example` into `.env.local` (never commit it):
+
+| Key | Secret? | Notes |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | no | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | no (public, protected by RLS) | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server routes and `scripts/` only. Never expose it to the browser. |
+| `CRON_SECRET` | yes | Bearer token for `/api/cron/eod` |
+
+Generate `CRON_SECRET`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Apply `supabase/migrations/0001_init.sql` to your project (Supabase SQL editor, or the Supabase CLI).
+2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Data scripts
 
-## Learn More
+Run in this order from the repo root. They read `.env.local`.
 
-To learn more about Next.js, take a look at the following resources:
+1. `npm run seed` - loads instruments from `data/EQUITY_L.csv` (download it from NSE and place it there). Check that the instrument count looks right.
+2. `npm run verify-tickers` - checks each Yahoo ticker against `data/history.xlsx` and prints OK or THIN per instrument. Look for any THIN or failed tickers.
+3. `npm run backfill -- --from 2015-01-01` - downloads daily candles from the given date. It prints candles per instrument; instruments with fewer than 200 are marked THIN.
+4. `npm run import-history -- --dry-run` - parses `data/history.xlsx` and prints the report without writing. Check the report, then run `npm run import-history` to write the rows.
+5. `npm run compare-import` - compares imported history with the stored data. Look for differences; none should exceed 0.0005.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Known data caveat
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Yahoo sometimes returns only the latest bar for several NSE sector indices. `verify-tickers` marks these THIN. The back-fill and the EOD job only upsert, so once `verify-tickers` shows them OK, re-run `npm run backfill -- --from 2015-01-01` to fill the history.
 
-## Deploy on Vercel
+## Local dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+npm run dev        # http://localhost:3000
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy (owner)
+
+1. Create a private GitHub repo and push this project.
+2. In Vercel, import the repo.
+3. Set the four env vars from the table above (use the generated `CRON_SECRET`).
+4. Deploy.
+5. Verify the cron route:
+   ```
+   curl -H "Authorization: Bearer <CRON_SECRET>" https://<app>.vercel.app/api/cron/eod
+   ```
+   It should return a JobRun with status `ok` (or `no_session` on a holiday or weekend). Without the header it should return 401.
+6. In Vercel, Settings > Cron Jobs should list `/api/cron/eod` at `0 11 * * 1-5` (11:00 UTC, 4:30 PM IST, Mon-Fri). On the Hobby plan the job can fire at any time within that hour.
+
+## First-week check
+
+For the next 5 trading days, after 4:30 PM IST, keep logging manually as before. Then update the sheet and run:
+
+```powershell
+npm run import-history
+npm run compare-import
+```
+
+Expected: no differences above 0.0005. Investigate any larger mismatch before you stop the manual log.
+
+## Security notes
+
+- Rotate the Supabase service-role key if it was ever shared.
+- The app is single-user: access is enforced by RLS and by disabled sign-ups. Keep sign-ups off.
