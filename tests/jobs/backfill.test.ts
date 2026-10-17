@@ -83,6 +83,13 @@ describe("addStock", () => {
     expect(days[days.length - 1]!.score).not.toBeNull();
   });
 
+  it("a score-pass error after storing still returns ok", async () => {
+    const repo = setup();
+    repo.listMemberships = async () => { throw new Error("db down"); };
+    expect(await addStock({ repo, provider: provider({ T_AAA: 300 }), now: NOW }, "AAA")).toEqual({ ok: true });
+    expect((await repo.listWatchlist()).map((i) => i.key)).toEqual(["AAA"]);
+  });
+
   it("120 candles -> ema200 null on last day", async () => {
     const repo = setup();
     expect(await addStock({ repo, provider: provider({ T_BBB: 120 }), now: NOW }, "BBB")).toEqual({ ok: true });
@@ -114,7 +121,7 @@ describe("backfillUniverse", () => {
       { repo, provider: provider({ T_AAA: 300, T_BBB: 300 }, []), now: NOW },
       { from: "2019-01-01", onProgress: (k) => progress.push(k) },
     );
-    expect(res).toEqual({ done: 2, failed: [] });
+    expect(res).toEqual({ done: 2, failed: [], unknown: [], scoreFailed: [] });
     expect((await repo.getDays(2, 1000)).length).toBe(300);
     expect((await repo.getDays(3, 1000)).length).toBe(300);
     expect(progress.sort()).toEqual(["AAA", "BBB"]);
@@ -131,5 +138,50 @@ describe("backfillUniverse", () => {
     expect(res.done).toBe(1);
     expect(res.failed).toEqual(["AAA"]);
     expect((await repo.getDays(3, 1000)).length).toBe(300);
+  });
+
+  it("deactivates a stock Yahoo does not know and reports it apart from transient failures", async () => {
+    const repo = setup();
+    await repo.upsertInstruments([{ key: "CCC", name: "CCC", type: "stock", yahooTicker: "T_CCC", active: true }]);
+    const ccc = (await repo.getInstrumentByKey("CCC"))!;
+    await repo.replaceConstituents("NIFTY200", [2, 3, ccc.id]);
+    const base = provider({ T_BBB: 300 });
+    const deps = {
+      repo, now: NOW,
+      provider: {
+        ...base,
+        async getDailyHistory(t: string, f: string, to: string) {
+          if (t === "T_AAA") throw new Error("No data found, symbol may be delisted");
+          if (t === "T_CCC") throw new Error("fetch failed");
+          return base.getDailyHistory(t, f, to);
+        },
+      },
+    };
+    const res = await backfillUniverse(deps, { from: "2019-01-01" });
+    expect(res.unknown).toEqual(["AAA"]);
+    expect(res.failed).toEqual(["CCC"]);
+    expect(res.done).toBe(1);
+    expect((await repo.getInstrumentByKey("AAA"))!.active).toBe(false);
+    expect((await repo.getInstrumentByKey("CCC"))!.active).toBe(true);
+    expect((await repo.getInstrumentByKey("BBB"))!.active).toBe(true);
+  });
+
+  it("deactivates a stock whose history comes back empty", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2, 3]);
+    const res = await backfillUniverse({ repo, provider: provider({ T_BBB: 300, T_AAA: 0 }), now: NOW }, { from: "2019-01-01" });
+    expect(res.unknown).toEqual(["AAA"]);
+    expect(res.failed).toEqual([]);
+    expect(res.done).toBe(1);
+    expect((await repo.getInstrumentByKey("AAA"))!.active).toBe(false);
+  });
+
+  it("reports score-pass failures instead of throwing", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2]);
+    const upsert = repo.upsertScore.bind(repo);
+    repo.upsertScore = async (id, row) => { if (id === 2) throw new Error("write failed"); return upsert(id, row); };
+    const res = await backfillUniverse({ repo, provider: provider({ T_AAA: 300 }), now: NOW }, { from: "2019-01-01" });
+    expect(res.scoreFailed).toEqual(["AAA (write failed)"]);
   });
 });

@@ -32,8 +32,11 @@ async function main() {
       from,
       onProgress: (key, c) => console.log(`[${++n}] ${key.padEnd(20)} ${String(c).padStart(6)} candles`),
     });
-    console.log(`Done ${res.done}, failed ${res.failed.length}${res.failed.length ? `: ${res.failed.join(", ")}` : ""}`);
-    if (res.failed.length > 0) process.exit(1);
+    const list = (xs: string[]) => (xs.length ? `: ${xs.join(", ")}` : "");
+    console.log(`Done ${res.done}, failed ${res.failed.length}${list(res.failed)}`);
+    console.log(`Unknown to Yahoo (deactivated) ${res.unknown.length}${list(res.unknown)}`);
+    console.log(`Score failures ${res.scoreFailed.length}${list(res.scoreFailed)}`);
+    if (res.failed.length > 0 || res.scoreFailed.length > 0) process.exit(1);
     return;
   }
 
@@ -52,8 +55,9 @@ async function main() {
     }
   }
   const scored = await scorePass(repo);
-  console.log(`Scored ${scored.scored}, skipped ${scored.skipped.length}`);
-  if (failed > 0) process.exit(1);
+  console.log(`Scored ${scored.scored}, skipped ${scored.skipped.length}, score failures ${scored.failed.length}` +
+    (scored.failed.length ? `: ${scored.failed.join("; ")}` : ""));
+  if (failed > 0 || scored.failed.length > 0) process.exit(1);
 }
 
 main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });

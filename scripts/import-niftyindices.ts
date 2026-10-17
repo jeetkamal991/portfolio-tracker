@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSupabaseRepo } from "@/lib/db/supabaseRepo";
 import type { Repo } from "@/lib/db/repo";
-import { parseConstituentsCsv, parseIndexHistoryCsv, type IndexHistoryRow } from "@/lib/import/niftyindices";
+import { importConstituentFile, parseIndexHistoryCsv, type IndexHistoryRow } from "@/lib/import/niftyindices";
 import { SECTOR_KEYS } from "@/lib/instruments";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -41,18 +41,9 @@ async function main() {
       const file = join(cDir, `${key}.csv`);
       if (!existsSync(file)) { missing.push(`constituents/${key}.csv`); continue; }
       try {
-        const rows = parseConstituentsCsv(readFileSync(file, "utf8"));
-        let created = 0;
-        if (repo) {
-          const fresh = rows.filter((r) => !idByKey.has(r.symbol));
-          // Insert only missing symbols so existing names/active flags are never overwritten.
-          await repo.upsertInstruments(fresh.map((r) => ({ key: r.symbol, name: r.name, type: "stock" as const, yahooTicker: `${r.symbol}.NS`, active: true })));
-          created = new Set(fresh.map((r) => r.symbol)).size;
-          if (created > 0) idByKey = new Map((await repo.listInstruments()).map((i) => [i.key, i.id]));
-          const ids = rows.map((r) => idByKey.get(r.symbol)).filter((id): id is number => id !== undefined);
-          await repo.replaceConstituents(key, [...new Set(ids)]);
-        }
-        console.log(`constituents ${key}: rows=${rows.length} new instruments=${repo ? created : "n/a (dry run)"}`);
+        const res = await importConstituentFile(repo, key, readFileSync(file, "utf8"), idByKey);
+        idByKey = res.idByKey;
+        console.log(`constituents ${key}: rows=${res.rows} new instruments=${repo ? res.created : "n/a (dry run)"}`);
       } catch (e) {
         errors.push(`constituents/${key}.csv: ${e instanceof Error ? e.message : e}`);
       }
@@ -97,7 +88,7 @@ async function main() {
 
   console.log(`missing: ${missing.length ? missing.join(", ") : "none"}`);
   console.log(`unknown keys: ${unknown.length ? unknown.join(", ") : "none"}`);
-  console.log(`parse errors: ${errors.length ? errors.join("; ") : "none"}`);
+  console.log(`errors: ${errors.length ? errors.join("; ") : "none"}`);
   console.log(dry ? "dry run: nothing written" : "done");
 }
 

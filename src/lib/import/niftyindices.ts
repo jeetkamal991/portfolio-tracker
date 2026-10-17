@@ -1,3 +1,4 @@
+import type { Repo } from "@/lib/db/repo";
 import { parseCsvLine } from "@/lib/instruments";
 
 export interface ConstituentRow { symbol: string; name: string; series: string }
@@ -57,4 +58,27 @@ export function parseIndexHistoryCsv(csv: string): IndexHistoryRow[] {
     byDate.set(date, { date, open, high, low, close });
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Imports one constituents file: inserts symbols not yet known (existing names/active flags are
+ * never overwritten), then replaces the index's membership. With no repo (dry run) it only parses.
+ * A file with no rows throws before any write, so an empty download never wipes a membership.
+ */
+export async function importConstituentFile(
+  repo: Repo | null,
+  key: string,
+  csv: string,
+  idByKey: Map<string, number>,
+): Promise<{ rows: number; created: number; idByKey: Map<string, number> }> {
+  const rows = parseConstituentsCsv(csv);
+  if (rows.length === 0) throw new Error("no constituent rows; membership left unchanged");
+  if (!repo) return { rows: rows.length, created: 0, idByKey };
+  const fresh = rows.filter((r) => !idByKey.has(r.symbol));
+  await repo.upsertInstruments(fresh.map((r) => ({ key: r.symbol, name: r.name, type: "stock" as const, yahooTicker: `${r.symbol}.NS`, active: true })));
+  const created = new Set(fresh.map((r) => r.symbol)).size;
+  if (created > 0) idByKey = new Map((await repo.listInstruments()).map((i) => [i.key, i.id]));
+  const ids = rows.map((r) => idByKey.get(r.symbol)).filter((id): id is number => id !== undefined);
+  await repo.replaceConstituents(key, [...new Set(ids)]);
+  return { rows: rows.length, created, idByKey };
 }

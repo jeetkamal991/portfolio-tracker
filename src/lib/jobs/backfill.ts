@@ -2,7 +2,9 @@ import type { Repo } from "@/lib/db/repo";
 import type { Instrument } from "@/lib/db/types";
 import type { MarketDataProvider } from "@/lib/provider/types";
 import { addDays, istDate } from "@/lib/time/ist";
-import { loadCloses, pool, recomputeInstrument } from "./eod";
+import { isUnknownSymbolError } from "@/lib/provider/errors";
+import { loadCloses, recomputeInstrument } from "./eod";
+import { pool } from "./pool";
 import { scorePass } from "./score";
 
 export interface BackfillDeps {
@@ -52,33 +54,59 @@ export async function addStock(deps: BackfillDeps, key: string): Promise<AddStoc
 
   await store(deps, inst, candles);
   await deps.repo.addToWatchlist(inst.id);
-  await scorePass(deps.repo, { onlyIds: new Set([inst.id]) });
+  // The stock is stored and watchlisted; a scoring hiccup only delays its score to the next EOD run.
+  try {
+    await scorePass(deps.repo, { onlyIds: new Set([inst.id]) });
+  } catch {
+    /* scored by the next EOD run */
+  }
   return { ok: true };
 }
 
 const UNIVERSE_CONCURRENCY = 4;
 
+export interface BackfillUniverseResult {
+  done: number;
+  /** Transient errors (network, rate limit): retried by the next run. */
+  failed: string[];
+  /** Symbols Yahoo has no data for: deactivated so EOD stops retrying them. */
+  unknown: string[];
+  /** "KEY (error)" for instruments the final score pass could not score. */
+  scoreFailed: string[];
+}
+
 /** Back-fill NIFTY200 constituents plus watchlist stocks from `from`, then score once. */
 export async function backfillUniverse(
   deps: BackfillDeps,
   opts: { from: string; onProgress?: (key: string, n: number) => void },
-): Promise<{ done: number; failed: string[] }> {
+): Promise<BackfillUniverseResult> {
   const [constituents, watch] = await Promise.all([deps.repo.listConstituents("NIFTY200"), deps.repo.listWatchlist()]);
   const seen = new Set<number>();
   const stocks = [...constituents, ...watch].filter(
     (i) => i.type === "stock" && i.active && !seen.has(i.id) && !!seen.add(i.id),
   );
   const failed: string[] = [];
+  const unknown: Instrument[] = [];
   let done = 0;
   await pool(stocks, UNIVERSE_CONCURRENCY, async (inst) => {
     try {
       const n = await backfillInstrument(deps, inst, opts.from);
+      if (n === 0) { unknown.push(inst); return; }
       done++;
       opts.onProgress?.(inst.key, n);
-    } catch {
-      failed.push(inst.key);
+    } catch (e) {
+      if (isUnknownSymbolError(e)) unknown.push(inst);
+      else failed.push(inst.key);
     }
   });
-  await scorePass(deps.repo);
-  return { done, failed };
+  if (unknown.length > 0) {
+    await deps.repo.upsertInstruments(unknown.map((i) => ({ key: i.key, name: i.name, type: i.type, yahooTicker: i.yahooTicker, active: false })));
+  }
+  let scoreFailed: string[];
+  try {
+    scoreFailed = (await scorePass(deps.repo)).failed;
+  } catch (e) {
+    scoreFailed = [`score pass (${e instanceof Error ? e.message : String(e)})`];
+  }
+  return { done, failed: failed.sort(), unknown: unknown.map((i) => i.key).sort(), scoreFailed };
 }
