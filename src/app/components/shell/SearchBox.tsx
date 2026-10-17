@@ -1,16 +1,13 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import type { SearchHit } from "@/lib/api/search";
-import { stockHref } from "../popup/StockLink";
+import { openStock } from "../popup/StockLink";
 
 const TYPE_LABEL: Record<SearchHit["type"], string> = { stock: "", index: "INDEX", sector: "SECTOR" };
 
 /** Top-bar type-ahead over stocks, indices and sectors; picking one opens the pop-up (`?stock=KEY`). */
 export function SearchBox() {
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [active, setActive] = useState(0);
@@ -42,8 +39,8 @@ export function SearchBox() {
   const shown = q.trim().length >= 2 ? hits : [];
 
   function pick(hit: SearchHit) {
-    // Read the live params at pick time so other params (e.g. `?s=` on /sectors) are kept.
-    router.push(stockHref(pathname, new URLSearchParams(window.location.search), hit.key), { scroll: false });
+    // History API (no server round-trip); keeps other params such as `?s=` on /sectors.
+    openStock(hit.key);
     setQ("");
     setHits([]);
     setOpen(false);

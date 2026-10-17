@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { fmtPrice } from "@/lib/view/dashboard";
 import type { PopupData } from "@/lib/view/popup";
@@ -11,6 +11,7 @@ import { DeepDiveTab } from "./DeepDiveTab";
 import { IndicatorTab } from "./IndicatorTab";
 import { PatternsTab } from "./PatternsTab";
 import { ScoreBadge } from "./ScoreBadge";
+import { closeStock, forgetPushedStock } from "./StockLink";
 
 type TabId = "chart" | "deep" | "patterns" | "indicators";
 type Loaded =
@@ -121,7 +122,6 @@ function CloseButton({ onClose, className = "" }: { onClose: () => void; classNa
 /** The single stock / sector / index pop-up, driven by `?stock=KEY`. */
 export function StockModal() {
   const router = useRouter();
-  const pathname = usePathname() ?? "/";
   const params = useSearchParams();
   const key = params?.get("stock") ?? null;
 
@@ -134,16 +134,11 @@ export function StockModal() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  const closeRef = useRef<() => void>(() => {});
+  // History API, not router.replace: no server round-trip before the URL (and the dialog) updates.
+  const close = closeStock;
   useEffect(() => {
-    closeRef.current = () => {
-      const next = new URLSearchParams(params?.toString() ?? "");
-      next.delete("stock");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    };
-  }, [params, pathname, router]);
-  const close = () => closeRef.current();
+    if (!key) forgetPushedStock(); // closed by browser Back or a navigation
+  }, [key]);
 
   useEffect(() => {
     if (!key) return;
@@ -172,7 +167,7 @@ export function StockModal() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        closeRef.current();
+        closeStock();
         return;
       }
       if (e.key !== "Tab" || !root) return;
