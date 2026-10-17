@@ -120,13 +120,14 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       const r = check(await db.from("instruments").select("*").eq("key", key).maybeSingle(), "getInstrumentByKey");
       return r ? toInstrument(r as Row) : null;
     },
-    async searchInstruments(q, limit) {
+    async searchInstruments(q, limit, opts) {
       // Strip characters that are special in PostgREST filter syntax / LIKE patterns.
       const safe = q.replace(/[%_,()\\]/g, " ").trim();
       if (!safe) return [];
+      let query = db.from("instruments").select("*");
+      if (!opts?.includeIndices) query = query.eq("type", "stock");
       const rows = check(
-        await db.from("instruments").select("*").eq("type", "stock")
-          .or(`key.ilike.%${safe}%,name.ilike.%${safe}%`).order("key").limit(limit),
+        await query.or(`key.ilike.%${safe}%,name.ilike.%${safe}%`).order("key").limit(limit),
         "searchInstruments",
       ) as Row[];
       return rows.map(toInstrument);

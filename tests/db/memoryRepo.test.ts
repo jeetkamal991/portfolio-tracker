@@ -86,6 +86,8 @@ describe("memoryRepo", () => {
     expect(await r.getInstrumentByKey("NOPE")).toBeNull();
     expect((await r.searchInstruments("tata", 10)).map((i) => i.key)).toEqual(["TATA"]);
     expect(await r.searchInstruments("nifty", 10)).toEqual([]);
+    expect((await r.searchInstruments("nifty", 10, { includeIndices: true })).map((i) => i.key)).toEqual(["NIFTY"]);
+    expect((await r.searchInstruments("t", 10, { includeIndices: true })).map((i) => i.key)).toEqual(["NIFTY", "TCS", "TATA"]);
   });
 
   it("manages watchlist and job runs", async () => {

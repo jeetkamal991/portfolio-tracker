@@ -5,5 +5,5 @@ import { getRepo } from "@/lib/api/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  return NextResponse.json(await handleSearch(getRepo(), req.nextUrl.searchParams.get("q")));
+  return NextResponse.json(await handleSearch(getRepo(), req.nextUrl.searchParams.get("q"), req.nextUrl.searchParams.get("scope")));
 }

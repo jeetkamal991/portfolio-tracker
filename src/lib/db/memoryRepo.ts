@@ -55,10 +55,10 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       const i = byKey(key);
       return i ? { ...i } : null;
     },
-    async searchInstruments(q, limit) {
+    async searchInstruments(q, limit, opts) {
       const n = q.toLowerCase();
       return [...instruments.values()]
-        .filter((i) => i.type === "stock" && (i.key.toLowerCase().includes(n) || i.name.toLowerCase().includes(n)))
+        .filter((i) => (opts?.includeIndices || i.type === "stock") && (i.key.toLowerCase().includes(n) || i.name.toLowerCase().includes(n)))
         .slice(0, limit)
         .map((i) => ({ ...i }));
     },

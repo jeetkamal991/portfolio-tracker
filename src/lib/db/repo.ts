@@ -5,7 +5,8 @@ export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
   getInstrumentByKey(key: string): Promise<Instrument | null>;
   /** Stocks only; key or name ILIKE. */
-  searchInstruments(q: string, limit: number): Promise<Instrument[]>;
+  /** Stocks matching key or name; `includeIndices` also matches indices and sectors. */
+  searchInstruments(q: string, limit: number, opts?: { includeIndices?: boolean }): Promise<Instrument[]>;
   /** Conflict on key. */
   upsertInstruments(rows: Omit<Instrument, "id">[]): Promise<void>;
   /** Writes date + OHLCV only. */
