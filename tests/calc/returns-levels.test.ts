@@ -7,7 +7,7 @@ test("periodReturn", () => {
   expect(periodReturn([100], 1)).toBeNull();
 });
 test("RS uses Nifty on the same dates", () => {
-  const dates = Array.from({ length: 21 }, (_, i) => `d${i}`);
+  const dates = Array.from({ length: 21 }, (_, i) => `d${String(i).padStart(2, "0")}`);
   const closes = dates.map((_, i) => (i === 20 ? 110 : 100));
   const nifty = new Map(dates.map((d, i) => [d, i === 20 ? 105 : 100]));
   const rs = rsVsNifty(dates, closes, nifty);
@@ -15,7 +15,7 @@ test("RS uses Nifty on the same dates", () => {
   expect(rs[20]).toBeCloseTo(0.05);
 });
 test("RS null when Nifty missing a date", () => {
-  const dates = Array.from({ length: 21 }, (_, i) => `d${i}`);
+  const dates = Array.from({ length: 21 }, (_, i) => `d${String(i).padStart(2, "0")}`);
   expect(rsVsNifty(dates, dates.map(() => 1), new Map())[20]).toBeNull();
 });
 test("trendTag", () => {

@@ -1,4 +1,4 @@
-import { periodReturn, PERIODS } from "@/lib/calc/returns";
+import { calendarReturn, periodReturn, PERIODS, sessionCalendar } from "@/lib/calc/returns";
 import {
   distanceToResistance,
   distanceToSupport,
@@ -37,20 +37,36 @@ function latest(days: StoredDay[]): StoredDay | undefined {
   return days.reduce<StoredDay | undefined>((a, d) => (!a || d.date > a.date ? d : a), undefined);
 }
 
-export function buildSectorRows(series: { key: string; name: string; days: StoredDay[] }[]): SectorRow[] {
+/**
+ * `niftyDates` (NIFTY50's stored session dates; ~70 recent ones suffice) is the trading calendar:
+ * w1/m1/m3 look 5/21/63 Nifty sessions back from the latest priced row and are null if the sector
+ * has no close on that session. With no Nifty dates, they fall back to the sector's own bars.
+ */
+export function buildSectorRows(
+  series: { key: string; name: string; days: StoredDay[] }[],
+  niftyDates: string[],
+): SectorRow[] {
+  const cal = sessionCalendar(niftyDates);
   return SECTOR_KEYS.map((key) => {
     const s = series.find((x) => x.key === key);
     const empty: SectorRow = { key, name: s?.name ?? key, d1: null, w1: null, m1: null, m3: null, trend: null };
     if (!s) return empty;
     const priced = [...s.days].sort((a, b) => a.date.localeCompare(b.date)).filter((d) => d.close !== null);
-    const closes = priced.map((d) => d.close as number);
     const last = priced[priced.length - 1];
+    let ret: (bars: number) => number | null;
+    if (cal.dates.length === 0) {
+      const closes = priced.map((d) => d.close as number);
+      ret = (bars) => periodReturn(closes, bars);
+    } else {
+      const closeOn = new Map(priced.map((d) => [d.date, d.close as number]));
+      ret = (bars) => (last ? calendarReturn(closeOn, cal, last.date, bars) : null);
+    }
     return {
       ...empty,
       d1: buildTodaySummary(s.days),
-      w1: periodReturn(closes, PERIODS.w1),
-      m1: periodReturn(closes, PERIODS.m1),
-      m3: periodReturn(closes, PERIODS.m3),
+      w1: ret(PERIODS.w1),
+      m1: ret(PERIODS.m1),
+      m3: ret(PERIODS.m3),
       trend: last ? trendTag(last.close as number, last.ema50, last.ema200) : null,
     };
   });

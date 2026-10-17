@@ -9,13 +9,14 @@ const day = (i: number, o: Partial<StoredDay> = {}): StoredDay => ({
   pctChange: 0.01, importedPct: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null, ...o,
 });
 const series = (n: number) => Array.from({ length: n }, (_, i) => day(i));
+const datesOf = (days: StoredDay[]) => days.map((d) => d.date);
 const run = (status: JobRun["status"]): JobRun => ({ job: "eod", startedAt: "", finishedAt: "", status, message: "" });
 
 describe("buildSectorRows", () => {
   it("returns rows in SECTOR_KEYS order with correct returns", () => {
     const days = series(70);
     const input = [...SECTOR_KEYS].reverse().map((key) => ({ key, name: key, days }));
-    const rows = buildSectorRows(input);
+    const rows = buildSectorRows(input, datesOf(days));
     expect(rows.map((r) => r.key)).toEqual(SECTOR_KEYS);
     const c = days.map((d) => d.close!);
     expect(rows[0].w1).toBeCloseTo(c[69] / c[64] - 1, 12);
@@ -23,21 +24,39 @@ describe("buildSectorRows", () => {
     expect(rows[0].m3).not.toBeNull();
   });
   it("m3 is null with 30 days", () => {
-    expect(buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days: series(30) }])[0].m3).toBeNull();
+    expect(buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days: series(30) }], datesOf(series(30)))[0].m3).toBeNull();
   });
   it("last row with null close uses imported pct for d1, w1 from priced rows", () => {
     const days = [...series(10), day(10, { close: null, pctChange: null, importedPct: 0.0065 })];
-    const r = buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days }])[0];
+    const r = buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days }], datesOf(days))[0];
     expect(r.d1).toBe(0.0065);
     expect(r.w1).toBeCloseTo(109 / 104 - 1, 12);
   });
   it("trend uses the latest priced row", () => {
     const days = [day(0, { ema50: 90, ema200: 80 })];
-    expect(buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days }])[0].trend).toBe("above_both");
+    expect(buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days }], datesOf(days))[0].trend).toBe("above_both");
   });
   it("missing or empty series gives all-null row", () => {
-    const r = buildSectorRows([])[0];
+    const r = buildSectorRows([], [])[0];
     expect([r.d1, r.w1, r.m1, r.m3, r.trend]).toEqual([null, null, null, null, null]);
+  });
+  it("period returns use the Nifty calendar: a gap at the 5-back session gives null w1", () => {
+    const cal = series(30); // Nifty sessions 2026-01-01..30
+    const gapped = cal.filter((_, i) => i !== 24); // missing the session 5 back from the last (index 29)
+    const r = buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days: gapped }], datesOf(cal))[0];
+    expect(r.w1).toBeNull();
+    expect(r.m1).toBeCloseTo(129 / 108 - 1, 12); // 21 sessions back (index 8) is present
+  });
+  it("a gap elsewhere does not shift the 5-back session", () => {
+    const cal = series(30);
+    const gapped = cal.filter((_, i) => i !== 26);
+    const r = buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days: gapped }], datesOf(cal))[0];
+    expect(r.w1).toBeCloseTo(129 / 124 - 1, 12); // own-bar offset would give 129/123 - 1
+  });
+  it("null when the latest priced row is not a Nifty session", () => {
+    const cal = series(30);
+    const r = buildSectorRows([{ key: SECTOR_KEYS[0], name: "A", days: cal }], datesOf(cal).slice(0, 29))[0];
+    expect(r.w1).toBeNull();
   });
 });
 

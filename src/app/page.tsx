@@ -31,7 +31,8 @@ export default async function Home() {
         .filter((i) => i.type === "sector")
         .map(async (i) => ({ key: i.key, name: i.name, days: await repo.getDays(i.id, 70) })),
     ),
-    daysOf("NIFTY50", 10),
+    // ~70 sessions: the trading calendar for the heatmap's 5/21/63-session returns.
+    daysOf("NIFTY50", 70),
     repo.lastJobRun("eod"),
     repo.getDailySummary(istDate(now)),
   ]);
@@ -65,6 +66,7 @@ export default async function Home() {
   }));
   const bankDays = stripDays[STRIP_KEYS.indexOf("NIFTY_BANK")];
   const asOf = buildAsOf(latestPctDate(niftyDays), lastRun, now);
+  const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-5 p-4">
@@ -83,7 +85,7 @@ export default async function Home() {
         <LiveStrip items={[...stripItems, ...watchStrip]} />
         <ClaudeCard summary={summary} />
         <TodaySummary nifty={buildTodaySummary(niftyDays)} bankNifty={buildTodaySummary(bankDays)} />
-        <SectorHeatmap rows={buildSectorRows(sectors)} />
+        <SectorHeatmap rows={buildSectorRows(sectors, niftyDates)} />
         <AddStock />
         <WatchlistTable items={watchItems} />
       </QuotesProvider>
