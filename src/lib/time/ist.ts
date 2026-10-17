@@ -37,3 +37,23 @@ export function addDays(date: string, n: number): string {
   t.setUTCDate(t.getUTCDate() + n);
   return t.toISOString().slice(0, 10);
 }
+
+/** IST time after which the day's EOD data is expected to be stored (cron at 16:30 IST, Hobby jitter up to an hour). */
+export const EOD_EXPECTED_MINUTES = 17 * 60 + 30;
+
+/**
+ * The most recent Mon–Fri IST date whose 17:30 IST has passed: the newest session the
+ * dashboard expects to have. NSE holidays are not modelled.
+ */
+export function latestExpectedSession(now: Date): string {
+  const { date, weekday, minutes } = istNowParts(now);
+  let d = date;
+  let wd = weekday;
+  if (!(wd >= 1 && wd <= 5 && minutes >= EOD_EXPECTED_MINUTES)) {
+    do {
+      d = addDays(d, -1);
+      wd = (wd + 6) % 7;
+    } while (wd === 0 || wd === 6);
+  }
+  return d;
+}

@@ -63,12 +63,38 @@ describe("heatColor", () => {
 });
 
 describe("buildAsOf", () => {
+  // IST = UTC+05:30. 2026-10-16 is a Friday.
+  const FRI_1800 = new Date("2026-10-16T12:30:00Z");
+  const FRI_1700 = new Date("2026-10-16T11:30:00Z");
+  const SAT_1200 = new Date("2026-10-17T06:30:00Z");
+  const MON_1000 = new Date("2026-10-19T04:30:00Z");
+  const TUE_1800 = new Date("2026-10-20T12:30:00Z");
+
   it("stale for partial and failed, not for no_session / ok / none", () => {
-    expect(buildAsOf("2026-10-16", run("partial"))).toEqual({ date: "2026-10-16", stale: true });
-    expect(buildAsOf("2026-10-16", run("failed")).stale).toBe(true);
-    expect(buildAsOf("2026-10-16", run("no_session")).stale).toBe(false);
-    expect(buildAsOf("2026-10-16", run("ok")).stale).toBe(false);
-    expect(buildAsOf(null, null)).toEqual({ date: null, stale: false });
+    expect(buildAsOf("2026-10-16", run("partial"), FRI_1800)).toEqual({ date: "2026-10-16", stale: true });
+    expect(buildAsOf("2026-10-16", run("failed"), FRI_1800).stale).toBe(true);
+    expect(buildAsOf("2026-10-16", run("no_session"), FRI_1800).stale).toBe(false);
+    expect(buildAsOf("2026-10-16", run("ok"), FRI_1800).stale).toBe(false);
+    expect(buildAsOf(null, null, FRI_1800)).toEqual({ date: null, stale: false });
+  });
+
+  it("stale when the latest date is older than the last weekday whose 17:30 IST has passed", () => {
+    expect(buildAsOf("2026-10-15", run("ok"), FRI_1800).stale).toBe(true);
+    expect(buildAsOf("2026-10-15", run("ok"), FRI_1700).stale).toBe(false);
+    expect(buildAsOf("2026-10-16", run("ok"), MON_1000).stale).toBe(false);
+    expect(buildAsOf("2026-10-16", run("ok"), SAT_1200).stale).toBe(false);
+    expect(buildAsOf("2026-10-16", run("ok"), TUE_1800).stale).toBe(true);
+  });
+
+  it("date staleness applies even with no job run or a no_session run (cron never fired / null close)", () => {
+    expect(buildAsOf("2026-10-15", null, FRI_1800).stale).toBe(true);
+    expect(buildAsOf("2026-10-15", run("no_session"), FRI_1800).stale).toBe(true);
+  });
+
+  it("stale when the last run is still `running` after 15 minutes", () => {
+    const running = (startedAt: string): JobRun => ({ ...run("running"), startedAt, finishedAt: null });
+    expect(buildAsOf("2026-10-16", running("2026-10-16T12:10:00Z"), FRI_1800).stale).toBe(true); // 20 min
+    expect(buildAsOf("2026-10-16", running("2026-10-16T12:20:00Z"), FRI_1800).stale).toBe(false); // 10 min
   });
 });
 

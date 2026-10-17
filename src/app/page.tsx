@@ -64,7 +64,7 @@ export default async function Home() {
     pct: w.lastDay.pctChange ?? w.lastDay.importedPct,
   }));
   const bankDays = stripDays[STRIP_KEYS.indexOf("NIFTY_BANK")];
-  const asOf = buildAsOf(latestPctDate(niftyDays), lastRun);
+  const asOf = buildAsOf(latestPctDate(niftyDays), lastRun, now);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-5 p-4">

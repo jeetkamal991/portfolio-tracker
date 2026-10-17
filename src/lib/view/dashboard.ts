@@ -10,6 +10,7 @@ import {
 } from "@/lib/calc/levels";
 import type { JobRun, Levels, StoredDay } from "@/lib/db/types";
 import { SECTOR_KEYS } from "@/lib/instruments";
+import { latestExpectedSession } from "@/lib/time/ist";
 
 export type HeatPeriod = "d1" | "w1" | "m1" | "m3";
 
@@ -66,11 +67,24 @@ export function heatColor(value: number | null, period: HeatPeriod): string {
   return value > 0 ? `rgba(22, 163, 74, ${alpha})` : `rgba(220, 38, 38, ${alpha})`;
 }
 
+const RUNNING_STALE_MS = 15 * 60_000;
+
+/**
+ * Stale (amber) when the last EOD run failed or was partial, when a run has been `running` for
+ * over 15 minutes (it most likely timed out), or when the newest data is older than the latest
+ * weekday whose 17:30 IST has passed (cron never fired, no job row, or a null close). NSE holidays
+ * are not modelled, so the day after one can read amber. `no_session` alone is not stale.
+ */
 export function buildAsOf(
   latestNiftyDate: string | null,
   lastRun: JobRun | null,
+  now: Date,
 ): { date: string | null; stale: boolean } {
-  return { date: latestNiftyDate, stale: lastRun?.status === "failed" || lastRun?.status === "partial" };
+  const runBad = lastRun?.status === "failed" || lastRun?.status === "partial";
+  const runStuck =
+    lastRun?.status === "running" && now.getTime() - Date.parse(lastRun.startedAt) > RUNNING_STALE_MS;
+  const dataOld = latestNiftyDate !== null && latestNiftyDate < latestExpectedSession(now);
+  return { date: latestNiftyDate, stale: runBad || runStuck || dataOld };
 }
 
 export function latestPctDate(days: StoredDay[]): string | null {
