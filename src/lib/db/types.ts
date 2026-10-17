@@ -74,6 +74,17 @@ export interface ScoreRow {
   scoreSignal: string;
 }
 
+export interface ReportRow {
+  id: number;
+  instrumentId: number;
+  status: "pending" | "done" | "failed";
+  requestedAt: string;
+  completedAt: string | null;
+  requestedVia: "site" | "chat";
+  content: unknown;
+  error: string | null;
+}
+
 export interface Levels {
   autoSupport: number | null;
   autoResistance: number | null;

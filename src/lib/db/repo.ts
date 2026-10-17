@@ -1,5 +1,5 @@
 import type { Candle } from "@/lib/provider/types";
-import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ScoreRow, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -42,5 +42,9 @@ export interface Repo {
   finishJobRun(id: number, result: JobRunResult): Promise<void>;
   /** Latest row by started_at, including a `running` one. */
   lastJobRun(job: string): Promise<JobRun | null>;
+  /** Inserts a `pending` report with requested_via 'site'. */
+  requestReport(instrumentId: number): Promise<ReportRow>;
+  /** Newest first. */
+  listReports(instrumentId: number): Promise<ReportRow[]>;
   getDailySummary(date: string): Promise<DailySummary | null>;
 }

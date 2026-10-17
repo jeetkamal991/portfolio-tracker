@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -56,6 +56,16 @@ const toSummary = (r: Row): DailySummary => ({
   summary: r.summary as string,
   marketEvents: (r.market_events as unknown[] | null) ?? [],
   watchlistNews: (r.watchlist_news as unknown[] | null) ?? [],
+});
+const toReport = (r: Row): ReportRow => ({
+  id: Number(r.id),
+  instrumentId: Number(r.instrument_id),
+  status: r.status as ReportRow["status"],
+  requestedAt: r.requested_at as string,
+  completedAt: (r.completed_at as string | null) ?? null,
+  requestedVia: r.requested_via as ReportRow["requestedVia"],
+  content: r.content ?? null,
+  error: (r.error as string | null) ?? null,
 });
 // ---------------------------------------------------------
 
@@ -279,6 +289,22 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         "lastJobRun",
       );
       return r ? toJobRun(r as Row) : null;
+    },
+    async requestReport(instrumentId) {
+      const r = check(
+        await db.from("reports").insert({ instrument_id: instrumentId, status: "pending", requested_via: "site" })
+          .select("*").single(),
+        "requestReport",
+      );
+      return toReport(r as Row);
+    },
+    async listReports(instrumentId) {
+      const rows = check(
+        await db.from("reports").select("*").eq("instrument_id", instrumentId)
+          .order("requested_at", { ascending: false }).order("id", { ascending: false }),
+        "listReports",
+      ) as Row[];
+      return rows.map(toReport);
     },
     async getDailySummary(date) {
       const r = check(await db.from("daily_summaries").select("*").eq("date", date).maybeSingle(), "getDailySummary");

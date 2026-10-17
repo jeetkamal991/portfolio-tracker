@@ -1,6 +1,6 @@
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { DailySummary, Instrument, JobRun, Levels, StoredDay } from "./types";
+import type { DailySummary, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -24,6 +24,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const levels = new Map<number, Levels>();
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
+  const reports: ReportRow[] = [];
   const summaries = new Map<string, DailySummary>();
   const constituents = new Map<string, Set<number>>();
 
@@ -150,6 +151,17 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
         .filter((r) => r.job === job)
         .reduce<JobRun | undefined>((a, r) => (!a || r.startedAt >= a.startedAt ? r : a), undefined);
       return run ? { ...run } : null;
+    },
+    async requestReport(instrumentId) {
+      const row: ReportRow = {
+        id: reports.length + 1, instrumentId, status: "pending", requestedAt: new Date().toISOString(),
+        completedAt: null, requestedVia: "site", content: null, error: null,
+      };
+      reports.push(row);
+      return { ...row };
+    },
+    async listReports(instrumentId) {
+      return reports.filter((r) => r.instrumentId === instrumentId).map((r) => ({ ...r })).reverse();
     },
     async getDailySummary(date) {
       const s = summaries.get(date);
