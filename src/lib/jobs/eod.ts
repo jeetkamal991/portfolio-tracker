@@ -4,6 +4,7 @@ import type { MarketDataProvider } from "@/lib/provider/types";
 import { computeIndicators } from "@/lib/calc/indicators";
 import { swingLevels } from "@/lib/calc/swing";
 import { addDays, istDate } from "@/lib/time/ist";
+import { pool } from "./pool";
 import { scorePass } from "./score";
 
 export interface EodDeps {
@@ -91,13 +92,7 @@ export async function refreshInstrument(
   return result;
 }
 
-export async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) await fn(items[next++]!);
-  };
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
-}
+export { pool };
 
 async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
   const { repo } = deps;
@@ -152,15 +147,30 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
     },
   );
 
-  const { skipped } = await scorePass(repo);
+  // A score-pass problem never undoes the ingests above: it downgrades the run to partial.
+  let skipped: string[] = [];
+  let scoreFailed: string[] = [];
+  let scoreError: string | null = null;
+  try {
+    ({ skipped, failed: scoreFailed } = await scorePass(repo));
+  } catch (e) {
+    scoreError = e instanceof Error ? e.message : String(e);
+  }
 
   let status: JobRunResult["status"];
   if (targets.length > 0 && failed.length === targets.length) status = "failed";
-  else if (failed.length > 0) status = "partial";
+  else if (failed.length > 0 || scoreFailed.length > 0 || scoreError) status = "partial";
   else if (targets.length > 0 && noSession === targets.length) status = "no_session";
   else status = "ok";
-  const message = `updated ${updated}, no_session ${noSession}, failed ${failed.length}, skipped ${skipped.length}` +
-    (failed.length ? `: ${failed.join("; ")}` : "");
+  const notes = [
+    failed.length ? failed.join("; ") : "",
+    skipped.length ? `skipped: ${skipped.join(", ")}` : "",
+    scoreFailed.length ? `score failed: ${scoreFailed.join("; ")}` : "",
+    scoreError ? `score pass error: ${scoreError}` : "",
+  ].filter(Boolean);
+  const message =
+    `updated ${updated}, no_session ${noSession}, failed ${failed.length}, skipped ${skipped.length}, ` +
+    `constituents ${constituents.length}` + (notes.length ? `: ${notes.join(" | ")}` : "");
   return { status, message };
 }
 

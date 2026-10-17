@@ -124,3 +124,100 @@ describe("scorePass", () => {
     expect((await latest(repo, 3)).score).not.toBeNull();
   });
 });
+
+describe("scorePass fault tolerance and scope", () => {
+  it("continues past a throwing instrument and reports it in failed", async () => {
+    const repo = await setup();
+    const getDays = repo.getDays.bind(repo);
+    repo.getDays = async (id, limit) => {
+      if (id === 2) throw new Error("db hiccup");
+      return getDays(id, limit);
+    };
+    const res = await scorePass(repo);
+    expect(res.failed).toEqual(["NIFTY_IT (db hiccup)"]);
+    expect((await latest(repo, 1)).score).not.toBeNull();
+    expect((await latest(repo, 3)).score).not.toBeNull();
+  });
+
+  it("a throwing stock is reported and does not stop the other stocks", async () => {
+    const repo = await setup();
+    const upsert = repo.upsertScore.bind(repo);
+    repo.upsertScore = async (id, row) => {
+      if (id === 3) throw new Error("write failed");
+      return upsert(id, row);
+    };
+    const res = await scorePass(repo);
+    expect(res.failed).toEqual(["TCS (write failed)"]);
+    expect(res.scored).toBe(2);
+  });
+
+  it("scores stocks concurrently", async () => {
+    const instruments = [inst(1, "NIFTY50", "index")];
+    for (let i = 0; i < 12; i++) instruments.push(inst(10 + i, `S${i}`, "stock"));
+    const repo = createMemoryRepo({ instruments });
+    const nc = series(60, 1);
+    const niftyMap = new Map(nc.map((c) => [c.date, c.close]));
+    await seed(repo, 1, nc, niftyMap);
+    for (let i = 0; i < 12; i++) await seed(repo, 10 + i, series(60, 1), niftyMap);
+    await repo.replaceConstituents("NIFTY200", instruments.slice(1).map((i) => i.id));
+    let inFlight = 0;
+    let max = 0;
+    const getDays = repo.getDays.bind(repo);
+    repo.getDays = async (id, limit) => {
+      inFlight++;
+      max = Math.max(max, inFlight);
+      await new Promise((r) => setTimeout(r, 2));
+      inFlight--;
+      return getDays(id, limit);
+    };
+    const res = await scorePass(repo);
+    expect(res.scored).toBe(13);
+    expect(max).toBeGreaterThan(1);
+  });
+
+  it("finishes every index/sector before any stock is scored", async () => {
+    const repo = await setup();
+    await repo.upsertInstruments([{ key: "NIFTY_BANK", name: "Bank", type: "sector", yahooTicker: "T_B", active: true }]);
+    const bank = (await repo.getInstrumentByKey("NIFTY_BANK"))!;
+    const nc = series(260, 1);
+    await seed(repo, bank.id, series(260, 0.5), new Map(nc.map((c) => [c.date, c.close])));
+    const order: number[] = [];
+    const orig = repo.upsertScore.bind(repo);
+    repo.upsertScore = async (id, row) => { order.push(id); return orig(id, row); };
+    await scorePass(repo);
+    expect(order[0]).toBe(1);
+    expect(order.indexOf(3)).toBeGreaterThan(order.indexOf(2));
+    expect(order.indexOf(3)).toBeGreaterThan(order.indexOf(bank.id));
+  });
+
+  it("does not score India VIX", async () => {
+    const repo = await setup();
+    await repo.upsertInstruments([{ key: "INDIAVIX", name: "India VIX", type: "index", yahooTicker: "^INDIAVIX", active: true }]);
+    const vix = (await repo.getInstrumentByKey("INDIAVIX"))!;
+    const nc = series(260, 1);
+    await seed(repo, vix.id, series(260, 0.1), new Map(nc.map((c) => [c.date, c.close])));
+    const res = await scorePass(repo);
+    expect((await latest(repo, vix.id)).score).toBeNull();
+    expect(res.scored).toBe(3);
+  });
+
+  it("lists only indices and sectors, never the whole instrument table", async () => {
+    const repo = await setup();
+    const spy = vi.spyOn(repo, "listInstruments");
+    await scorePass(repo);
+    expect(spy).toHaveBeenCalled();
+    for (const [f] of spy.mock.calls) expect(f).toEqual({ types: ["index", "sector"], activeOnly: true });
+  });
+
+  it("reports a missing NIFTY50 in skipped", async () => {
+    const repo = createMemoryRepo({ instruments: [inst(2, "NIFTY_IT", "sector")] });
+    const res = await scorePass(repo);
+    expect(res.skipped).toContain("NIFTY50");
+  });
+
+  it("reports an unpriced NIFTY50 in skipped", async () => {
+    const repo = createMemoryRepo({ instruments: [inst(1, "NIFTY50", "index")] });
+    const res = await scorePass(repo);
+    expect(res.skipped).toEqual(["NIFTY50"]);
+  });
+});

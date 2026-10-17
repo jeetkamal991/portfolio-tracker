@@ -313,3 +313,52 @@ describe("isAuthorized", () => {
     expect(isAuthorized("Bearer ", "")).toBe(false);
   });
 });
+
+describe("runEod score pass robustness and reporting", () => {
+  const universe = () => {
+    const instruments = [
+      inst(1, "NIFTY50", "index"), inst(2, "NIFTY_IT", "sector"),
+      inst(3, "AAA", "stock"), inst(4, "BBB", "stock"),
+    ];
+    return { repo: createMemoryRepo({ instruments }), instruments };
+  };
+
+  it("a score-pass throw after successful ingests finishes partial, not failed", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    repo.listMemberships = async () => { throw new Error("memberships down"); };
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("partial");
+    expect(run.message).toContain("memberships down");
+    const days = await repo.getDays(3, 100_000);
+    expect(days[days.length - 1]!.date).toBe(TODAY);
+  });
+
+  it("an instrument failing to score -> partial naming it", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const upsert = repo.upsertScore.bind(repo);
+    repo.upsertScore = async (id, row) => { if (id === 4) throw new Error("write failed"); return upsert(id, row); };
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("partial");
+    expect(run.message).toContain("BBB (write failed)");
+  });
+
+  it("message includes the NIFTY200 constituent count", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("ok");
+    expect(run.message).toContain("constituents 2");
+  });
+
+  it("zero constituents shows as constituents 0", async () => {
+    const { repo, instruments } = universe();
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.message).toContain("constituents 0");
+  });
+});

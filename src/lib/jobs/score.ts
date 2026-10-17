@@ -4,9 +4,14 @@ import type { PatternHit } from "@/lib/calc/patterns";
 import { scoreInstrument, type InstrumentKind, type ScoreLabel } from "@/lib/calc/score";
 import { effectiveLevel } from "@/lib/calc/levels";
 import { primarySector } from "@/lib/universe/sectors";
+import { pool } from "./pool";
 
 const DAYS_NEEDED = 40; // 21 priced closes plus slack for unpriced rows
 const RETURN_SESSIONS = 20;
+const CONCURRENCY = 8;
+const NIFTY_KEY = "NIFTY50";
+/** Volatility gauge, not a tradable trend: a technical score would read backwards. */
+const UNSCORED = new Set(["INDIAVIX"]);
 
 interface Loaded {
   priced: StoredDay[];
@@ -36,14 +41,27 @@ interface Ctx {
   resistance: number | null;
 }
 
-/** Scores the latest priced session of Nifty, then indices/sectors, then stocks (dependency order). */
+export interface ScorePassResult {
+  scored: number;
+  /** Instruments with no priced day (including a missing NIFTY50). */
+  skipped: string[];
+  /** "KEY (error)" for instruments whose load or write threw; the pass carries on without them. */
+  failed: string[];
+}
+
+/**
+ * Scores the latest priced session of Nifty, then indices/sectors, then stocks (dependency order:
+ * each phase finishes before the next starts; instruments within a phase run concurrently).
+ */
 export async function scorePass(
   repo: Repo,
   opts: { onlyIds?: Set<number> } = {},
-): Promise<{ scored: number; skipped: string[] }> {
+): Promise<ScorePassResult> {
   const only = opts.onlyIds;
   const skipped: string[] = [];
+  const failed: string[] = [];
   let scored = 0;
+  const fail = (key: string, e: unknown) => failed.push(`${key} (${e instanceof Error ? e.message : String(e)})`);
 
   const keysOf = new Map<number, string[]>();
   for (const m of await repo.listMemberships()) {
@@ -53,9 +71,9 @@ export async function scorePass(
   }
   const sectorOf = (id: number) => primarySector(keysOf.get(id) ?? []);
 
-  const all = await repo.listInstruments({ activeOnly: true });
-  const nifty = all.find((i) => i.key === "NIFTY50");
-  const others = all.filter((i) => i.type !== "stock" && i.key !== "NIFTY50");
+  const all = await repo.listInstruments({ types: ["index", "sector"], activeOnly: true });
+  const nifty = all.find((i) => i.key === NIFTY_KEY);
+  const others = all.filter((i) => i.key !== NIFTY_KEY && !UNSCORED.has(i.key));
 
   // Computes the score; stores it unless an onlyIds filter excludes this instrument (its label is
   // still needed by dependants). Returns the label, or null when there is no priced day.
@@ -103,37 +121,49 @@ export async function scorePass(
 
   // 1. Nifty.
   let niftyLabel: ScoreLabel | null = null;
-  if (nifty) {
-    niftyLabel = await run(nifty, await load(repo, nifty.id), { ...none, niftyLabel: null, sectorLabel: null });
+  if (!nifty) skipped.push(NIFTY_KEY);
+  else {
+    try {
+      niftyLabel = await run(nifty, await load(repo, nifty.id), { ...none, niftyLabel: null, sectorLabel: null });
+    } catch (e) {
+      fail(nifty.key, e);
+    }
   }
 
   // 2. Indices and sectors (their market context is Nifty's label).
   const sectorInfo = new Map<string, { label: ScoreLabel | null; ret20: number | null }>();
-  for (const inst of others) {
-    const data = await load(repo, inst.id);
-    const label = await run(inst, data, { ...none, niftyLabel, sectorLabel: niftyLabel });
-    sectorInfo.set(inst.key, { label, ret20: data.ret20 });
-  }
+  await pool(others, CONCURRENCY, async (inst) => {
+    try {
+      const data = await load(repo, inst.id);
+      const label = await run(inst, data, { ...none, niftyLabel, sectorLabel: niftyLabel });
+      sectorInfo.set(inst.key, { label, ret20: data.ret20 });
+    } catch (e) {
+      fail(inst.key, e);
+    }
+  });
 
   // 3. Stocks: NIFTY200 plus watchlist.
   const stocks = new Map<number, Instrument>();
   for (const s of await repo.listConstituents("NIFTY200")) stocks.set(s.id, s);
   for (const s of await repo.listWatchlist()) stocks.set(s.id, s);
-  for (const s of stocks.values()) {
-    if (s.type !== "stock" || !s.active || (only && !only.has(s.id))) continue;
-    const data = await load(repo, s.id);
-    const sec = sectorOf(s.id);
-    const info = sec ? sectorInfo.get(sec) : undefined;
-    const lv = await repo.getLevels(s.id);
-    const sectorRet = info?.ret20 ?? null;
-    await run(s, data, {
-      niftyLabel,
-      sectorLabel: info?.label ?? null,
-      rsVsSector: data.ret20 !== null && sectorRet !== null ? data.ret20 - sectorRet : null,
-      support: effectiveLevel(lv.autoSupport, lv.manualSupport),
-      resistance: effectiveLevel(lv.autoResistance, lv.manualResistance),
-    });
-  }
+  const todo = [...stocks.values()].filter((s) => s.type === "stock" && s.active && (!only || only.has(s.id)));
+  await pool(todo, CONCURRENCY, async (s) => {
+    try {
+      const [data, lv] = await Promise.all([load(repo, s.id), repo.getLevels(s.id)]);
+      const sec = sectorOf(s.id);
+      const info = sec ? sectorInfo.get(sec) : undefined;
+      const sectorRet = info?.ret20 ?? null;
+      await run(s, data, {
+        niftyLabel,
+        sectorLabel: info?.label ?? null,
+        rsVsSector: data.ret20 !== null && sectorRet !== null ? data.ret20 - sectorRet : null,
+        support: effectiveLevel(lv.autoSupport, lv.manualSupport),
+        resistance: effectiveLevel(lv.autoResistance, lv.manualResistance),
+      });
+    } catch (e) {
+      fail(s.key, e);
+    }
+  });
 
-  return { scored, skipped };
+  return { scored, skipped, failed };
 }
