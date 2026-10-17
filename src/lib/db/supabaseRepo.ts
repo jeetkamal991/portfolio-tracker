@@ -27,8 +27,19 @@ const toDay = (r: Row): StoredDay => ({
   open: num(r.open), high: num(r.high), low: num(r.low), close: num(r.close), volume: num(r.volume),
   pctChange: num(r.pct_change), importedPct: num(r.imported_pct),
   ema20: num(r.ema20), ema50: num(r.ema50), ema200: num(r.ema200), rsi14: num(r.rsi14), rsVsNifty: num(r.rs_vs_nifty),
+  macd: num(r.macd), macdSignal: num(r.macd_signal), macdHist: num(r.macd_hist),
+  bbUpper: num(r.bb_upper), bbMiddle: num(r.bb_middle), bbLower: num(r.bb_lower),
+  volAvg20: num(r.vol_avg20), high52w: num(r.high_52w), low52w: num(r.low_52w),
+  patterns: (r.patterns as StoredDay["patterns"] | null) ?? null,
+  rsVsSector: num(r.rs_vs_sector), score: num(r.score),
+  scoreComponents: (r.score_components as StoredDay["scoreComponents"] | null) ?? null,
+  scoreLabel: (r.score_label as StoredDay["scoreLabel"] | null) ?? null,
+  scoreConfidence: (r.score_confidence as StoredDay["scoreConfidence"] | null) ?? null,
+  scoreSignal: (r.score_signal as string | null) ?? null,
 });
-const toBar = (r: Row): PriceBar => ({ date: r.date as string, close: num(r.close), high: num(r.high), low: num(r.low) });
+const toBar = (r: Row): PriceBar => ({
+  date: r.date as string, open: num(r.open), close: num(r.close), high: num(r.high), low: num(r.low), volume: num(r.volume),
+});
 const toLevels = (r: Row | null): Levels => ({
   autoSupport: num(r?.auto_support), autoResistance: num(r?.auto_resistance),
   manualSupport: num(r?.manual_support), manualResistance: num(r?.manual_resistance),
@@ -122,16 +133,69 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       return (await readDays(instrumentId, limit, "*", "getDays")).map(toDay);
     },
     async getPriceBars(instrumentId, limit) {
-      return (await readDays(instrumentId, limit, "date,close,high,low", "getPriceBars")).map(toBar);
+      return (await readDays(instrumentId, limit, "date,open,high,low,close,volume", "getPriceBars")).map(toBar);
     },
     async upsertIndicators(instrumentId, rows) {
       await upsertDays(
         rows.map((r) => ({
           instrument_id: instrumentId, date: r.date, pct_change: r.pctChange,
           ema20: r.ema20, ema50: r.ema50, ema200: r.ema200, rsi14: r.rsi14, rs_vs_nifty: r.rsVsNifty,
+          macd: r.macd, macd_signal: r.macdSignal, macd_hist: r.macdHist,
+          bb_upper: r.bbUpper, bb_middle: r.bbMiddle, bb_lower: r.bbLower,
+          vol_avg20: r.volAvg20, high_52w: r.high52w, low_52w: r.low52w, patterns: r.patterns,
         })),
         "upsertIndicators",
       );
+    },
+    async upsertScore(instrumentId, row) {
+      await upsertDays(
+        [{
+          instrument_id: instrumentId, date: row.date, rs_vs_sector: row.rsVsSector, score: row.score,
+          score_components: row.scoreComponents, score_label: row.scoreLabel,
+          score_confidence: row.scoreConfidence, score_signal: row.scoreSignal,
+        }],
+        "upsertScore",
+      );
+    },
+    async replaceConstituents(indexKey, instrumentIds) {
+      check(await db.from("index_constituents").delete().eq("index_key", indexKey), "replaceConstituents delete");
+      for (const c of chunks([...new Set(instrumentIds)])) {
+        check(
+          await db.from("index_constituents").insert(c.map((id) => ({ index_key: indexKey, instrument_id: id }))),
+          "replaceConstituents insert",
+        );
+      }
+    },
+    async listConstituents(indexKey) {
+      const rows = check(
+        await db.from("index_constituents").select("instruments(*)").eq("index_key", indexKey),
+        "listConstituents",
+      ) as unknown as { instruments: Row | Row[] | null }[];
+      return rows
+        .map((r) => (Array.isArray(r.instruments) ? r.instruments[0] : r.instruments))
+        .filter((i): i is Row => !!i)
+        .map(toInstrument);
+    },
+    async listMemberships() {
+      const out: { indexKey: string; instrumentId: number }[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const page = check(
+          await db.from("index_constituents").select("index_key,instrument_id")
+            .order("index_key").order("instrument_id").range(from, from + PAGE - 1),
+          "listMemberships",
+        ) as Row[];
+        for (const r of page) out.push({ indexKey: r.index_key as string, instrumentId: Number(r.instrument_id) });
+        if (page.length < PAGE) break;
+      }
+      return out;
+    },
+    async getLatestDay(instrumentId) {
+      const r = check(
+        await db.from("daily_prices").select("*").eq("instrument_id", instrumentId)
+          .not("close", "is", null).order("date", { ascending: false }).limit(1).maybeSingle(),
+        "getLatestDay",
+      );
+      return r ? toDay(r as Row) : null;
     },
     async upsertImportedPct(rows) {
       await upsertDays(

@@ -36,8 +36,12 @@ async function recomputeFromBars(
   niftyCloses: Map<string, number>,
   opts: { upsertAll?: boolean },
 ): Promise<void> {
-  const priced: { date: string; close: number }[] = [];
-  for (const d of stored) if (d.close !== null) priced.push({ date: d.date, close: d.close });
+  const priced: Parameters<typeof computeIndicators>[0] = [];
+  for (const d of stored) {
+    if (d.close !== null) {
+      priced.push({ date: d.date, open: d.open, high: d.high, low: d.low, close: d.close, volume: d.volume });
+    }
+  }
   if (priced.length === 0) return;
 
   const rows = computeIndicators(priced, niftyCloses);

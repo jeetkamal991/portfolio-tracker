@@ -5,6 +5,9 @@ import type { DailySummary, Instrument, JobRun, Levels, StoredDay } from "./type
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
   pctChange: null, importedPct: null, ema20: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null,
+  macd: null, macdSignal: null, macdHist: null, bbUpper: null, bbMiddle: null, bbLower: null,
+  volAvg20: null, high52w: null, low52w: null, patterns: null,
+  rsVsSector: null, score: null, scoreComponents: null, scoreLabel: null, scoreConfidence: null, scoreSignal: null,
 });
 const emptyLevels = (): Levels => ({ autoSupport: null, autoResistance: null, manualSupport: null, manualResistance: null });
 
@@ -22,6 +25,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
   const summaries = new Map<string, DailySummary>();
+  const constituents = new Map<string, Set<number>>();
 
   const dayFor = (id: number, date: string): StoredDay => {
     let m = days.get(id);
@@ -80,13 +84,35 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async getPriceBars(id, limit) {
       const all = [...(days.get(id)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date));
       return (limit >= all.length ? all : all.slice(all.length - limit))
-        .map(({ date, close, high, low }) => ({ date, close, high, low }));
+        .map(({ date, open, high, low, close, volume }) => ({ date, open, high, low, close, volume }));
     },
     async upsertIndicators(id, rows) {
       for (const r of rows) {
         const d = dayFor(id, r.date);
         d.pctChange = r.pctChange; d.ema20 = r.ema20; d.ema50 = r.ema50; d.ema200 = r.ema200; d.rsi14 = r.rsi14; d.rsVsNifty = r.rsVsNifty;
+        d.macd = r.macd; d.macdSignal = r.macdSignal; d.macdHist = r.macdHist;
+        d.bbUpper = r.bbUpper; d.bbMiddle = r.bbMiddle; d.bbLower = r.bbLower;
+        d.volAvg20 = r.volAvg20; d.high52w = r.high52w; d.low52w = r.low52w; d.patterns = r.patterns;
       }
+    },
+    async upsertScore(id, row) {
+      const d = dayFor(id, row.date);
+      d.rsVsSector = row.rsVsSector; d.score = row.score; d.scoreComponents = row.scoreComponents;
+      d.scoreLabel = row.scoreLabel; d.scoreConfidence = row.scoreConfidence; d.scoreSignal = row.scoreSignal;
+    },
+    async replaceConstituents(indexKey, ids) { constituents.set(indexKey, new Set(ids)); },
+    async listConstituents(indexKey) {
+      return [...(constituents.get(indexKey) ?? [])]
+        .map((id) => instruments.get(id)).filter((i): i is Instrument => !!i).map((i) => ({ ...i }));
+    },
+    async listMemberships() {
+      return [...constituents].flatMap(([indexKey, ids]) => [...ids].map((instrumentId) => ({ indexKey, instrumentId })));
+    },
+    async getLatestDay(id) {
+      const priced = [...(days.get(id)?.values() ?? [])].filter((d) => d.close !== null);
+      priced.sort((a, b) => a.date.localeCompare(b.date));
+      const d = priced[priced.length - 1];
+      return d ? { ...d } : null;
     },
     async upsertImportedPct(rows) {
       for (const r of rows) dayFor(r.instrumentId, r.date).importedPct = r.importedPct;

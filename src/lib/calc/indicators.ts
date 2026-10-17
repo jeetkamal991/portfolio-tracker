@@ -2,6 +2,11 @@ import { pctChange } from "./pct";
 import { emaSeries } from "./ema";
 import { rsiSeries } from "./rsi";
 import { previousSession, rsVsNifty, sessionCalendar } from "./returns";
+import { macdSeries } from "./macd";
+import { bollingerSeries } from "./bollinger";
+import { volAvgPrev } from "./volume";
+import { range52Series } from "./range52";
+import { detectPatterns } from "./patterns";
 import type { IndicatorRow } from "../db/types";
 
 /**
@@ -12,7 +17,14 @@ import type { IndicatorRow } from "../db/types";
  * Nifty's stored history begins), pctChange uses the previous stored bar.
  */
 export function computeIndicators(
-  days: { date: string; close: number }[],
+  days: {
+    date: string;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    close: number;
+    volume: number | null;
+  }[],
   nifty: Map<string, number>,
 ): IndicatorRow[] {
   const dates = days.map((d) => d.date);
@@ -22,6 +34,16 @@ export function computeIndicators(
   const ema200 = emaSeries(closes, 200);
   const rsi = rsiSeries(closes, 14);
   const rs = rsVsNifty(dates, closes, nifty, 20);
+  const macd = macdSeries(closes);
+  const bb = bollingerSeries(closes);
+  const volAvg = volAvgPrev(days.map((d) => d.volume));
+  const r52 = range52Series(days);
+  // Patterns need full OHLC on the bar itself (else null). A neighbouring bar lacking OHLC is
+  // looked back over as a flat bar at its close.
+  const ohlc = days.map((d) => ({
+    open: d.open ?? d.close, high: d.high ?? d.close, low: d.low ?? d.close, close: d.close,
+  }));
+  const hasOhlc = days.map((d) => d.open !== null && d.high !== null && d.low !== null);
   const cal = nifty.size > 0 ? sessionCalendar(nifty.keys()) : null;
   const contiguous = (i: number) => {
     if (!cal) return true;
@@ -37,5 +59,15 @@ export function computeIndicators(
     ema200: ema200[i] ?? null,
     rsi14: rsi[i] ?? null,
     rsVsNifty: rs[i] ?? null,
+    macd: macd.macd[i] ?? null,
+    macdSignal: macd.signal[i] ?? null,
+    macdHist: macd.hist[i] ?? null,
+    bbUpper: bb.upper[i] ?? null,
+    bbMiddle: bb.middle[i] ?? null,
+    bbLower: bb.lower[i] ?? null,
+    volAvg20: volAvg[i] ?? null,
+    high52w: r52.high[i] ?? null,
+    low52w: r52.low[i] ?? null,
+    patterns: hasOhlc[i] ? detectPatterns(ohlc, i) : null,
   }));
 }

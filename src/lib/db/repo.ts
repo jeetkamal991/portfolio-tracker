@@ -1,5 +1,5 @@
 import type { Candle } from "@/lib/provider/types";
-import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, StoredDay } from "./types";
+import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ScoreRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -12,10 +12,18 @@ export interface Repo {
   upsertCandles(instrumentId: number, candles: Candle[]): Promise<void>;
   /** Newest `limit` days, returned ascending. Limits above 1000 return everything up to `limit`. */
   getDays(instrumentId: number, limit: number): Promise<StoredDay[]>;
-  /** Same rows and ordering as getDays, but reads only date, close, high, low. */
+  /** Same rows and ordering as getDays, but reads only date, open, high, low, close, volume. */
   getPriceBars(instrumentId: number, limit: number): Promise<PriceBar[]>;
   /** Writes indicator columns + pctChange only. */
   upsertIndicators(instrumentId: number, rows: IndicatorRow[]): Promise<void>;
+  /** Writes only the score columns + rsVsSector on (instrument, date). */
+  upsertScore(instrumentId: number, row: ScoreRow): Promise<void>;
+  /** Deletes then inserts the membership of one index. */
+  replaceConstituents(indexKey: string, instrumentIds: number[]): Promise<void>;
+  listConstituents(indexKey: string): Promise<Instrument[]>;
+  listMemberships(): Promise<{ indexKey: string; instrumentId: number }[]>;
+  /** Newest row with a non-null close. */
+  getLatestDay(instrumentId: number): Promise<StoredDay | null>;
   /** Writes importedPct only (creates the row if absent). */
   upsertImportedPct(rows: { instrumentId: number; date: string; importedPct: number }[]): Promise<void>;
   listWatchlist(): Promise<Instrument[]>;

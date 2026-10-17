@@ -6,7 +6,9 @@ const inst = (id: number, key: string, name: string, type: Instrument["type"] = 
   id, key, name, type, yahooTicker: `${key}.NS`, active: true,
 });
 const candle = (date: string, close: number) => ({ date, open: close - 1, high: close + 1, low: close - 2, close, volume: 100 });
-const ind = (date: string, ema50: number) => ({ date, pctChange: 0.01, ema20: null, ema50, ema200: null, rsi14: 55, rsVsNifty: null });
+const ind = (date: string, ema50: number) => ({ date, pctChange: 0.01, ema20: null, ema50, ema200: null, rsi14: 55, rsVsNifty: null,
+  macd: null, macdSignal: null, macdHist: null, bbUpper: null, bbMiddle: null, bbLower: null,
+  volAvg20: null, high52w: null, low52w: null, patterns: null });
 
 describe("memoryRepo", () => {
   it("keeps OHLC and indicators when both are upserted on the same date", async () => {
@@ -123,16 +125,16 @@ describe("memoryRepo", () => {
     expect(await r.lastJobRun("eod")).toMatchObject({ startedAt: "2026-01-05T10:00:00Z", status: "running" });
   });
 
-  it("getPriceBars returns only date/close/high/low, newest `limit` ascending", async () => {
+  it("getPriceBars returns only date/open/high/low/close/volume, newest `limit` ascending", async () => {
     const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
     await r.upsertCandles(1, [candle("2026-01-03", 3), candle("2026-01-01", 1), candle("2026-01-02", 2)]);
     await r.upsertImportedPct([{ instrumentId: 1, date: "2025-12-31", importedPct: 0.1 }]);
     expect(await r.getPriceBars(1, 2)).toEqual([
-      { date: "2026-01-02", close: 2, high: 3, low: 0 },
-      { date: "2026-01-03", close: 3, high: 4, low: 1 },
+      { date: "2026-01-02", open: 1, close: 2, high: 3, low: 0, volume: 100 },
+      { date: "2026-01-03", open: 2, close: 3, high: 4, low: 1, volume: 100 },
     ]);
     expect((await r.getPriceBars(1, 100_000)).map((b) => b.date)).toEqual(["2025-12-31", "2026-01-01", "2026-01-02", "2026-01-03"]);
-    expect((await r.getPriceBars(1, 100_000))[0]).toEqual({ date: "2025-12-31", close: null, high: null, low: null });
+    expect((await r.getPriceBars(1, 100_000))[0]).toEqual({ date: "2025-12-31", open: null, close: null, high: null, low: null, volume: null });
   });
 
   it("last write wins for duplicate dates in one upsertCandles call", async () => {
@@ -160,5 +162,47 @@ describe("memoryRepo ema20", () => {
     expect((await r.getDays(1, 10))[0].ema20).toBe(5);
     await r.upsertCandles(1, [candle("2026-01-01", 101)]);
     expect((await r.getDays(1, 10))[0].ema20).toBe(5);
+  });
+
+  const comps = { trend: 1, momentum: 2, volume: 3, pattern: 4, market: 5, risk: 6, partial: false };
+  const scoreRow = (date: string) => ({
+    date, rsVsSector: 0.02, score: 55, scoreComponents: comps,
+    scoreLabel: "Bullish" as const, scoreConfidence: "High" as const, scoreSignal: "sig",
+  });
+
+  it("keeps score and indicators independently on the same date", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    await r.upsertCandles(1, [candle("2026-01-01", 100)]);
+    await r.upsertScore(1, scoreRow("2026-01-01"));
+    await r.upsertIndicators(1, [ind("2026-01-01", 99)]);
+    let d = (await r.getDays(1, 10))[0]!;
+    expect(d.score).toBe(55);
+    expect(d.rsVsSector).toBe(0.02);
+    expect(d.scoreLabel).toBe("Bullish");
+    expect(d.ema50).toBe(99);
+    await r.upsertIndicators(1, [ind("2026-01-01", 98)]);
+    d = (await r.getDays(1, 10))[0]!;
+    expect(d.score).toBe(55);
+    expect(d.ema50).toBe(98);
+  });
+
+  it("replaceConstituents replaces the set; listMemberships spans indices", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "A", "A"), inst(2, "B", "B")] });
+    await r.replaceConstituents("NIFTY_IT", [1, 2]);
+    await r.replaceConstituents("NIFTY200", [2]);
+    expect((await r.listConstituents("NIFTY_IT")).map((i) => i.key)).toEqual(["A", "B"]);
+    await r.replaceConstituents("NIFTY_IT", [2]);
+    expect((await r.listConstituents("NIFTY_IT")).map((i) => i.key)).toEqual(["B"]);
+    const m = await r.listMemberships();
+    expect(m.filter((x) => x.instrumentId === 2).map((x) => x.indexKey).sort()).toEqual(["NIFTY200", "NIFTY_IT"]);
+    expect(m.some((x) => x.instrumentId === 1)).toBe(false);
+  });
+
+  it("getLatestDay returns the newest row with a close", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "A", "A")] });
+    expect(await r.getLatestDay(1)).toBeNull();
+    await r.upsertCandles(1, [candle("2026-01-01", 1), candle("2026-01-02", 2)]);
+    await r.upsertImportedPct([{ instrumentId: 1, date: "2026-01-03", importedPct: 0.1 }]);
+    expect((await r.getLatestDay(1))!.date).toBe("2026-01-02");
   });
 });

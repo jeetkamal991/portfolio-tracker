@@ -1,3 +1,6 @@
+import type { PatternHit } from "@/lib/calc/patterns";
+import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
+
 export type InstrumentType = "index" | "sector" | "stock";
 
 export interface Instrument {
@@ -23,6 +26,22 @@ export interface StoredDay {
   ema200: number | null;
   rsi14: number | null;
   rsVsNifty: number | null;
+  macd: number | null;
+  macdSignal: number | null;
+  macdHist: number | null;
+  bbUpper: number | null;
+  bbMiddle: number | null;
+  bbLower: number | null;
+  volAvg20: number | null;
+  high52w: number | null;
+  low52w: number | null;
+  patterns: PatternHit[] | null;
+  rsVsSector: number | null;
+  score: number | null;
+  scoreComponents: (ScoreComponents & { partial: boolean }) | null;
+  scoreLabel: ScoreLabel | null;
+  scoreConfidence: "High" | "Medium" | "Low" | null;
+  scoreSignal: string | null;
 }
 
 export interface IndicatorRow {
@@ -33,6 +52,26 @@ export interface IndicatorRow {
   ema200: number | null;
   rsi14: number | null;
   rsVsNifty: number | null;
+  macd: number | null;
+  macdSignal: number | null;
+  macdHist: number | null;
+  bbUpper: number | null;
+  bbMiddle: number | null;
+  bbLower: number | null;
+  volAvg20: number | null;
+  high52w: number | null;
+  low52w: number | null;
+  patterns: PatternHit[] | null;
+}
+
+export interface ScoreRow {
+  date: string;
+  rsVsSector: number | null;
+  score: number;
+  scoreComponents: ScoreComponents & { partial: boolean };
+  scoreLabel: ScoreLabel;
+  scoreConfidence: "High" | "Medium" | "Low";
+  scoreSignal: string;
 }
 
 export interface Levels {
@@ -67,7 +106,9 @@ export type JobRunResult = { finishedAt: string; status: Exclude<JobStatus, "run
 /** The only daily_prices columns the indicator/levels recompute needs. */
 export interface PriceBar {
   date: string;
+  open: number | null;
   close: number | null;
   high: number | null;
   low: number | null;
+  volume: number | null;
 }

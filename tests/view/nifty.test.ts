@@ -5,7 +5,11 @@ import type { StoredDay } from "@/lib/db/types";
 const date = (i: number) => new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
 const day = (i: number, o: Partial<StoredDay> = {}): StoredDay => ({
   date: date(i), open: null, high: null, low: null, close: 100, volume: null,
-  pctChange: null, importedPct: null, ema20: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null, ...o,
+  pctChange: null, importedPct: null, ema20: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null,
+  macd: null, macdSignal: null, macdHist: null, bbUpper: null, bbMiddle: null, bbLower: null,
+  volAvg20: null, high52w: null, low52w: null, patterns: null,
+  rsVsSector: null, score: null, scoreComponents: null, scoreLabel: null, scoreConfidence: null, scoreSignal: null,
+  ...o,
 });
 
 describe("buildNiftyCard", () => {

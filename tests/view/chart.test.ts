@@ -8,7 +8,11 @@ const bar = (i: number, o: Partial<StoredDay> = {}): StoredDay => ({
   date: date(i), open: 100 + i, high: 102 + i, low: 98 + i, close: 100 + i + (i % 2 === 0 ? 1 : -1), volume: 1000 + i,
   pctChange: null, importedPct: null,
   ema20: i >= 19 ? 100 + i : null, ema50: i >= 49 ? 100 + i : null, ema200: i >= 199 ? 100 + i : null,
-  rsi14: i >= 14 ? 50 : null, rsVsNifty: null, ...o,
+  rsi14: i >= 14 ? 50 : null, rsVsNifty: null,
+  macd: null, macdSignal: null, macdHist: null, bbUpper: null, bbMiddle: null, bbLower: null,
+  volAvg20: null, high52w: null, low52w: null, patterns: null,
+  rsVsSector: null, score: null, scoreComponents: null, scoreLabel: null, scoreConfidence: null, scoreSignal: null,
+  ...o,
 });
 const series = (n: number) => Array.from({ length: n }, (_, i) => bar(i));
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
