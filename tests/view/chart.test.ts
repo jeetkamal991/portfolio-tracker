@@ -62,4 +62,37 @@ describe("buildChartData", () => {
     expect(d.volume.map((v) => v.up)).toEqual([true, false, true, false]);
     expect(buildChartData([bar(0, { close: 100 })], "ALL").volume[0]!.up).toBe(true);
   });
+
+  it("macd series keep only non-null points", () => {
+    // MACD from bar 33, histogram only on even bars from 40.
+    const days = Array.from({ length: 60 }, (_, i) =>
+      bar(i, {
+        macd: i >= 33 ? i / 10 : null,
+        macdSignal: i >= 33 ? i / 20 : null,
+        macdHist: i >= 40 && i % 2 === 0 ? i / 100 - 0.5 : null,
+      }),
+    );
+    const d = buildChartData(days, "ALL");
+    expect(d.macd).toHaveLength(27);
+    expect(d.macdSignal).toHaveLength(27);
+    expect(d.macdHist).toHaveLength(10);
+    expect(d.macdHist.map((p) => p.time)).toEqual(Array.from({ length: 10 }, (_, k) => date(40 + 2 * k)));
+    expect(d.macdHist[0]!.value).toBeCloseTo(-0.1, 10);
+    expect(d.macd[0]).toEqual({ time: date(33), value: 3.3 });
+  });
+
+  it("bollinger series length equals the non-null count within the range", () => {
+    const days = Array.from({ length: 300 }, (_, i) =>
+      bar(i, i >= 19 ? { bbUpper: 110 + i, bbMiddle: 100 + i, bbLower: 90 + i } : {}),
+    );
+    const all = buildChartData(days, "ALL");
+    expect(all.bbUpper).toHaveLength(281);
+    expect(all.bbMiddle).toHaveLength(281);
+    expect(all.bbLower).toHaveLength(281);
+    expect(all.bbUpper[0]).toEqual({ time: date(19), value: 129 });
+    const m1 = buildChartData(days.slice(0, 30), "1M");
+    expect(m1.candles).toHaveLength(21);
+    expect(m1.bbUpper).toHaveLength(11); // bars 9..29 in range, non-null from 19
+    expect(m1.bbLower[10]).toEqual({ time: date(29), value: 119 });
+  });
 });

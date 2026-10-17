@@ -16,6 +16,12 @@ export interface ChartData {
   ema50: LinePoint[];
   ema200: LinePoint[];
   rsi: LinePoint[];
+  bbUpper: LinePoint[];
+  bbMiddle: LinePoint[];
+  bbLower: LinePoint[];
+  macd: LinePoint[];
+  macdSignal: LinePoint[];
+  macdHist: LinePoint[];
 }
 
 const VOL_SMA = 20;
@@ -61,5 +67,11 @@ export function buildChartData(days: StoredDay[], range: ChartRange): ChartData 
     ema50: line((d) => d.ema50),
     ema200: line((d) => d.ema200),
     rsi: line((d) => d.rsi14),
+    bbUpper: line((d) => d.bbUpper),
+    bbMiddle: line((d) => d.bbMiddle),
+    bbLower: line((d) => d.bbLower),
+    macd: line((d) => d.macd),
+    macdSignal: line((d) => d.macdSignal),
+    macdHist: line((d) => d.macdHist),
   };
 }
