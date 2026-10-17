@@ -169,3 +169,15 @@ describe("parseLevelInput", () => {
     expect(parseLevelInput("abc").ok).toBe(false);
   });
 });
+
+import { pctTone } from "@/lib/view/dashboard";
+
+describe("pctTone", () => {
+  it("uses the dark palette tokens with no dark: variants", () => {
+    expect(pctTone(0.01)).toContain("var(--up)");
+    expect(pctTone(-0.01)).toContain("var(--down)");
+    expect(pctTone(0)).toContain("var(--muted)");
+    expect(pctTone(null)).toContain("var(--muted)");
+    for (const v of [0.01, -0.01, 0, null]) expect(pctTone(v)).not.toContain("dark:");
+  });
+});

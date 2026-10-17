@@ -123,7 +123,7 @@ export function fmtDate(iso: string): string {
 }
 
 export const pctTone = (v: number | null): string =>
-  v === null || v === 0 ? "text-neutral-500" : v > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
+  v === null || v === 0 ? "text-[var(--muted)]" : v > 0 ? "text-[var(--up)]" : "text-[var(--down)]";
 
 export interface WatchlistRow {
   key: string;
