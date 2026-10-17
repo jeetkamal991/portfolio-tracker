@@ -27,6 +27,9 @@ async function main() {
     repo = createSupabaseRepo(createAdminClient());
   }
 
+  // Read instruments once; refreshed only after inserting new ones.
+  let idByKey = new Map<string, number>(repo ? (await repo.listInstruments()).map((i) => [i.key, i.id]) : []);
+
   // 1. Constituents
   const cDir = join(root, "constituents");
   if (!existsSync(cDir)) missing.push("constituents/ (folder)");
@@ -41,12 +44,11 @@ async function main() {
         const rows = parseConstituentsCsv(readFileSync(file, "utf8"));
         let created = 0;
         if (repo) {
-          const have = new Set((await repo.listInstruments()).map((i) => i.key));
-          const fresh = rows.filter((r) => !have.has(r.symbol));
+          const fresh = rows.filter((r) => !idByKey.has(r.symbol));
           // Insert only missing symbols so existing names/active flags are never overwritten.
           await repo.upsertInstruments(fresh.map((r) => ({ key: r.symbol, name: r.name, type: "stock" as const, yahooTicker: `${r.symbol}.NS`, active: true })));
           created = new Set(fresh.map((r) => r.symbol)).size;
-          const idByKey = new Map((await repo.listInstruments()).map((i) => [i.key, i.id]));
+          if (created > 0) idByKey = new Map((await repo.listInstruments()).map((i) => [i.key, i.id]));
           const ids = rows.map((r) => idByKey.get(r.symbol)).filter((id): id is number => id !== undefined);
           await repo.replaceConstituents(key, [...new Set(ids)]);
         }

@@ -95,10 +95,16 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
 
   return {
     async listInstruments(f) {
-      let q = db.from("instruments").select("*").order("id");
-      if (f?.types) q = q.in("type", f.types);
-      if (f?.activeOnly) q = q.eq("active", true);
-      return (check(await q, "listInstruments") as Row[]).map(toInstrument);
+      const out: Instrument[] = [];
+      for (let from = 0; ; from += PAGE) {
+        let q = db.from("instruments").select("*").order("id");
+        if (f?.types) q = q.in("type", f.types);
+        if (f?.activeOnly) q = q.eq("active", true);
+        const page = check(await q.range(from, from + PAGE - 1), "listInstruments") as Row[];
+        for (const r of page) out.push(toInstrument(r));
+        if (page.length < PAGE) break;
+      }
+      return out;
     },
     async getInstrumentByKey(key) {
       const r = check(await db.from("instruments").select("*").eq("key", key).maybeSingle(), "getInstrumentByKey");
