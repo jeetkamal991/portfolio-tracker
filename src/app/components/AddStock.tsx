@@ -65,6 +65,17 @@ export function AddStock() {
 
   return (
     <div className="relative">
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[var(--muted)]"
+        aria-hidden
+      >
+        <circle cx="9" cy="9" r="6" />
+        <path d="m14 14 4 4" strokeLinecap="round" />
+      </svg>
       <input
         type="search"
         value={q}
@@ -72,7 +83,7 @@ export function AddStock() {
         disabled={adding !== null}
         placeholder="Add stock — type a name or symbol"
         aria-label="Add stock"
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--up)] focus:outline-none"
+        className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] py-2 pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--up)] focus:outline-none"
       />
       {adding && <p className="mt-1 text-xs text-[var(--muted)]">Adding… fetching history</p>}
       {error && <p role="alert" className="mt-1 text-xs text-[var(--down)]">{error}</p>}

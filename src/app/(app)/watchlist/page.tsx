@@ -1,26 +1,27 @@
 import { getRepo } from "@/lib/api/server";
+import type { WatchInput } from "@/lib/view/watchlist";
 import { AddStock } from "../../components/AddStock";
-import { WatchlistTable, type WatchItem } from "../../components/WatchlistTable";
+import { WatchlistTable } from "../../components/WatchlistTable";
 
 export const dynamic = "force-dynamic";
+
+// ~21 sessions for the 1-month sparkline plus a few spare for missed days.
+const DAYS = 25;
 
 export default async function WatchlistPage() {
   const repo = getRepo();
   const watchInstruments = await repo.listWatchlist();
-  const watchItems: WatchItem[] = (
-    await Promise.all(
-      watchInstruments.map(async (i) => {
-        const [days, levels] = await Promise.all([repo.getDays(i.id, 3), repo.getLevels(i.id)]);
-        const lastDay = [...days].filter((d) => d.close !== null).sort((a, b) => b.date.localeCompare(a.date))[0];
-        return lastDay ? { key: i.key, name: i.name, ticker: i.yahooTicker, lastDay, levels } : null;
-      }),
-    )
-  ).flatMap((w) => w ?? []);
+  const inputs: WatchInput[] = await Promise.all(
+    watchInstruments.map(async (i) => {
+      const [days, levels] = await Promise.all([repo.getDays(i.id, DAYS), repo.getLevels(i.id)]);
+      return { key: i.key, name: i.name, ticker: i.yahooTicker, days, levels };
+    }),
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <AddStock />
-      <WatchlistTable items={watchItems} />
+      <WatchlistTable inputs={inputs} />
     </div>
   );
 }

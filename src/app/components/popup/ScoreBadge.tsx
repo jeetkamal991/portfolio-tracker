@@ -17,9 +17,14 @@ const SCORE_TEXT: Record<ScoreLabel, string> = {
   "Strong Bearish": "text-rose-400",
 };
 
-export function ScoreLabelChip({ label }: { label: ScoreLabel }) {
+/** Label chip in the spec colours; with `score`, reads "72 · Bullish". */
+export function ScoreLabelChip({ label, score, title }: { label: ScoreLabel; score?: number; title?: string }) {
   return (
-    <span className={`inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${SCORE_TONE[label]}`}>
+    <span
+      title={title}
+      className={`inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums ${SCORE_TONE[label]}`}
+    >
+      {score !== undefined && `${Math.round(score)} · `}
       {label}
     </span>
   );
