@@ -1,6 +1,6 @@
-# Nifty Market Dashboard
+# Nifty Pulse
 
-A private, single-user dashboard for Indian market data (Nifty indices, sector heatmap, watchlist with level overrides). It runs on free tiers of Vercel and Supabase. Prices come from Yahoo Finance (`yahoo-finance2`), and a daily Vercel cron stores the end-of-day candles. It does not call the Claude API.
+A private, single-user dark trading-terminal dashboard for Indian market data (Nifty indices, sector heatmap, watchlist with level overrides). It runs on free tiers of Vercel and Supabase. Prices come from Yahoo Finance (`yahoo-finance2`), and a daily Vercel cron stores the end-of-day candles. It does not call the Claude API.
 
 ## Prerequisites
 
@@ -30,6 +30,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 1. Apply the migrations in order to your project (Supabase SQL editor, or the Supabase CLI):
    - `supabase/migrations/0001_init.sql` - tables, with row level security enabled on all of them.
    - `supabase/migrations/0002_drop_open_policies.sql` - drops the `owner_all` policies. RLS stays enabled with no policies, so the anon key and signed-in sessions cannot read or write any table. All data access goes through server code with the service-role key, which bypasses RLS.
+   - `supabase/migrations/0003_ema20.sql` - adds the stored `ema20` column. Apply it **before** deploying code that writes EMA 20 (the EOD job and back-fill fail on the unknown column otherwise), then re-run `npm run backfill -- --from 2015-01-01` to compute EMA 20 over full history for the indices and sectors.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -41,6 +42,23 @@ Run in this order from the repo root. They read `.env.local`. The input files li
 3. `npm run backfill -- --from 2015-01-01` - downloads daily candles from the given date. It prints candles per instrument; instruments with fewer than 200 are marked THIN.
 4. `npm run import-history -- --dry-run` - parses `data/history.xlsx` and prints the report without writing. Check the report, then run `npm run import-history` to write the rows.
 5. `npm run compare-import` - compares imported history with the stored data. Look for differences; none should exceed 0.0005.
+
+## Screens
+
+The app shell has six tabs, each a route; `/login` sits outside the shell.
+
+| Route | Tab | Contents |
+| --- | --- | --- |
+| `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, sector strip |
+| `/portfolio` | Portfolio | Coming soon |
+| `/watchlist` | Watchlist | Add stock, watchlist table with manual level overrides |
+| `/sectors` | Sector Analysis | Sector heatmap (`?s=<KEY>` outlines one sector) |
+| `/market` | Market | Today by Claude |
+| `/alerts` | Alerts | Coming soon |
+
+The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
+
+The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) v5 (Apache-2.0): candlesticks, ranges 1D-ALL on daily bars, EMA 20/50/200 overlays, and a Volume (with 20-day average) or RSI lower pane.
 
 ## Known data caveat
 
