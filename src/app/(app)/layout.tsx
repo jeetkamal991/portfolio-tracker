@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { getRepo } from "@/lib/api/server";
 import { STRIP_KEYS } from "@/lib/instruments";
 import { isMarketOpen } from "@/lib/time/ist";
 import { buildAsOf, buildTodaySummary, latestPctDate } from "@/lib/view/dashboard";
 import { QuotesProvider } from "../components/QuotesProvider";
+import { StockModal } from "../components/popup/StockModal";
 import { TopBar } from "../components/shell/TopBar";
 import { StatusStrip, type StripItem } from "../components/shell/StatusStrip";
 
@@ -37,6 +38,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <QuotesProvider initialOpen={isMarketOpen(now)}>
         <StatusStrip items={items} asOf={asOf} initialNow={now.toISOString()} />
         <main className="mx-auto max-w-[1560px] px-4 py-6 sm:px-6">{children}</main>
+        <Suspense fallback={null}>
+          <StockModal />
+        </Suspense>
       </QuotesProvider>
     </>
   );

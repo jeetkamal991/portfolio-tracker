@@ -24,6 +24,7 @@ describe("handleInstrumentGet", () => {
     const p = r.body as PopupData;
     expect(p.instrument.sectorKey).toBe("NIFTY_IT");
     expect(p.instrument.sectorName).toBe("Nifty IT");
+    expect(p.instrument.yahooTicker).toBe("TCS.NS");
     expect(p.onWatchlist).toBe(true);
     expect(p.days).toHaveLength(1);
   });

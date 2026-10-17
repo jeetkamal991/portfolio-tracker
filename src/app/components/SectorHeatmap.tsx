@@ -1,5 +1,6 @@
 import type { Trend } from "@/lib/calc/levels";
 import { fmtPct, heatColor, type HeatPeriod, type SectorRow } from "@/lib/view/dashboard";
+import { StockLink } from "./popup/StockLink";
 import { Panel } from "./ui";
 
 const COLS: { id: HeatPeriod; label: string }[] = [
@@ -33,7 +34,9 @@ export function SectorHeatmap({ rows, selected = null }: { rows: SectorRow[]; se
                 aria-selected={r.key === selected || undefined}
                 className={`hover:bg-slate-800/40 ${r.key === selected ? "outline outline-1 outline-[var(--up)]" : ""}`}
               >
-                <td className="whitespace-nowrap px-2 py-1.5 font-medium">{r.name.replace(/^Nifty /, "")}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 font-medium">
+                  <StockLink stockKey={r.key}>{r.name.replace(/^Nifty /, "")}</StockLink>
+                </td>
                 {COLS.map((c) => (
                   <td
                     key={c.id}

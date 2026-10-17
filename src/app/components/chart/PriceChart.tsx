@@ -19,7 +19,8 @@ import { fmtPrice } from "@/lib/view/dashboard";
 import { Chip, Panel } from "../ui";
 
 type Ema = "ema20" | "ema50" | "ema200";
-type Lower = "VOLUME" | "RSI";
+type Lower = "VOLUME" | "RSI" | "MACD";
+const LOWERS: Lower[] = ["VOLUME", "RSI", "MACD"];
 
 const EMAS: { id: Ema; label: string; cssVar: string }[] = [
   { id: "ema20", label: "EMA 20", cssVar: "--ema20" },
@@ -61,12 +62,14 @@ function OhlcStrip({ data, time }: { data: ChartData; time: string | null }) {
 function ChartCanvas({
   data,
   emas,
+  bollinger,
   lower,
   height,
   onHover,
 }: {
   data: ChartData;
   emas: Record<Ema, boolean>;
+  bollinger: boolean;
   lower: Lower;
   height: number;
   onHover: (time: string | null) => void;
@@ -126,6 +129,20 @@ function ChartCanvas({
       s.setData(data[e.id]);
       added.push(s);
     }
+    if (bollinger) {
+      const muted = cssVar("--muted");
+      const band = (pts: ChartData["bbUpper"], dashed: boolean) => {
+        const s = chart.addSeries(LineSeries, {
+          color: muted, lineWidth: 1, lineStyle: dashed ? LineStyle.Dashed : LineStyle.Solid,
+          priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        });
+        s.setData(pts);
+        added.push(s);
+      };
+      band(data.bbUpper, false);
+      band(data.bbMiddle, true);
+      band(data.bbLower, false);
+    }
 
     if (lower === "VOLUME") {
       const vol = chart.addSeries(HistogramSeries, { priceFormat: { type: "volume" }, priceLineVisible: false }, 1);
@@ -137,6 +154,19 @@ function ChartCanvas({
       );
       avg.setData(data.volSma20);
       added.push(vol, avg);
+    } else if (lower === "MACD") {
+      const hist = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, 1);
+      hist.setData(data.macdHist.map((p) => ({ time: p.time, value: p.value, color: p.value >= 0 ? `${up}99` : `${down}99` })));
+      const line = (color: string, pts: ChartData["macd"]) => {
+        const s = chart.addSeries(
+          LineSeries,
+          { color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false },
+          1,
+        );
+        s.setData(pts);
+        return s;
+      };
+      added.push(hist, line(cssVar("--ema20"), data.macd), line(cssVar("--ema50"), data.macdSignal));
     } else {
       const rsi = chart.addSeries(LineSeries, { color: cssVar("--ema20"), lineWidth: 2, priceLineVisible: false }, 1);
       rsi.setData(data.rsi);
@@ -155,7 +185,7 @@ function ChartCanvas({
       if (chartRef.current !== chart) return;
       for (const s of added) chart.removeSeries(s);
     };
-  }, [data, emas, lower]);
+  }, [data, emas, bollinger, lower]);
 
   return <div ref={box} style={{ height }} className="w-full overflow-hidden rounded-lg" />;
 }
@@ -163,6 +193,7 @@ function ChartCanvas({
 export function PriceChart({ days, title, height = 420 }: { days: StoredDay[]; title: string; height?: number }) {
   const [range, setRange] = useState<ChartRange>("6M");
   const [emas, setEmas] = useState<Record<Ema, boolean>>({ ema20: true, ema50: true, ema200: true });
+  const [bollinger, setBollinger] = useState(false);
   const [lower, setLower] = useState<Lower>("VOLUME");
   const [hover, setHover] = useState<string | null>(null);
   const data = useMemo(() => buildChartData(days, range), [days, range]);
@@ -215,9 +246,17 @@ export function PriceChart({ days, title, height = 420 }: { days: StoredDay[]; t
               {e.label}
             </button>
           ))}
+          <button
+            type="button"
+            aria-pressed={bollinger}
+            onClick={() => setBollinger((b) => !b)}
+            className={`rounded-md border border-[color-mix(in_srgb,var(--muted)_40%,transparent)] bg-[color-mix(in_srgb,var(--muted)_15%,transparent)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--muted)] ${bollinger ? "" : "opacity-40"}`}
+          >
+            Bollinger
+          </button>
         </div>
         <div className="flex gap-1" role="group" aria-label="Lower pane">
-          {(["VOLUME", "RSI"] as const).map((l) => (
+          {LOWERS.map((l) => (
             <button key={l} type="button" onClick={() => setLower(l)} aria-pressed={l === lower} className={btn(l === lower)}>
               {l}
             </button>
@@ -227,7 +266,7 @@ export function PriceChart({ days, title, height = 420 }: { days: StoredDay[]; t
       <div className="mb-2">
         <OhlcStrip data={data} time={hover} />
       </div>
-      <ChartCanvas data={data} emas={emas} lower={lower} height={height} onHover={setHover} />
+      <ChartCanvas data={data} emas={emas} bollinger={bollinger} lower={lower} height={height} onHover={setHover} />
     </Panel>
   );
 }

@@ -4,6 +4,8 @@ import type { StoredDay } from "@/lib/db/types";
 import { fmtPct, fmtPrice } from "@/lib/view/dashboard";
 import { buildNiftyCard, type EmaState, type NiftyTrend } from "@/lib/view/nifty";
 import { useQuotes } from "../QuotesProvider";
+import { ScoreBadge } from "../popup/ScoreBadge";
+import { StockLink } from "../popup/StockLink";
 import { Chip, Label, Panel, type Tone } from "../ui";
 
 const NIFTY_TICKER = "^NSEI";
@@ -46,6 +48,7 @@ function EmaCard({ label, state }: { label: string; state: EmaState }) {
 export function NiftyCard({ days }: { days: StoredDay[] }) {
   const { quotes } = useQuotes();
   const q = quotes[NIFTY_TICKER];
+  const scored = [...days].reverse().find((d) => d.close !== null);
   const c = buildNiftyCard(days, q ? { price: q.price, changePct: q.changePct, dayHigh: q.dayHigh, dayLow: q.dayLow } : null);
   const dir = c.changePct === null || c.changePct === 0 ? 0 : c.changePct > 0 ? 1 : -1;
   const moveTone = dir > 0 ? "text-[var(--up)]" : dir < 0 ? "text-[var(--down)]" : "text-[var(--muted)]";
@@ -57,7 +60,9 @@ export function NiftyCard({ days }: { days: StoredDay[] }) {
     <Panel>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <Label>BENCHMARK INDEX · NSE: ^NSEI</Label>
+          <StockLink stockKey="NIFTY50" className="w-fit underline-offset-4 hover:underline">
+            <Label>BENCHMARK INDEX · NSE: ^NSEI</Label>
+          </StockLink>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <span className="font-mono text-4xl font-extrabold tabular-nums">{fmtPrice(c.cmp)}</span>
             <span className={`font-mono text-base font-semibold tabular-nums ${moveTone}`}>
@@ -73,9 +78,17 @@ export function NiftyCard({ days }: { days: StoredDay[] }) {
           </div>
         </div>
         <div className="flex min-w-0 flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <Label>AUTOMATED EMA ANALYSIS</Label>
-            {c.trend && <Chip tone={TREND[c.trend].tone}>{TREND[c.trend].label}</Chip>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-2">
+              <Label>AUTOMATED EMA ANALYSIS</Label>
+              {c.trend && <span className="w-fit"><Chip tone={TREND[c.trend].tone}>{TREND[c.trend].label}</Chip></span>}
+            </div>
+            <ScoreBadge
+              score={scored?.score ?? null}
+              label={scored?.scoreLabel ?? null}
+              partial={scored?.scoreComponents?.partial ?? false}
+              size="sm"
+            />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <EmaCard label="EMA 20" state={c.ema20} />

@@ -12,6 +12,7 @@ import {
   type WatchlistRow,
 } from "@/lib/view/dashboard";
 import { useQuotes } from "./QuotesProvider";
+import { StockLink } from "./popup/StockLink";
 import { Panel } from "./ui";
 
 export interface WatchItem {
@@ -157,8 +158,10 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
                   className={`border-t border-[var(--border)] text-right hover:bg-slate-800/40 ${r.nearLevel ? "bg-amber-950/40" : ""}`}
                 >
                   <td className="py-1.5 text-left">
-                    <div className="font-medium">{r.name}</div>
-                    <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
+                    <StockLink stockKey={r.key} className="block">
+                      <div className="font-medium">{r.name}</div>
+                      <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
+                    </StockLink>
                   </td>
                   <td className="px-2 font-mono tabular-nums">{fmtPrice(r.cmp)}</td>
                   <td className={`px-2 font-mono tabular-nums ${pctTone(r.dayPct)}`}>{fmtPct(r.dayPct)}</td>

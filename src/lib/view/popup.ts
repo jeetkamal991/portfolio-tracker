@@ -6,7 +6,7 @@ import type { Instrument, InstrumentType, Levels, ReportRow, StoredDay } from "@
 import { fmtPct, fmtPrice } from "./dashboard";
 
 export interface PopupData {
-  instrument: { key: string; name: string; type: InstrumentType; sectorKey: string | null; sectorName: string | null };
+  instrument: { key: string; name: string; type: InstrumentType; yahooTicker: string; sectorKey: string | null; sectorName: string | null };
   /** Full stored history, ascending. */
   days: StoredDay[];
   latest: StoredDay | null;
@@ -94,7 +94,7 @@ export function buildPopupData(input: PopupInput): PopupData {
 
   return {
     instrument: {
-      key: instrument.key, name: instrument.name, type: instrument.type,
+      key: instrument.key, name: instrument.name, type: instrument.type, yahooTicker: instrument.yahooTicker,
       sectorKey: sector?.key ?? null, sectorName: sector?.name ?? null,
     },
     days,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/login/actions";
 import { activeTab, TABS } from "@/lib/view/shell";
+import { SearchBox } from "./SearchBox";
 
 function Tabs({ className }: { className: string }) {
   const active = activeTab(usePathname() ?? "/");
@@ -43,11 +44,14 @@ export function TopBar() {
           </span>
         </Link>
         <Tabs className="hidden items-center gap-1 lg:flex" />
-        <form action={signOut}>
-          <button type="submit" className="text-sm text-[var(--muted)] hover:text-[var(--text)]">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          <SearchBox />
+          <form action={signOut}>
+            <button type="submit" className="whitespace-nowrap text-sm text-[var(--muted)] hover:text-[var(--text)]">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
       <Tabs className="flex gap-1 overflow-x-auto border-t border-[var(--border)] px-4 py-2 lg:hidden" />
     </header>
