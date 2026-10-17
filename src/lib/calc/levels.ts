@@ -7,6 +7,15 @@ export function trendTag(cmp: number, ema50: number | null, ema200: number | nul
   return "between";
 }
 
+export type EmaTrend = "above_all" | "mixed" | "below_all";
+
+/** Price vs EMA 20/50/200: above (>=) all three, below all three, mixed otherwise; null when any EMA is missing. */
+export function emaTrend(cmp: number, ema20: number | null, ema50: number | null, ema200: number | null): EmaTrend | null {
+  if (ema20 === null || ema50 === null || ema200 === null) return null;
+  const above = [ema20, ema50, ema200].map((e) => cmp >= e);
+  return above.every(Boolean) ? "above_all" : above.some(Boolean) ? "mixed" : "below_all";
+}
+
 /** Manual level overrides the auto-detected one. */
 export function effectiveLevel(auto: number | null, manual: number | null): number | null {
   return manual ?? auto;

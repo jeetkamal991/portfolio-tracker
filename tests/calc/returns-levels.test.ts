@@ -31,3 +31,15 @@ test("effective level and near-level", () => {
   expect(isNearLevel(100, 98.9)).toBe(false);
   expect(isNearLevel(100, null)).toBe(false);
 });
+
+import { emaTrend } from "@/lib/calc/levels";
+
+test("emaTrend: above all, mixed, below all, null on any missing EMA", () => {
+  expect(emaTrend(100, 99, 98, 97)).toBe("above_all");
+  expect(emaTrend(100, 101, 99, 98)).toBe("mixed");
+  expect(emaTrend(100, 101, 102, 103)).toBe("below_all");
+  expect(emaTrend(100, 100, 100, 100)).toBe("above_all");
+  expect(emaTrend(100, null, 98, 97)).toBeNull();
+  expect(emaTrend(100, 99, null, 97)).toBeNull();
+  expect(emaTrend(100, 99, 98, null)).toBeNull();
+});

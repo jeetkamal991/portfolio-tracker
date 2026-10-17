@@ -1,7 +1,8 @@
+import { emaTrend, type EmaTrend } from "@/lib/calc/levels";
 import type { StoredDay } from "@/lib/db/types";
 
 export type EmaState = { value: number | null; above: boolean | null };
-export type NiftyTrend = "above_all" | "mixed" | "below_all" | null;
+export type NiftyTrend = EmaTrend | null;
 
 export interface NiftyCardData {
   cmp: number | null;
@@ -67,14 +68,7 @@ export function buildNiftyCard(days: StoredDay[], live?: LiveNiftyQuote | null):
   const ema20 = ema(last?.ema20);
   const ema50 = ema(last?.ema50);
   const ema200 = ema(last?.ema200);
-  const states = [ema20.above, ema50.above, ema200.above];
-  const trend: NiftyTrend = states.some((s) => s === null)
-    ? null
-    : states.every((s) => s)
-      ? "above_all"
-      : states.every((s) => !s)
-        ? "below_all"
-        : "mixed";
+  const trend: NiftyTrend = cmp === null ? null : emaTrend(cmp, ema20.value, ema50.value, ema200.value);
 
   return {
     cmp,
