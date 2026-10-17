@@ -184,8 +184,20 @@ const PHRASES: Record<keyof ScoreComponents, [high: string, low: string]> = {
   risk: ["near support with room to run", "pressing against resistance"],
 };
 
-/** "<label words> · <phrase>" from the component that best explains the label. */
-export function signalLine(components: ScoreComponents, label: ScoreLabel): string {
+/** Below this distance from 0.5 no component leans enough to explain a Neutral label. */
+const NEUTRAL_LEAN = 0.1;
+
+/**
+ * "<label words> · <phrase>" from the component that best explains the label. A Neutral label
+ * says "limited data" when every input fell back to half points, and "mixed signals" when no
+ * component leans clearly either way.
+ */
+export function signalLine(components: ScoreComponents, label: ScoreLabel, partial = false): string {
+  if (label === "Neutral") {
+    const leans = KEYS.map((k) => Math.abs(share(components, k) - 0.5));
+    if (partial && leans.every((l) => l === 0)) return `${LABEL_WORDS[label]} · limited data`;
+    if (Math.max(...leans) < NEUTRAL_LEAN) return `${LABEL_WORDS[label]} · mixed signals`;
+  }
   const bullish = label === "Strong Bullish" || label === "Bullish";
   // Strictly-better comparison keeps the first key on ties (trend, momentum, ...).
   const metric = (k: keyof ScoreComponents) =>
@@ -214,6 +226,6 @@ export function scoreInstrument(input: ScoreInput): ScoreResult {
     partial: t.partial,
     label,
     confidence: confidenceFor(components, label),
-    signal: signalLine(components, label),
+    signal: signalLine(components, label, t.partial),
   };
 }

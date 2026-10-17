@@ -3,6 +3,7 @@ import {
   confidenceFor,
   labelFor,
   scoreInstrument,
+  signalLine,
   type ScoreComponents,
   type ScoreInput,
   type ScoreLabel,
@@ -188,5 +189,29 @@ describe("all-null stock", () => {
     expect(Number.isInteger(r.score)).toBe(true);
     for (const v of Object.values(r.components)) expect(Number.isFinite(v)).toBe(true);
     expect(r.signal).not.toMatch(/NaN|undefined/);
+  });
+});
+
+describe("signal for neutral and missing data", () => {
+  it("all inputs missing (every share 0.5) -> limited data", () => {
+    const r = scoreInstrument({
+      kind: "sector", close: 100, prevClose: null,
+      ema20: null, ema50: null, ema200: null, rsi14: null,
+      macd: null, macdSignal: null, macdHist: null, prevMacdHist: null,
+      volume: null, volAvg20: null, recentPatterns: [],
+      niftyLabel: null, sectorLabel: null, rs20: null, support: null, resistance: null,
+    });
+    expect(r.label).toBe("Neutral");
+    expect(r.signal).toBe("Range-bound · limited data");
+  });
+
+  it("near-neutral shares -> mixed signals", () => {
+    const c: ScoreComponents = { trend: 11, momentum: 9, volume: 7.5, pattern: 7.5, market: 11, risk: 5 };
+    expect(signalLine(c, "Neutral")).toBe("Range-bound · mixed signals");
+  });
+
+  it("a clearly leaning component still names it", () => {
+    const c: ScoreComponents = { trend: 16, momentum: 9, volume: 7.5, pattern: 7.5, market: 8, risk: 5 };
+    expect(signalLine(c, "Neutral")).toBe("Range-bound · price above key EMAs");
   });
 });
