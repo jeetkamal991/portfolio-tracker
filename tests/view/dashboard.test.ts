@@ -6,7 +6,7 @@ import type { JobRun, StoredDay } from "@/lib/db/types";
 const day = (i: number, o: Partial<StoredDay> = {}): StoredDay => ({
   date: `2026-01-${String(i + 1).padStart(2, "0")}`,
   open: null, high: null, low: null, close: 100 + i, volume: null,
-  pctChange: 0.01, importedPct: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null, ...o,
+  pctChange: 0.01, importedPct: null, ema20: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null, ...o,
 });
 const series = (n: number) => Array.from({ length: n }, (_, i) => day(i));
 const datesOf = (days: StoredDay[]) => days.map((d) => d.date);

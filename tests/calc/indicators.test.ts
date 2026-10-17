@@ -65,3 +65,11 @@ test("with an empty Nifty map, pctChange uses the previous stored bar (unchanged
   expect(rows.find((r) => r.date === "s031")!.pctChange).toBeCloseTo(1 / 129, 12);
   expect(rows.every((r) => r.rsVsNifty === null)).toBe(true);
 });
+
+test("ema20 is seeded with the SMA of the first 20 closes", () => {
+  const rows = computeIndicators(days, nifty);
+  expect(rows[18]!.ema20).toBeNull();
+  const sma20 = days.slice(0, 20).reduce((s, d) => s + d.close, 0) / 20;
+  expect(rows[19]!.ema20).toBeCloseTo(sma20, 10);
+  expect(rows[249]!.ema20).not.toBeNull();
+});

@@ -17,6 +17,7 @@ export function computeIndicators(
 ): IndicatorRow[] {
   const dates = days.map((d) => d.date);
   const closes = days.map((d) => d.close);
+  const ema20 = emaSeries(closes, 20);
   const ema50 = emaSeries(closes, 50);
   const ema200 = emaSeries(closes, 200);
   const rsi = rsiSeries(closes, 14);
@@ -31,6 +32,7 @@ export function computeIndicators(
   return days.map((d, i) => ({
     date: d.date,
     pctChange: i === 0 || !contiguous(i) ? null : pctChange(closes[i - 1]!, d.close),
+    ema20: ema20[i] ?? null,
     ema50: ema50[i] ?? null,
     ema200: ema200[i] ?? null,
     rsi14: rsi[i] ?? null,

@@ -6,7 +6,7 @@ const inst = (id: number, key: string, name: string, type: Instrument["type"] = 
   id, key, name, type, yahooTicker: `${key}.NS`, active: true,
 });
 const candle = (date: string, close: number) => ({ date, open: close - 1, high: close + 1, low: close - 2, close, volume: 100 });
-const ind = (date: string, ema50: number) => ({ date, pctChange: 0.01, ema50, ema200: null, rsi14: 55, rsVsNifty: null });
+const ind = (date: string, ema50: number) => ({ date, pctChange: 0.01, ema20: null, ema50, ema200: null, rsi14: 55, rsVsNifty: null });
 
 describe("memoryRepo", () => {
   it("keeps OHLC and indicators when both are upserted on the same date", async () => {
@@ -149,5 +149,16 @@ describe("memoryRepo", () => {
     r._summaries.set("2026-01-01", { date: "2026-01-01", summary: "hi", marketEvents: [], watchlistNews: [] });
     expect((await r.getDailySummary("2026-01-01"))?.summary).toBe("hi");
     expect(await r.getDailySummary("2026-01-02")).toBeNull();
+  });
+});
+
+describe("memoryRepo ema20", () => {
+  it("stores ema20 from upsertIndicators and keeps it across upsertCandles", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    await r.upsertCandles(1, [candle("2026-01-01", 100)]);
+    await r.upsertIndicators(1, [{ ...ind("2026-01-01", 99), ema20: 5 }]);
+    expect((await r.getDays(1, 10))[0].ema20).toBe(5);
+    await r.upsertCandles(1, [candle("2026-01-01", 101)]);
+    expect((await r.getDays(1, 10))[0].ema20).toBe(5);
   });
 });

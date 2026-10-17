@@ -18,6 +18,7 @@ export interface StoredDay {
   volume: number | null;
   pctChange: number | null;
   importedPct: number | null;
+  ema20: number | null;
   ema50: number | null;
   ema200: number | null;
   rsi14: number | null;
@@ -27,6 +28,7 @@ export interface StoredDay {
 export interface IndicatorRow {
   date: string;
   pctChange: number | null;
+  ema20: number | null;
   ema50: number | null;
   ema200: number | null;
   rsi14: number | null;

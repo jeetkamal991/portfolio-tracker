@@ -4,7 +4,7 @@ import type { DailySummary, Instrument, JobRun, Levels, StoredDay } from "./type
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
-  pctChange: null, importedPct: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null,
+  pctChange: null, importedPct: null, ema20: null, ema50: null, ema200: null, rsi14: null, rsVsNifty: null,
 });
 const emptyLevels = (): Levels => ({ autoSupport: null, autoResistance: null, manualSupport: null, manualResistance: null });
 
@@ -85,7 +85,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async upsertIndicators(id, rows) {
       for (const r of rows) {
         const d = dayFor(id, r.date);
-        d.pctChange = r.pctChange; d.ema50 = r.ema50; d.ema200 = r.ema200; d.rsi14 = r.rsi14; d.rsVsNifty = r.rsVsNifty;
+        d.pctChange = r.pctChange; d.ema20 = r.ema20; d.ema50 = r.ema50; d.ema200 = r.ema200; d.rsi14 = r.rsi14; d.rsVsNifty = r.rsVsNifty;
       }
     },
     async upsertImportedPct(rows) {

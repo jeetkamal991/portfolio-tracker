@@ -26,7 +26,7 @@ const toDay = (r: Row): StoredDay => ({
   date: r.date as string,
   open: num(r.open), high: num(r.high), low: num(r.low), close: num(r.close), volume: num(r.volume),
   pctChange: num(r.pct_change), importedPct: num(r.imported_pct),
-  ema50: num(r.ema50), ema200: num(r.ema200), rsi14: num(r.rsi14), rsVsNifty: num(r.rs_vs_nifty),
+  ema20: num(r.ema20), ema50: num(r.ema50), ema200: num(r.ema200), rsi14: num(r.rsi14), rsVsNifty: num(r.rs_vs_nifty),
 });
 const toBar = (r: Row): PriceBar => ({ date: r.date as string, close: num(r.close), high: num(r.high), low: num(r.low) });
 const toLevels = (r: Row | null): Levels => ({
@@ -128,7 +128,7 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       await upsertDays(
         rows.map((r) => ({
           instrument_id: instrumentId, date: r.date, pct_change: r.pctChange,
-          ema50: r.ema50, ema200: r.ema200, rsi14: r.rsi14, rs_vs_nifty: r.rsVsNifty,
+          ema20: r.ema20, ema50: r.ema50, ema200: r.ema200, rsi14: r.rsi14, rs_vs_nifty: r.rsVsNifty,
         })),
         "upsertIndicators",
       );
