@@ -72,16 +72,16 @@ export function AddStock() {
         disabled={adding !== null}
         placeholder="Add stock — type a name or symbol"
         aria-label="Add stock"
-        className="w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+        className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--up)] focus:outline-none"
       />
-      {adding && <p className="mt-1 text-xs text-neutral-500">Adding… fetching history</p>}
-      {error && <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {adding && <p className="mt-1 text-xs text-[var(--muted)]">Adding… fetching history</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-[var(--down)]">{error}</p>}
       {hits.length > 0 && !adding && (
-        <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-neutral-200 bg-white text-sm shadow dark:border-neutral-700 dark:bg-neutral-900">
+        <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] text-sm shadow-lg">
           {hits.map((h) => (
             <li key={h.key}>
-              <button type="button" onClick={() => add(h)} className="w-full px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800">
-                {h.name} ({h.key})
+              <button type="button" onClick={() => add(h)} className="w-full px-3 py-2 text-left hover:bg-slate-800/60">
+                {h.name} <span className="font-mono text-xs text-[var(--muted)]">({h.key})</span>
               </button>
             </li>
           ))}

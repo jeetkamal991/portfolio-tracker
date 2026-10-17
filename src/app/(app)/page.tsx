@@ -1,58 +1,32 @@
 import { getRepo } from "@/lib/api/server";
-import { STRIP_KEYS } from "@/lib/instruments";
-import { istDate } from "@/lib/time/ist";
-import { buildSectorRows, buildTodaySummary } from "@/lib/view/dashboard";
-import { ClaudeCard } from "../components/ClaudeCard";
-import { AddStock } from "../components/AddStock";
-import { WatchlistTable, type WatchItem } from "../components/WatchlistTable";
-import { SectorHeatmap } from "../components/SectorHeatmap";
-import { TodaySummary } from "../components/TodaySummary";
+import { buildSectorRows } from "@/lib/view/dashboard";
+import { PriceChart } from "../components/chart/PriceChart";
+import { NiftyCard } from "../components/dashboard/NiftyCard";
+import { SectorStrip } from "../components/dashboard/SectorStrip";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Dashboard() {
   const repo = getRepo();
-  const now = new Date();
   const instruments = await repo.listInstruments({ types: ["index", "sector"] });
-  const byKey = new Map(instruments.map((i) => [i.key, i]));
-  const daysOf = async (key: string, limit: number) => {
-    const inst = byKey.get(key);
-    return inst ? repo.getDays(inst.id, limit) : [];
-  };
+  const nifty = instruments.find((i) => i.key === "NIFTY50");
 
-  const [stripDays, sectors, niftyDays, summary] = await Promise.all([
-    Promise.all(STRIP_KEYS.map((k) => daysOf(k, 10))),
+  const [niftyDays, sectors] = await Promise.all([
+    // Full history for the chart's ALL range (~2,700 sessions since 2015).
+    nifty ? repo.getDays(nifty.id, 5000) : Promise.resolve([]),
     Promise.all(
       instruments
         .filter((i) => i.type === "sector")
         .map(async (i) => ({ key: i.key, name: i.name, days: await repo.getDays(i.id, 70) })),
     ),
-    // ~70 sessions: the trading calendar for the heatmap's 5/21/63-session returns.
-    daysOf("NIFTY50", 70),
-    repo.getDailySummary(istDate(now)),
   ]);
-
-  const watchInstruments = await repo.listWatchlist();
-  const watchItems: WatchItem[] = (
-    await Promise.all(
-      watchInstruments.map(async (i) => {
-        const [days, levels] = await Promise.all([repo.getDays(i.id, 3), repo.getLevels(i.id)]);
-        const lastDay = [...days].filter((d) => d.close !== null).sort((a, b) => b.date.localeCompare(a.date))[0];
-        return lastDay ? { key: i.key, name: i.name, ticker: i.yahooTicker, lastDay, levels } : null;
-      }),
-    )
-  ).flatMap((w) => w ?? []);
-
-  const bankDays = stripDays[STRIP_KEYS.indexOf("NIFTY_BANK")];
   const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
 
   return (
-    <div className="flex flex-col gap-5">
-      <ClaudeCard summary={summary} />
-      <TodaySummary nifty={buildTodaySummary(niftyDays)} bankNifty={buildTodaySummary(bankDays)} />
-      <SectorHeatmap rows={buildSectorRows(sectors, niftyDates)} />
-      <AddStock />
-      <WatchlistTable items={watchItems} />
+    <div className="flex flex-col gap-6">
+      <NiftyCard days={niftyDays} />
+      <PriceChart days={niftyDays} title="NIFTY 50" />
+      <SectorStrip rows={buildSectorRows(sectors, niftyDates.slice(-70))} />
     </div>
   );
 }

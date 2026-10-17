@@ -12,6 +12,7 @@ import {
   type WatchlistRow,
 } from "@/lib/view/dashboard";
 import { useQuotes } from "./QuotesProvider";
+import { Panel } from "./ui";
 
 export interface WatchItem {
   key: string;
@@ -100,7 +101,7 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
             setError(null);
           }}
           aria-label={`Manual ${side} for ${row.name}`}
-          className="w-20 rounded border border-neutral-400 bg-transparent px-1 text-right tabular-nums"
+          className="w-20 rounded border border-[var(--border)] bg-[var(--panel-2)] px-1 text-right font-mono tabular-nums focus:border-[var(--up)] focus:outline-none"
         />
       );
     }
@@ -113,29 +114,28 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
           setDraft(manual && value !== null ? String(value) : "");
           setError(null);
         }}
-        className="tabular-nums hover:underline"
+        className="font-mono tabular-nums hover:underline"
       >
-        {manual && <span className="mr-1 rounded bg-amber-200 px-1 text-[10px] font-semibold text-amber-900">M</span>}
+        {manual && <span className="mr-1 rounded border border-amber-400/40 bg-amber-950/70 px-1 text-[10px] font-semibold text-[var(--warn)]">M</span>}
         {fmtPrice(value)}
-        <span className="ml-1 text-xs text-neutral-500">{fmtPct(dist)}</span>
+        <span className="ml-1 text-xs text-[var(--muted)]">{fmtPct(dist)}</span>
       </button>
     );
   }
 
   return (
-    <section aria-label="Watchlist" className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">Watchlist</h2>
+    <Panel title="Watchlist">
       {error && (
-        <p role="alert" className="mb-2 text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="mb-2 text-xs text-[var(--down)]">
           {error}
         </p>
       )}
       {rows.length === 0 ? (
-        <p className="text-sm text-neutral-500">No stocks yet. Add one above.</p>
+        <p className="text-sm text-[var(--muted)]">No stocks yet. Add one above.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-xs text-neutral-500">
+            <thead className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
               <tr className="text-right">
                 <th className="py-1 text-left font-medium">Stock</th>
                 <th className="px-2 font-medium">CMP</th>
@@ -154,21 +154,21 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
               {rows.map((r) => (
                 <tr
                   key={r.key}
-                  className={`border-t border-neutral-100 text-right dark:border-neutral-800 ${r.nearLevel ? "bg-amber-50 dark:bg-amber-950/40" : ""}`}
+                  className={`border-t border-[var(--border)] text-right hover:bg-slate-800/40 ${r.nearLevel ? "bg-amber-950/40" : ""}`}
                 >
                   <td className="py-1.5 text-left">
                     <div className="font-medium">{r.name}</div>
-                    <div className="text-xs text-neutral-500">{r.key}</div>
+                    <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
                   </td>
-                  <td className="px-2 tabular-nums">{fmtPrice(r.cmp)}</td>
-                  <td className={`px-2 tabular-nums ${pctTone(r.dayPct)}`}>{fmtPct(r.dayPct)}</td>
-                  <td className="px-2 tabular-nums">
+                  <td className="px-2 font-mono tabular-nums">{fmtPrice(r.cmp)}</td>
+                  <td className={`px-2 font-mono tabular-nums ${pctTone(r.dayPct)}`}>{fmtPct(r.dayPct)}</td>
+                  <td className="px-2 font-mono tabular-nums">
                     {fmtPrice(r.ema50)}
                     <div className={`text-xs ${pctTone(r.fromEma50)}`}>{fmtPct(r.fromEma50)}</div>
                   </td>
-                  <td className="px-2 tabular-nums">
+                  <td className="px-2 font-mono tabular-nums">
                     {r.notEnoughHistory ? (
-                      <span className="text-xs text-neutral-500">not enough history</span>
+                      <span className="text-xs text-[var(--muted)]">not enough history</span>
                     ) : (
                       <>
                         {fmtPrice(r.ema200)}
@@ -184,7 +184,7 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
                       type="button"
                       onClick={() => remove(r.key)}
                       aria-label={`Remove ${r.name}`}
-                      className="text-neutral-400 hover:text-red-600"
+                      className="text-[var(--muted)] hover:text-[var(--down)]"
                     >
                       ✕
                     </button>
@@ -195,6 +195,6 @@ export function WatchlistTable({ items }: { items: WatchItem[] }) {
           </table>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

@@ -6,9 +6,8 @@ import { signIn, type LoginState } from "./actions";
 const initial: LoginState = { error: null };
 
 const field =
-  "rounded-md border border-neutral-300 bg-white px-3 py-2 text-neutral-900 placeholder:text-neutral-400 " +
-  "focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400/40 " +
-  "dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500";
+  "rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[var(--text)] placeholder:text-[var(--muted)] " +
+  "focus:border-[var(--up)] focus:outline-none focus:ring-2 focus:ring-[var(--up)]/30";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(signIn, initial);
@@ -16,22 +15,25 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <form
         action={action}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6"
       >
-        <h1 className="text-xl font-semibold">Sign in</h1>
-        <label className="flex flex-col gap-1 text-sm">
+        <h1 className="text-xl font-extrabold tracking-tight">
+          NIFTY<span className="text-[var(--up)]">PULSE</span>
+          <span className="ml-2 align-middle font-mono text-[10px] font-normal uppercase tracking-wider text-[var(--muted)]">Sign in</span>
+        </h1>
+        <label className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
           Email
           <input name="email" type="email" required autoComplete="email" className={field} />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
           Password
           <input name="password" type="password" required autoComplete="current-password" className={field} />
         </label>
-        {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+        {state.error && <p role="alert" className="text-sm text-[var(--down)]">{state.error}</p>}
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-3 py-2 font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          className="rounded-lg bg-[var(--up)] px-3 py-2 font-semibold text-slate-950 hover:brightness-110 disabled:opacity-50"
         >
           {pending ? "Signing in..." : "Sign in"}
         </button>
