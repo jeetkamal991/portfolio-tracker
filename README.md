@@ -31,6 +31,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0001_init.sql` - tables, with row level security enabled on all of them.
    - `supabase/migrations/0002_drop_open_policies.sql` - drops the `owner_all` policies. RLS stays enabled with no policies, so the anon key and signed-in sessions cannot read or write any table. All data access goes through server code with the service-role key, which bypasses RLS.
    - `supabase/migrations/0003_ema20.sql` - adds the stored `ema20` column. Apply it **before** deploying code that writes EMA 20 (the EOD job and back-fill fail on the unknown column otherwise), then re-run `npm run backfill -- --from 2015-01-01` to compute EMA 20 over full history for the indices and sectors.
+   - `supabase/migrations/0004_indicators_score_universe.sql` - adds the new indicator columns (MACD, Bollinger, 52-week range, volume average), the stored Technical Score, and the `index_constituents` table. Apply it **before** deploying stage 2 code.
+   A new project applies all four in order. The owner's Tracker1 project already has 0003 and 0004.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -42,6 +44,30 @@ Run in this order from the repo root. They read `.env.local`. The input files li
 3. `npm run backfill -- --from 2015-01-01` - downloads daily candles from the given date. It prints candles per instrument; instruments with fewer than 200 are marked THIN.
 4. `npm run import-history -- --dry-run` - parses `data/history.xlsx` and prints the report without writing. Check the report, then run `npm run import-history` to write the rows.
 5. `npm run compare-import` - compares imported history with the stored data. Look for differences; none should exceed 0.0005.
+
+### Stage 2: Nifty 200 universe, sector history and scores
+
+Stage 2 adds stock data for the Nifty 200 and the sector constituents. The files come from niftyindices.com (download them by hand) and go in `data/niftyindices/`, which is git-ignored. Name them by key so the importer needs no guessing:
+
+- `data/niftyindices/constituents/NIFTY200.csv` and `data/niftyindices/constituents/<KEY>.csv` for the 11 sectors: `NIFTY_BANK`, `NIFTY_FIN`, `NIFTY_PVT_BANK`, `NIFTY_PSU_BANK`, `NIFTY_IT`, `NIFTY_PHARMA`, `NIFTY_HEALTHCARE`, `NIFTY_AUTO`, `NIFTY_FMCG`, `NIFTY_METAL`, `NIFTY_MEDIA`. Use the site's "Download list of constituents" CSV (columns `Company Name, Industry, Symbol, Series, ISIN Code`). That is 12 files.
+- `data/niftyindices/history/<KEY>*.csv` for the 8 sectors Yahoo has little history for: `NIFTY_AUTO`, `NIFTY_FIN`, `NIFTY_FMCG`, `NIFTY_MEDIA`, `NIFTY_METAL`, `NIFTY_PSU_BANK`, `NIFTY_PVT_BANK`, `NIFTY_HEALTHCARE`. Several files per key are fine because the site limits each download's date range, for example `NIFTY_AUTO_2015-2019.csv` and `NIFTY_AUTO_2020-2026.csv`.
+
+Then, from the repo root:
+
+1. `npm run import-niftyindices -- --dry-run` - parses every file and prints the report without writing. Check `missing`, `unknown keys` and `parse errors`; all three should say `none`. (`--dir <folder>` reads from a different folder than `data/niftyindices`.)
+2. `npm run import-niftyindices` - writes the new stock instruments, the constituent lists and the sector history. Safe to re-run.
+3. `npm run backfill -- --from 2015-01-01` - indices and sectors. It now also computes the new indicators and the Technical Score.
+4. `npm run backfill -- --universe` - candles for the Nifty 200, the sector constituents and the watchlist stocks, from 2019-01-01 (`--from <date>` overrides). Expect roughly 15-30 minutes. It prints one line per instrument and lists any that failed; re-run to retry.
+
+**Technical Score.** Each instrument gets a score from 0 to 100 and one of five labels: Strong Bullish (75 and up), Bullish (60-74), Neutral (45-59), Bearish (30-44), Strong Bearish (below 30). It is computed on each nightly EOD run for the latest session only, so history builds up one row per day. The components and weights are in section 5 of `docs/superpowers/specs/2026-10-17-nifty-dashboard-redesign-design.md`.
+
+**EOD duration (to check).** The EOD run has not been timed over the full Nifty 200 universe, because the constituents were not imported yet. After the first full import, with the dev server running, time one run:
+
+```powershell
+Measure-Command { curl.exe -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/eod }
+```
+
+If it takes more than 45 seconds, build the two-part EOD split (Task 8 of `docs/superpowers/plans/2026-10-18-redesign-stage2-score-universe-popup.md`) before relying on the Vercel cron, which stops at 60 seconds.
 
 ## Screens
 
@@ -59,6 +85,10 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
 The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) v5 (Apache-2.0): candlesticks, ranges 1D-ALL on daily bars, EMA 20/50/200 overlays, and a Volume (with 20-day average) or RSI lower pane.
+
+### Stock pop-up
+
+Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names and sector heatmap names. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
 
 ## Known data caveat
 
