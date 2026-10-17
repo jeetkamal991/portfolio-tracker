@@ -4,7 +4,7 @@ A private, single-user dashboard for Indian market data (Nifty indices, sector h
 
 ## Prerequisites
 
-- Node.js 20 or newer
+- Node.js 20.12 or newer (the scripts use `process.loadEnvFile`)
 - A Supabase project
 - A Vercel account (for deploy)
 
@@ -15,7 +15,7 @@ Copy the keys from `.env.example` into `.env.local` (never commit it):
 | Key | Secret? | Notes |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | no | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | no (public, protected by RLS) | Supabase anon key |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | no (public; RLS denies it all table access) | Supabase anon key, used only for sign-in |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server routes and `scripts/` only. Never expose it to the browser. |
 | `CRON_SECRET` | yes | Bearer token for `/api/cron/eod` |
 
@@ -27,14 +27,16 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Database setup
 
-1. Apply `supabase/migrations/0001_init.sql` to your project (Supabase SQL editor, or the Supabase CLI).
+1. Apply the migrations in order to your project (Supabase SQL editor, or the Supabase CLI):
+   - `supabase/migrations/0001_init.sql` - tables, with row level security enabled on all of them.
+   - `supabase/migrations/0002_drop_open_policies.sql` - drops the `owner_all` policies. RLS stays enabled with no policies, so the anon key and signed-in sessions cannot read or write any table. All data access goes through server code with the service-role key, which bypasses RLS.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
 
-Run in this order from the repo root. They read `.env.local`.
+Run in this order from the repo root. They read `.env.local`. The input files live in `data/`, which is git-ignored: download or copy them there locally; never commit them.
 
-1. `npm run seed` - loads instruments from `data/EQUITY_L.csv` (download it from NSE and place it there). Check that the instrument count looks right.
+1. `npm run seed` - loads instruments from `data/EQUITY_L.csv` (download it from NSE into `data/`; it is not committed). Check that the instrument count looks right.
 2. `npm run verify-tickers` - checks each Yahoo ticker against `data/history.xlsx` and prints OK or THIN per instrument. Look for any THIN or failed tickers.
 3. `npm run backfill -- --from 2015-01-01` - downloads daily candles from the given date. It prints candles per instrument; instruments with fewer than 200 are marked THIN.
 4. `npm run import-history -- --dry-run` - parses `data/history.xlsx` and prints the report without writing. Check the report, then run `npm run import-history` to write the rows.
@@ -84,4 +86,4 @@ Expected: no differences above 0.0005. Investigate any larger mismatch before yo
 ## Security notes
 
 - Rotate the Supabase service-role key if it was ever shared.
-- The app is single-user: access is enforced by RLS and by disabled sign-ups. Keep sign-ups off.
+- The app is single-user: pages and API routes require the owner's sign-in (middleware), sign-ups are disabled, and RLS (with no policies after `0002`) blocks direct table access with the anon key. Keep sign-ups off.

@@ -398,7 +398,7 @@ test("mapQuote converts percent to fraction", () => {
 - [ ] **Step 2: Run** — FAIL. **Step 3: Implement.** `seed-instruments.ts` loads `.env.local` (use `process.loadEnvFile(".env.local")`), reads `data/EQUITY_L.csv`, and calls `repo.upsertInstruments([...INDEX_INSTRUMENTS, ...stocks])`.
 - [ ] **Step 4: Run** — PASS.
 - [ ] **Step 5: Seed.** Owner downloads the NSE equity list (`EQUITY_L.csv`, "Securities available for Equity segment" on nseindia.com) into `data/`. Add npm script `"seed": "tsx scripts/seed-instruments.ts"`, run `npm run seed`. Verify: SQL `select type, count(*) from instruments group by type` → index 2, sector 11, stock > 1500.
-- [ ] **Step 6: Commit** `feat: instrument list and seeding` (commit `data/EQUITY_L.csv` too).
+- [ ] **Step 6: Commit** `feat: instrument list and seeding` (`data/EQUITY_L.csv` stays local: `data/` is git-ignored, the file is downloaded by the owner, not committed).
 
 ---
 
