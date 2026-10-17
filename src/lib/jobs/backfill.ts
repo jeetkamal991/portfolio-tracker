@@ -2,7 +2,8 @@ import type { Repo } from "@/lib/db/repo";
 import type { Instrument } from "@/lib/db/types";
 import type { MarketDataProvider } from "@/lib/provider/types";
 import { addDays, istDate } from "@/lib/time/ist";
-import { loadCloses, recomputeInstrument } from "./eod";
+import { loadCloses, pool, recomputeInstrument } from "./eod";
+import { scorePass } from "./score";
 
 export interface BackfillDeps {
   repo: Repo;
@@ -51,5 +52,33 @@ export async function addStock(deps: BackfillDeps, key: string): Promise<AddStoc
 
   await store(deps, inst, candles);
   await deps.repo.addToWatchlist(inst.id);
+  await scorePass(deps.repo, { onlyIds: new Set([inst.id]) });
   return { ok: true };
+}
+
+const UNIVERSE_CONCURRENCY = 4;
+
+/** Back-fill NIFTY200 constituents plus watchlist stocks from `from`, then score once. */
+export async function backfillUniverse(
+  deps: BackfillDeps,
+  opts: { from: string; onProgress?: (key: string, n: number) => void },
+): Promise<{ done: number; failed: string[] }> {
+  const [constituents, watch] = await Promise.all([deps.repo.listConstituents("NIFTY200"), deps.repo.listWatchlist()]);
+  const seen = new Set<number>();
+  const stocks = [...constituents, ...watch].filter(
+    (i) => i.type === "stock" && i.active && !seen.has(i.id) && !!seen.add(i.id),
+  );
+  const failed: string[] = [];
+  let done = 0;
+  await pool(stocks, UNIVERSE_CONCURRENCY, async (inst) => {
+    try {
+      const n = await backfillInstrument(deps, inst, opts.from);
+      done++;
+      opts.onProgress?.(inst.key, n);
+    } catch {
+      failed.push(inst.key);
+    }
+  });
+  await scorePass(deps.repo);
+  return { done, failed };
 }

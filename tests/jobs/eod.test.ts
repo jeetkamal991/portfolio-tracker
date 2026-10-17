@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
 import type { Instrument } from "@/lib/db/types";
 import type { Candle, MarketDataProvider } from "@/lib/provider/types";
@@ -238,11 +238,69 @@ describe("runEod job_runs bookkeeping", () => {
     const reads: number[] = [];
     const getPriceBars = repo.getPriceBars.bind(repo);
     repo.getPriceBars = async (id, limit) => { reads.push(id); return getPriceBars(id, limit); };
-    repo.getDays = async () => { throw new Error("getDays should not be used by EOD"); };
     const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
     expect(run.status).toBe("ok");
     expect(reads.filter((id) => id === 1)).toHaveLength(1);
     expect(reads.sort()).toEqual([1, 2, 3]);
+  });
+});
+
+describe("runEod Nifty 200 universe", () => {
+  const universe = () => {
+    const instruments = [
+      inst(1, "NIFTY50", "index"), inst(2, "NIFTY_IT", "sector"),
+      inst(3, "AAA", "stock"), inst(4, "BBB", "stock"), inst(5, "CCC", "stock"),
+    ];
+    const repo = createMemoryRepo({ instruments });
+    return { repo, instruments };
+  };
+
+  it("ingests and scores every constituent (watchlist overlap not duplicated)", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4, 5]);
+    await repo.addToWatchlist(3);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const calls: string[] = [];
+    const base = fakeProvider();
+    const provider: MarketDataProvider = {
+      getQuotes: base.getQuotes,
+      async getDailyHistory(t, f, to) { calls.push(t); return base.getDailyHistory(t, f, to); },
+    };
+    const run = await runEod({ repo, provider, now: NOW });
+    expect(run.status).toBe("ok");
+    expect(calls.filter((t) => t === "T_AAA")).toHaveLength(1);
+    for (const id of [1, 2, 3, 4, 5]) {
+      const days = await repo.getDays(id, 100_000);
+      const last = days[days.length - 1]!;
+      expect(last.date).toBe(TODAY);
+      expect(last.score).not.toBeNull();
+    }
+    expect(run.message).toContain("skipped 0");
+  });
+
+  it("a failing constituent -> partial naming it; others scored", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4, 5]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const run = await runEod({ repo, provider: fakeProvider({ throwOn: ["T_BBB"] }), now: NOW });
+    expect(run.status).toBe("partial");
+    expect(run.message).toContain("BBB");
+    const last = async (id: number) => { const d = await repo.getDays(id, 100_000); return d[d.length - 1]!; };
+    expect((await last(3)).score).not.toBeNull();
+    expect((await last(5)).score).not.toBeNull();
+  });
+
+  it("scores Nifty before stocks", async () => {
+    const { repo, instruments } = universe();
+    await repo.replaceConstituents("NIFTY200", [3, 4, 5]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    const order: number[] = [];
+    const orig = repo.upsertScore.bind(repo);
+    vi.spyOn(repo, "upsertScore").mockImplementation(async (id, row) => { order.push(id); return orig(id, row); });
+    await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(order[0]).toBe(1);
+    expect(order.indexOf(2)).toBeLessThan(order.indexOf(3));
+    expect(order.slice(-3).sort()).toEqual([3, 4, 5]);
   });
 });
 

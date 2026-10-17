@@ -4,6 +4,7 @@ import type { MarketDataProvider } from "@/lib/provider/types";
 import { computeIndicators } from "@/lib/calc/indicators";
 import { swingLevels } from "@/lib/calc/swing";
 import { addDays, istDate } from "@/lib/time/ist";
+import { scorePass } from "./score";
 
 export interface EodDeps {
   repo: Repo;
@@ -90,7 +91,7 @@ export async function refreshInstrument(
   return result;
 }
 
-async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+export async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
   let next = 0;
   const worker = async () => {
     while (next < items.length) await fn(items[next++]!);
@@ -104,12 +105,13 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
   let updated = 0;
   let noSession = 0;
 
-  const [core, watch] = await Promise.all([
+  const [core, watch, constituents] = await Promise.all([
     repo.listInstruments({ types: ["index", "sector"], activeOnly: true }),
     repo.listWatchlist(),
+    repo.listConstituents("NIFTY200"),
   ]);
   const seen = new Set<number>();
-  const targets = [...core, ...watch.filter((w) => w.active)].filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+  const targets = [...core, ...constituents.filter((c) => c.active), ...watch.filter((w) => w.active)].filter((i) => !seen.has(i.id) && !!seen.add(i.id));
 
   const record = (r: "updated" | "no_session") => {
     if (r === "updated") updated++;
@@ -140,7 +142,7 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
 
   await pool(
     targets.filter((i) => i !== nifty),
-    deps.concurrency ?? 5,
+    deps.concurrency ?? 8,
     async (inst) => {
       try {
         record(await refreshInstrument(deps, inst, niftyCloses));
@@ -150,12 +152,14 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
     },
   );
 
+  const { skipped } = await scorePass(repo);
+
   let status: JobRunResult["status"];
   if (targets.length > 0 && failed.length === targets.length) status = "failed";
   else if (failed.length > 0) status = "partial";
   else if (targets.length > 0 && noSession === targets.length) status = "no_session";
   else status = "ok";
-  const message = `updated ${updated}, no_session ${noSession}, failed ${failed.length}` +
+  const message = `updated ${updated}, no_session ${noSession}, failed ${failed.length}, skipped ${skipped.length}` +
     (failed.length ? `: ${failed.join("; ")}` : "");
   return { status, message };
 }

@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
 import type { Instrument } from "@/lib/db/types";
 import type { Candle, MarketDataProvider } from "@/lib/provider/types";
 import { addDays } from "@/lib/time/ist";
-import { addStock, backfillInstrument } from "@/lib/jobs/backfill";
+import { addStock, backfillInstrument, backfillUniverse } from "@/lib/jobs/backfill";
 
 const NOW = new Date("2026-10-16T11:00:00Z");
 const TODAY = "2026-10-16";
@@ -76,6 +76,13 @@ describe("addStock", () => {
     expect(await addStock(deps, "AAA")).toEqual({ ok: false, error: "already_added" });
   });
 
+  it("stores a score for the added stock immediately", async () => {
+    const repo = setup();
+    expect(await addStock({ repo, provider: provider({ T_AAA: 300 }), now: NOW }, "AAA")).toEqual({ ok: true });
+    const days = await repo.getDays(2, 1000);
+    expect(days[days.length - 1]!.score).not.toBeNull();
+  });
+
   it("120 candles -> ema200 null on last day", async () => {
     const repo = setup();
     expect(await addStock({ repo, provider: provider({ T_BBB: 120 }), now: NOW }, "BBB")).toEqual({ ok: true });
@@ -92,5 +99,37 @@ describe("backfillInstrument", () => {
     const days = await repo.getDays(1, 1000);
     expect(days.length).toBe(300);
     expect(days[250]!.ema200).not.toBeNull();
+  });
+});
+
+describe("backfillUniverse", () => {
+  it("stores all constituents and watchlist stocks, one scorePass, failures recorded", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2]);
+    await repo.addToWatchlist(2);
+    await repo.addToWatchlist(3);
+    const spy = vi.spyOn(repo, "upsertScore");
+    const progress: string[] = [];
+    const res = await backfillUniverse(
+      { repo, provider: provider({ T_AAA: 300, T_BBB: 300 }, []), now: NOW },
+      { from: "2019-01-01", onProgress: (k) => progress.push(k) },
+    );
+    expect(res).toEqual({ done: 2, failed: [] });
+    expect((await repo.getDays(2, 1000)).length).toBe(300);
+    expect((await repo.getDays(3, 1000)).length).toBe(300);
+    expect(progress.sort()).toEqual(["AAA", "BBB"]);
+    expect(spy.mock.calls.map((c) => c[0]).sort()).toEqual([2, 3]);
+  });
+
+  it("a failing instrument is listed and does not stop the others", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2, 3]);
+    const res = await backfillUniverse(
+      { repo, provider: provider({ T_BBB: 300 }, ["T_AAA"]), now: NOW },
+      { from: "2019-01-01" },
+    );
+    expect(res.done).toBe(1);
+    expect(res.failed).toEqual(["AAA"]);
+    expect((await repo.getDays(3, 1000)).length).toBe(300);
   });
 });

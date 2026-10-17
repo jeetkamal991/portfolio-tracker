@@ -1,5 +1,6 @@
 import { createSupabaseRepo } from "@/lib/db/supabaseRepo";
-import { backfillInstrument } from "@/lib/jobs/backfill";
+import { backfillInstrument, backfillUniverse } from "@/lib/jobs/backfill";
+import { scorePass } from "@/lib/jobs/score";
 import { createYahooProvider } from "@/lib/provider/yahoo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addDays, istDate } from "@/lib/time/ist";
@@ -14,12 +15,27 @@ function fromArg(): string | null {
   return v;
 }
 
+const UNIVERSE_FROM = "2019-01-01";
+
 async function main() {
   process.loadEnvFile(".env.local");
   const now = new Date();
-  const from = fromArg() ?? addDays(istDate(now), -730);
+  const universe = process.argv.includes("--universe");
+  const from = fromArg() ?? (universe ? UNIVERSE_FROM : addDays(istDate(now), -730));
   const repo = createSupabaseRepo(createAdminClient());
   const deps = { repo, provider: createYahooProvider(), now };
+
+  if (universe) {
+    console.log(`Back-filling the Nifty 200 universe from ${from}`);
+    let n = 0;
+    const res = await backfillUniverse(deps, {
+      from,
+      onProgress: (key, c) => console.log(`[${++n}] ${key.padEnd(20)} ${String(c).padStart(6)} candles`),
+    });
+    console.log(`Done ${res.done}, failed ${res.failed.length}${res.failed.length ? `: ${res.failed.join(", ")}` : ""}`);
+    if (res.failed.length > 0) process.exit(1);
+    return;
+  }
 
   const all = await repo.listInstruments({ types: ["index", "sector"], activeOnly: true });
   const ordered = [...all.filter((i) => i.key === "NIFTY50"), ...all.filter((i) => i.key !== "NIFTY50")];
@@ -35,6 +51,8 @@ async function main() {
       console.error(`${inst.key.padEnd(20)} FAILED: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+  const scored = await scorePass(repo);
+  console.log(`Scored ${scored.scored}, skipped ${scored.skipped.length}`);
   if (failed > 0) process.exit(1);
 }
 
