@@ -17,6 +17,8 @@ export interface QuoteLike {
   regularMarketPrice?: number;
   regularMarketChangePercent?: number;
   regularMarketPreviousClose?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
   regularMarketTime?: Date;
 }
 
@@ -51,6 +53,8 @@ export function mapQuote(q: QuoteLike): Quote {
     price: q.regularMarketPrice ?? NaN,
     changePct: (q.regularMarketChangePercent ?? 0) / 100,
     prevClose: q.regularMarketPreviousClose ?? NaN,
+    dayHigh: q.regularMarketDayHigh ?? null,
+    dayLow: q.regularMarketDayLow ?? null,
     asOf: (q.regularMarketTime ?? new Date()).toISOString(),
   };
 }

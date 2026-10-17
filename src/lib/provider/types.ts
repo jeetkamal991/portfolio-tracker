@@ -13,6 +13,9 @@ export interface Quote {
   /** fraction, e.g. -0.0088 for -0.88% */
   changePct: number;
   prevClose: number;
+  /** The quote session's high/low (the last session's after close); null when Yahoo omits them. */
+  dayHigh: number | null;
+  dayLow: number | null;
   /** ISO timestamp */
   asOf: string;
 }

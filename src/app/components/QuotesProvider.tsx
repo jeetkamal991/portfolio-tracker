@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { startQuotesPoller } from "@/lib/live/quotesPoller";
 import { isMarketOpen } from "@/lib/time/ist";
 
-export interface LiveQuote { ticker: string; price: number; changePct: number }
+export interface LiveQuote { ticker: string; price: number; changePct: number; dayHigh?: number | null; dayLow?: number | null }
 interface QuotesState { quotes: Record<string, LiveQuote>; open: boolean }
 
 const QuotesContext = createContext<QuotesState>({ quotes: {}, open: false });

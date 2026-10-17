@@ -46,7 +46,7 @@ function EmaCard({ label, state }: { label: string; state: EmaState }) {
 export function NiftyCard({ days }: { days: StoredDay[] }) {
   const { quotes } = useQuotes();
   const q = quotes[NIFTY_TICKER];
-  const c = buildNiftyCard(days, q ? { price: q.price, changePct: q.changePct } : null);
+  const c = buildNiftyCard(days, q ? { price: q.price, changePct: q.changePct, dayHigh: q.dayHigh, dayLow: q.dayLow } : null);
   const dir = c.changePct === null || c.changePct === 0 ? 0 : c.changePct > 0 ? 1 : -1;
   const moveTone = dir > 0 ? "text-[var(--up)]" : dir < 0 ? "text-[var(--down)]" : "text-[var(--muted)]";
   const arrow = dir > 0 ? "▲" : dir < 0 ? "▼" : "";

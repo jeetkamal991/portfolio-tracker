@@ -25,10 +25,18 @@ const WEEKS_52 = 252;
 /**
  * Without `live`: price from the last priced row, day % from the latest row (provider % or the
  * imported one, as buildTodaySummary). With `live`: price and % from the quote and the previous
- * close derived from them; intraday high/low are not stored, so they are null. Rows with a null
+ * close derived from them, and the quote's own day high/low (null when it has none; stored rows
+ * may belong to an earlier session). Rows with a null
  * close (imported-only) are skipped for prices, 52-week range and EMAs.
  */
-export function buildNiftyCard(days: StoredDay[], live?: { price: number; changePct: number } | null): NiftyCardData {
+export interface LiveNiftyQuote {
+  price: number;
+  changePct: number;
+  dayHigh?: number | null;
+  dayLow?: number | null;
+}
+
+export function buildNiftyCard(days: StoredDay[], live?: LiveNiftyQuote | null): NiftyCardData {
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
   const priced = sorted.filter((d) => d.close !== null);
   const lastRow = sorted[sorted.length - 1];
@@ -73,8 +81,8 @@ export function buildNiftyCard(days: StoredDay[], live?: { price: number; change
     change: cmp !== null && prevClose !== null ? cmp - prevClose : null,
     changePct,
     prevClose,
-    dayHigh: live ? null : (last?.high ?? null),
-    dayLow: live ? null : (last?.low ?? null),
+    dayHigh: live ? (live.dayHigh ?? null) : (last?.high ?? null),
+    dayLow: live ? (live.dayLow ?? null) : (last?.low ?? null),
     high52: highs.length ? Math.max(...highs) : null,
     low52: lows.length ? Math.min(...lows) : null,
     ema20,

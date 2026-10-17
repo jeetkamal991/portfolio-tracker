@@ -76,3 +76,11 @@ describe("buildNiftyCard", () => {
     expect(c.trend).toBeNull();
   });
 });
+
+describe("buildNiftyCard live day range", () => {
+  it("uses the quote's day high/low when it has them", () => {
+    const c = buildNiftyCard([day(0, { close: 100, high: 101, low: 99 })], { price: 110, changePct: 0.1, dayHigh: 112, dayLow: 105 });
+    expect(c.dayHigh).toBe(112);
+    expect(c.dayLow).toBe(105);
+  });
+});

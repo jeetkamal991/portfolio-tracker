@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createQuoteCache } from "@/lib/live/quoteCache";
 import type { Quote } from "@/lib/provider/types";
 
-const q = (ticker: string, price = 100): Quote => ({ ticker, price, changePct: 0.01, prevClose: 99, asOf: "2026-10-16T05:00:00Z" });
+const q = (ticker: string, price = 100): Quote => ({ ticker, price, changePct: 0.01, prevClose: 99, dayHigh: null, dayLow: null, asOf: "2026-10-16T05:00:00Z" });
 
 describe("createQuoteCache", () => {
   it("serves a second call within ttl without calling the fetcher", async () => {

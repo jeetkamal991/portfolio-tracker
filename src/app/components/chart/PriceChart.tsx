@@ -151,6 +151,8 @@ function ChartCanvas({
     panes[1]?.setStretchFactor(1);
     chart.timeScale().fitContent();
     return () => {
+      // On unmount React runs the create effect's cleanup first; chart.remove() already disposed these.
+      if (chartRef.current !== chart) return;
       for (const s of added) chart.removeSeries(s);
     };
   }, [data, emas, lower]);

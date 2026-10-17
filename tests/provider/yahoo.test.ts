@@ -70,3 +70,14 @@ describe("createYahooProvider", () => {
     expect(q[0].asOf).toBe("2026-10-16T09:00:00.000Z");
   });
 });
+
+import { mapQuote as mapQuoteDay } from "@/lib/provider/yahoo";
+import { test as dayTest, expect as dayExpect } from "vitest";
+dayTest("mapQuote carries the session's day high/low, null when Yahoo omits them", () => {
+  const q = mapQuoteDay({ symbol: "^NSEI", regularMarketPrice: 100, regularMarketChangePercent: 1, regularMarketDayHigh: 101, regularMarketDayLow: 98 });
+  dayExpect(q.dayHigh).toBe(101);
+  dayExpect(q.dayLow).toBe(98);
+  const bare = mapQuoteDay({ symbol: "^NSEI", regularMarketPrice: 100 });
+  dayExpect(bare.dayHigh).toBeNull();
+  dayExpect(bare.dayLow).toBeNull();
+});
