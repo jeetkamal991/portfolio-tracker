@@ -93,6 +93,16 @@ const numbers = (v: unknown): number[] =>
 
 const sourceSchema = z.object({ title: z.string(), url: httpUrl });
 
+const FUNDAMENTALS_ORDER = ["valuation", "growth", "balance_sheet", "recent_results", "news"];
+
+/** jsonb does not keep key order, so impose the spec order; unknown keys follow alphabetically. */
+function orderFundamentals(f: Record<string, string>): Record<string, string> {
+  const known = FUNDAMENTALS_ORDER.filter((k) => k in f);
+  const rest = Object.keys(f).filter((k) => !FUNDAMENTALS_ORDER.includes(k)).sort();
+  return Object.fromEntries([...known, ...rest].map((k) => [k, f[k]]));
+}
+
+/** ok:false when nothing renderable parsed, so callers show the raw content instead of a bare disclaimer. */
 export function parseReportContent(raw: unknown): { ok: true; value: ReportContent } | { ok: false; raw: unknown } {
   if (!isRecord(raw)) return { ok: false, raw };
 
@@ -112,19 +122,25 @@ export function parseReportContent(raw: unknown): { ok: true; value: ReportConte
   const bull = isRecord(sc.bullish) ? sc.bullish : null;
   const bear = isRecord(sc.bearish) ? sc.bearish : null;
 
-  return {
-    ok: true,
-    value: {
-      summary: str(raw.summary) ?? null,
-      fundamentals,
-      technicals,
-      scenarios: {
-        bullish: bull && typeof bull.case === "string" ? { case: bull.case, confirmAbove: num(bull.confirm_above) } : null,
-        bearish: bear && typeof bear.case === "string" ? { case: bear.case, invalidateBelow: num(bear.invalidate_below) } : null,
-      },
-      risks: strings(raw.risks),
-      sources: collect(Array.isArray(raw.sources) ? raw.sources : [], sourceSchema, Infinity),
-      disclaimer: str(raw.disclaimer) ?? DEFAULT_DISCLAIMER,
+  const value: ReportContent = {
+    summary: str(raw.summary) ?? null,
+    fundamentals: orderFundamentals(fundamentals),
+    technicals,
+    scenarios: {
+      bullish: bull && typeof bull.case === "string" ? { case: bull.case, confirmAbove: num(bull.confirm_above) } : null,
+      bearish: bear && typeof bear.case === "string" ? { case: bear.case, invalidateBelow: num(bear.invalidate_below) } : null,
     },
+    risks: strings(raw.risks),
+    sources: collect(Array.isArray(raw.sources) ? raw.sources : [], sourceSchema, Infinity),
+    disclaimer: str(raw.disclaimer) ?? DEFAULT_DISCLAIMER,
   };
+
+  const renderable =
+    value.summary !== null ||
+    Object.keys(value.fundamentals).length > 0 ||
+    technicals.support.length > 0 || technicals.resistance.length > 0 ||
+    (["trend", "momentum", "volume", "notes"] as const).some((k) => technicals[k] !== undefined) ||
+    value.scenarios.bullish !== null || value.scenarios.bearish !== null ||
+    value.risks.length > 0 || value.sources.length > 0;
+  return renderable ? { ok: true, value } : { ok: false, raw };
 }

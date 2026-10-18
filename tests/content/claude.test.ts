@@ -105,8 +105,24 @@ describe("parseReportContent", () => {
   });
 
   it("non-string summary becomes null", () => {
-    const r = parseReportContent({ summary: 3 });
+    const r = parseReportContent({ summary: 3, risks: ["r"] });
     expect(r.ok && r.value.summary).toBeNull();
+  });
+
+  it("orders fundamentals in spec order whatever the key order, then other keys alphabetically", () => {
+    const r = parseReportContent({
+      fundamentals: { news: "n", zeta: "z", growth: "g", alpha: "a", valuation: "v", balance_sheet: "b", recent_results: "r" },
+    });
+    expect(r.ok && Object.keys(r.value.fundamentals)).toEqual([
+      "valuation", "growth", "balance_sheet", "recent_results", "news", "alpha", "zeta",
+    ]);
+  });
+
+  it("is not ok when nothing renderable parses, so the raw content can be shown", () => {
+    for (const raw of [{}, { foo: "bar" }, { summary: 3, fundamentals: { a: 1 }, risks: [1], sources: [{ url: "ftp://x" }] }]) {
+      expect(parseReportContent(raw)).toEqual({ ok: false, raw });
+    }
+    expect(parseReportContent({ risks: ["r"] }).ok).toBe(true);
   });
 
   it("is not ok when the root is not an object", () => {

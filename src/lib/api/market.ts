@@ -28,7 +28,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
 
   const session = latest.date;
   const [niftyDays, vixDays, summaryRow] = await Promise.all([
-    repo.getDays(nifty.id, 6),
+    repo.getDays(nifty.id, 12),
     vix ? repo.getDays(vix.id, 25) : Promise.resolve([]),
     repo.getDailySummary(session),
   ]);
@@ -37,7 +37,9 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
     return { session, summary, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse };
   }
 
-  const fromDate = niftyDays[0]?.date ?? session;
+  // Newer or unpriced rows must not shrink the window: keep priced sessions up to `session`, then the last 6.
+  const window = niftyDays.filter((d) => d.close !== null && d.date <= session).slice(-6);
+  const fromDate = window[0]?.date ?? session;
   const range = await repo.getDaysRange(constituents.map((c) => c.id), fromDate, session);
   const stocks = constituents.map((c) => ({ key: c.key, name: c.name, days: range.get(c.id) ?? [] }));
   const sessionRows = stocks.flatMap((s) => s.days.filter((d) => d.date === session));

@@ -57,6 +57,14 @@ describe("loadMarket", () => {
     expect(m.breadth?.vix.close).toBe(106);
     expect(m.breadth?.vix.spark).toHaveLength(7);
   });
+  it("a trailing null-close NIFTY50 row does not shrink the screener window", async () => {
+    const repo = await setup();
+    await repo.upsertIndicators(1, [ind("2026-01-12", 0.01)]); // newer row, close is null
+    const spy = vi.spyOn(repo, "getDaysRange");
+    const m = await loadMarket(repo, "2026-01-09");
+    expect(m.session).toBe("2026-01-09");
+    expect(spy.mock.calls[0][1]).toBe("2026-01-02");
+  });
   it("a stale stock contributes nothing to breadth", async () => {
     const repo = await setup();
     const m0 = await loadMarket(repo, "2026-01-09");
