@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -77,6 +77,35 @@ const toHolding = (r: Row, inst: Row): Holding => ({
   avgPrice: Number(r.avg_price),
   buyDate: r.buy_date as string,
   stopLoss: num(r.stop_loss), target1: num(r.target1), target2: num(r.target2),
+});
+type Joined = Row & { instruments: Row | Row[] | null };
+const toAlertRule = (r: Row, inst: Row): AlertRule => ({
+  id: Number(r.id),
+  instrumentId: Number(r.instrument_id),
+  key: inst.key as string,
+  name: inst.name as string,
+  yahooTicker: inst.yahoo_ticker as string,
+  condition: r.condition as AlertRule["condition"],
+  value: num(r.value),
+  mode: r.mode as AlertRule["mode"],
+  active: r.active as boolean,
+  source: r.source as AlertRule["source"],
+  lastState: (r.last_state as boolean | null) ?? null,
+  lastLevel: (r.last_level as AlertRule["lastLevel"]) ?? null,
+  lastFiredAt: (r.last_fired_at as string | null) ?? null,
+  createdAt: r.created_at as string,
+});
+const toAlertEvent = (r: Row, inst: Row): AlertEvent => ({
+  id: Number(r.id),
+  alertId: num(r.alert_id),
+  instrumentId: Number(r.instrument_id),
+  key: inst.key as string,
+  name: inst.name as string,
+  firedAt: r.fired_at as string,
+  price: num(r.price),
+  message: r.message as string,
+  read: r.read as boolean,
+  telegramStatus: (r.telegram_status as string | null) ?? null,
 });
 const oneInstrument = (v: Row | Row[] | null): Row | null => (Array.isArray(v) ? v[0] ?? null : v);
 // ---------------------------------------------------------
@@ -386,6 +415,89 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     async getDailySummary(date) {
       const r = check(await db.from("daily_summaries").select("*").eq("date", date).maybeSingle(), "getDailySummary");
       return r ? toSummary(r as Row) : null;
+    },
+    async listAlertRules(f) {
+      let q = db.from("alerts").select("*, instruments(key, name, yahoo_ticker)").order("id");
+      if (f?.activeOnly) q = q.eq("active", true);
+      if (f?.conditions) q = q.in("condition", f.conditions);
+      const rows = check(await q, "listAlertRules") as unknown as Joined[];
+      return rows.flatMap((r) => {
+        const inst = oneInstrument(r.instruments);
+        return inst ? [toAlertRule(r, inst)] : [];
+      });
+    },
+    async createAlertRule(r) {
+      const row = check(
+        await db.from("alerts").insert({
+          instrument_id: r.instrumentId, condition: r.condition, value: r.value, mode: r.mode, source: r.source,
+          last_state: r.lastState, last_level: r.lastLevel,
+        }).select("*, instruments(key, name, yahoo_ticker)").single(),
+        "createAlertRule",
+      ) as unknown as Joined;
+      const inst = oneInstrument(row.instruments);
+      if (!inst) throw new Error("createAlertRule: instrument missing");
+      return toAlertRule(row, inst);
+    },
+    async setAlertActive(id, active) {
+      check(await db.from("alerts").update({ active }).eq("id", id), "setAlertActive");
+    },
+    async deleteAlertRule(id) {
+      check(await db.from("alerts").delete().eq("id", id), "deleteAlertRule");
+    },
+    async saveAlertStates(updates) {
+      if (updates.length === 0) return;
+      // PostgREST can't update many rows to different values in one call; read the rows, then upsert them whole.
+      const ids = updates.map((u) => u.id);
+      const current = new Map(
+        (check(await db.from("alerts").select("*").in("id", ids), "saveAlertStates read") as Row[]).map((r) => [Number(r.id), r]),
+      );
+      const rows = updates.flatMap((u) => {
+        const r = current.get(u.id);
+        if (!r) return [];
+        const { created_at: _c, ...rest } = r;
+        return [{
+          ...rest,
+          last_state: u.lastState,
+          last_level: u.lastLevel,
+          ...(u.lastFiredAt !== undefined && { last_fired_at: u.lastFiredAt }),
+          ...(u.active !== undefined && { active: u.active }),
+          ...(u.value !== undefined && { value: u.value }),
+        }];
+      });
+      for (const c of chunks(rows)) check(await db.from("alerts").upsert(c, { onConflict: "id" }), "saveAlertStates");
+    },
+    async insertAlertEvents(events) {
+      if (events.length === 0) return;
+      check(
+        await db.from("alert_events").insert(events.map((e) => ({
+          alert_id: e.alertId, instrument_id: e.instrumentId, fired_at: e.firedAt, price: e.price,
+          message: e.message, telegram_status: e.telegramStatus,
+        }))),
+        "insertAlertEvents",
+      );
+    },
+    async listAlertEvents(limit) {
+      const rows = check(
+        await db.from("alert_events").select("*, instruments(key, name)")
+          .order("read").order("fired_at", { ascending: false }).order("id", { ascending: false }).limit(limit),
+        "listAlertEvents",
+      ) as unknown as Joined[];
+      return rows.flatMap((r) => {
+        const inst = oneInstrument(r.instruments);
+        return inst ? [toAlertEvent(r, inst)] : [];
+      });
+    },
+    async unreadAlertCount() {
+      const res = await db.from("alert_events").select("id", { count: "exact", head: true }).eq("read", false);
+      if (res.error) throw new Error(`unreadAlertCount: ${res.error.message}`);
+      return res.count ?? 0;
+    },
+    async markAlertsRead(ids) {
+      if (ids === "all") {
+        check(await db.from("alert_events").update({ read: true }).eq("read", false), "markAlertsRead");
+      } else if (ids.length > 0) {
+        check(await db.from("alert_events").update({ read: true }).in("id", ids), "markAlertsRead");
+      }
     },
   };
 }

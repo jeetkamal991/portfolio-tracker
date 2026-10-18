@@ -1,3 +1,4 @@
+import type { AlertCondition, HoldingLevel } from "@/lib/calc/alerts";
 import type { PatternHit } from "@/lib/calc/patterns";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
@@ -132,3 +133,46 @@ export interface PriceBar {
   low: number | null;
   volume: number | null;
 }
+
+export interface AlertRule {
+  id: number;
+  instrumentId: number;
+  key: string;
+  name: string;
+  yahooTicker: string;
+  condition: AlertCondition;
+  value: number | null;
+  mode: "once" | "repeat";
+  active: boolean;
+  /** `holding` rules are derived from holdings by syncHoldingAlerts, never edited by hand. */
+  source: "user" | "holding";
+  lastState: boolean | null;
+  lastLevel: HoldingLevel | null;
+  lastFiredAt: string | null;
+  createdAt: string;
+}
+
+export interface AlertEvent {
+  id: number;
+  alertId: number | null;
+  instrumentId: number;
+  key: string;
+  name: string;
+  firedAt: string;
+  price: number | null;
+  message: string;
+  read: boolean;
+  telegramStatus: string | null;
+}
+
+export type NewAlertRule = Pick<AlertRule, "instrumentId" | "condition" | "value" | "mode" | "source" | "lastState" | "lastLevel">;
+export interface AlertStateUpdate {
+  id: number;
+  lastState: boolean | null;
+  lastLevel: HoldingLevel | null;
+  lastFiredAt?: string;
+  active?: boolean;
+  /** Holding rules only: the SL / target moved. */
+  value?: number | null;
+}
+export type NewAlertEvent = Omit<AlertEvent, "id" | "key" | "name" | "read">;

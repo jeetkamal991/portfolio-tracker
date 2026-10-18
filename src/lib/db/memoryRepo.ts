@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -29,6 +29,11 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const reports: ReportRow[] = [];
   const summaries = new Map<string, DailySummary>();
   const constituents = new Map<string, Set<number>>();
+  type StoredRule = Omit<AlertRule, "key" | "name" | "yahooTicker">;
+  type StoredEvent = Omit<AlertEvent, "key" | "name">;
+  const rules = new Map<number, StoredRule>();
+  let nextRuleId = 1;
+  const events: StoredEvent[] = [];
 
   const dayFor = (id: number, date: string): StoredDay => {
     let m = days.get(id);
@@ -46,6 +51,10 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     const h = holdings.get(id);
     const i = instruments.get(id);
     return h && i ? { ...h, instrumentId: id, key: i.key, name: i.name, yahooTicker: i.yahooTicker } : null;
+  };
+  const withInstrument = <T extends { instrumentId: number }>(r: T) => {
+    const i = instruments.get(r.instrumentId);
+    return i ? [{ ...r, key: i.key, name: i.name, yahooTicker: i.yahooTicker }] : [];
   };
   const byKey = (key: string) => [...instruments.values()].find((i) => i.key === key);
 
@@ -198,6 +207,54 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async getDailySummary(date) {
       const s = summaries.get(date);
       return s ? { ...s } : null;
+    },
+    async listAlertRules(f) {
+      return [...rules.values()]
+        .filter((r) => (!f?.activeOnly || r.active) && (!f?.conditions || f.conditions.includes(r.condition)))
+        .sort((a, b) => a.id - b.id)
+        .flatMap(withInstrument);
+    },
+    async createAlertRule(r) {
+      if (r.source === "holding" && [...rules.values()].some((x) => x.source === "holding" && x.instrumentId === r.instrumentId && x.condition === r.condition)) {
+        throw new Error("createAlertRule: duplicate holding rule");
+      }
+      const row: StoredRule = { ...r, id: nextRuleId++, active: true, lastFiredAt: null, createdAt: new Date().toISOString() };
+      rules.set(row.id, row);
+      return withInstrument(row)[0];
+    },
+    async setAlertActive(id, active) {
+      const r = rules.get(id);
+      if (r) r.active = active;
+    },
+    async deleteAlertRule(id) {
+      rules.delete(id);
+      for (const e of events) if (e.alertId === id) e.alertId = null;
+    },
+    async saveAlertStates(updates) {
+      for (const u of updates) {
+        const r = rules.get(u.id);
+        if (!r) continue;
+        r.lastState = u.lastState;
+        r.lastLevel = u.lastLevel;
+        if (u.lastFiredAt !== undefined) r.lastFiredAt = u.lastFiredAt;
+        if (u.active !== undefined) r.active = u.active;
+        if (u.value !== undefined) r.value = u.value;
+      }
+    },
+    async insertAlertEvents(rows) {
+      for (const e of rows) events.push({ ...e, id: events.length + 1, read: false });
+    },
+    async listAlertEvents(limit) {
+      return [...events]
+        .sort((a, b) => Number(a.read) - Number(b.read) || b.firedAt.localeCompare(a.firedAt) || b.id - a.id)
+        .flatMap((e) => withInstrument(e).map(({ yahooTicker: _t, ...x }) => x))
+        .slice(0, limit);
+    },
+    async unreadAlertCount() {
+      return events.filter((e) => !e.read).length;
+    },
+    async markAlertsRead(ids) {
+      for (const e of events) if (ids === "all" || ids.includes(e.id)) e.read = true;
     },
   };
 }

@@ -1,6 +1,7 @@
 import type { Candle } from "@/lib/provider/types";
 import type { HoldingInput } from "@/lib/calc/portfolio";
-import type { DailySummary, Holding, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
+import type { AlertCondition } from "@/lib/calc/alerts";
+import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -58,4 +59,17 @@ export interface Repo {
   /** Newest first. */
   listReports(instrumentId: number): Promise<ReportRow[]>;
   getDailySummary(date: string): Promise<DailySummary | null>;
+  /** Ordered by id. */
+  listAlertRules(f?: { activeOnly?: boolean; conditions?: AlertCondition[] }): Promise<AlertRule[]>;
+  /** Throws on a second `holding` rule for the same instrument and condition. */
+  createAlertRule(r: NewAlertRule): Promise<AlertRule>;
+  setAlertActive(id: number, active: boolean): Promise<void>;
+  deleteAlertRule(id: number): Promise<void>;
+  /** One batched write; fields left out of an update are unchanged. */
+  saveAlertStates(updates: AlertStateUpdate[]): Promise<void>;
+  insertAlertEvents(events: NewAlertEvent[]): Promise<void>;
+  /** Unread first, then newest. */
+  listAlertEvents(limit: number): Promise<AlertEvent[]>;
+  unreadAlertCount(): Promise<number>;
+  markAlertsRead(ids: number[] | "all"): Promise<void>;
 }

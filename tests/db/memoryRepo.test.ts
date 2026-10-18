@@ -252,3 +252,58 @@ describe("memoryRepo.getDaysRange", () => {
     expect(m.has(3)).toBe(false);
   });
 });
+
+describe("memoryRepo alerts", () => {
+  const base = { condition: "price_above" as const, value: 100, mode: "once" as const, source: "user" as const, lastState: false, lastLevel: null };
+  const setup = () => createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa"), inst(2, "BBB", "Bbb")] });
+
+  it("creates, lists, filters, toggles and deletes rules", async () => {
+    const r = setup();
+    const a = await r.createAlertRule({ ...base, instrumentId: 1 });
+    const b = await r.createAlertRule({ ...base, instrumentId: 2, condition: "cross_ema50", value: null });
+    expect(a).toMatchObject({ id: 1, key: "AAA", name: "Aaa", yahooTicker: "AAA.NS", active: true, lastFiredAt: null });
+    expect((await r.listAlertRules()).map((x) => x.id)).toEqual([1, 2]);
+    expect((await r.listAlertRules({ conditions: ["cross_ema50"] })).map((x) => x.id)).toEqual([b.id]);
+    await r.setAlertActive(a.id, false);
+    expect((await r.listAlertRules({ activeOnly: true })).map((x) => x.id)).toEqual([b.id]);
+    await r.deleteAlertRule(b.id);
+    expect((await r.listAlertRules()).map((x) => x.id)).toEqual([a.id]);
+  });
+
+  it("rejects a second holding rule for the same stock and condition", async () => {
+    const r = setup();
+    const h = { ...base, instrumentId: 1, condition: "holding_sl" as const, source: "holding" as const, mode: "repeat" as const };
+    await r.createAlertRule(h);
+    await expect(r.createAlertRule(h)).rejects.toThrow();
+    await r.createAlertRule({ ...base, instrumentId: 1, condition: "holding_sl" }); // user source is not constrained
+  });
+
+  it("saves states, values and deactivation in one call", async () => {
+    const r = setup();
+    const a = await r.createAlertRule({ ...base, instrumentId: 1 });
+    const b = await r.createAlertRule({ ...base, instrumentId: 2, condition: "holding_sl", source: "holding", lastState: null, lastLevel: "none" });
+    await r.saveAlertStates([
+      { id: a.id, lastState: true, lastLevel: null, lastFiredAt: "2026-10-17T10:00:00.000Z", active: false },
+      { id: b.id, lastState: null, lastLevel: "near", value: 95 },
+    ]);
+    const [x, y] = await r.listAlertRules();
+    expect(x).toMatchObject({ lastState: true, lastFiredAt: "2026-10-17T10:00:00.000Z", active: false });
+    expect(y).toMatchObject({ lastLevel: "near", value: 95, lastFiredAt: null, active: true });
+  });
+
+  it("lists events unread first, then newest; counts and marks read", async () => {
+    const r = setup();
+    const ev = (instrumentId: number, firedAt: string, message: string) =>
+      ({ alertId: null, instrumentId, firedAt, price: 1, message, telegramStatus: "sent" });
+    await r.insertAlertEvents([ev(1, "2026-10-15T10:00:00Z", "old"), ev(2, "2026-10-17T10:00:00Z", "new"), ev(1, "2026-10-16T10:00:00Z", "mid")]);
+    const all = await r.listAlertEvents(10);
+    expect(all.map((e) => e.message)).toEqual(["new", "mid", "old"]);
+    expect(all[0]).toMatchObject({ key: "BBB", name: "Bbb", read: false });
+    await r.markAlertsRead([all[0].id]);
+    expect((await r.listAlertEvents(10)).map((e) => e.message)).toEqual(["mid", "old", "new"]);
+    expect(await r.unreadAlertCount()).toBe(2);
+    await r.markAlertsRead("all");
+    expect(await r.unreadAlertCount()).toBe(0);
+    expect(await r.listAlertEvents(2)).toHaveLength(2);
+  });
+});
