@@ -5,6 +5,7 @@ import { scoreInstrument, type InstrumentKind, type ScoreLabel } from "@/lib/cal
 import { effectiveLevel } from "@/lib/calc/levels";
 import { primarySector } from "@/lib/universe/sectors";
 import { pool } from "./pool";
+import { listUniverseStocks } from "@/lib/universe/stocks";
 
 const DAYS_NEEDED = 40; // 21 priced closes plus slack for unpriced rows
 const RETURN_SESSIONS = 20;
@@ -142,11 +143,8 @@ export async function scorePass(
     }
   });
 
-  // 3. Stocks: NIFTY200 plus watchlist.
-  const stocks = new Map<number, Instrument>();
-  for (const s of await repo.listConstituents("NIFTY200")) stocks.set(s.id, s);
-  for (const s of await repo.listWatchlist()) stocks.set(s.id, s);
-  const todo = [...stocks.values()].filter((s) => s.type === "stock" && s.active && (!only || only.has(s.id)));
+  // 3. Stocks: the universe (Nifty 200, sector constituents, watchlist).
+  const todo = (await listUniverseStocks(repo)).filter((s) => !only || only.has(s.id));
   await pool(todo, CONCURRENCY, async (s) => {
     try {
       const [data, lv] = await Promise.all([load(repo, s.id), repo.getLevels(s.id)]);

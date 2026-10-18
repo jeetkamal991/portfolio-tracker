@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import type { Trend } from "@/lib/calc/levels";
 import type { ConstituentRow, SectorTile } from "@/lib/view/sectors";
-import { ScoreLabelChip } from "../popup/ScoreBadge";
 import { StockLink } from "../popup/StockLink";
 import { Label, Panel, PctText } from "../ui";
 import { ConstituentTable } from "./ConstituentTable";
+import { SectorScore } from "./SectorScore";
 
 const TREND: Record<Trend, string> = { above_both: "Above 50 & 200", between: "Between 50 & 200", below_both: "Below 50 & 200" };
 
@@ -40,7 +40,7 @@ export function SectorDetail({ tile, rows }: { tile: SectorTile; rows: Constitue
         </Stat>
         <Stat label="RS vs Nifty 4W"><PctText value={tile.rsVsNifty} /></Stat>
         <Stat label="Score">
-          {tile.scoreLabel ? <ScoreLabelChip label={tile.scoreLabel} score={tile.score ?? undefined} /> : "—"}
+          {tile.scoreLabel ? <SectorScore tile={tile} /> : "—"}
         </Stat>
       </div>
       <ConstituentTable rows={rows} />

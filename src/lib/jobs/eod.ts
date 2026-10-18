@@ -6,6 +6,7 @@ import { swingLevels } from "@/lib/calc/swing";
 import { addDays, istDate } from "@/lib/time/ist";
 import { pool } from "./pool";
 import { scorePass } from "./score";
+import { listUniverseStocks } from "@/lib/universe/stocks";
 
 export interface EodDeps {
   repo: Repo;
@@ -100,13 +101,14 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
   let updated = 0;
   let noSession = 0;
 
-  const [core, watch, constituents] = await Promise.all([
+  const [core, stocks, constituents] = await Promise.all([
     repo.listInstruments({ types: ["index", "sector"], activeOnly: true }),
-    repo.listWatchlist(),
+    listUniverseStocks(repo),
+    // Only for the run message's Nifty 200 count.
     repo.listConstituents("NIFTY200"),
   ]);
   const seen = new Set<number>();
-  const targets = [...core, ...constituents.filter((c) => c.active), ...watch.filter((w) => w.active)].filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+  const targets = [...core, ...stocks].filter((i) => !seen.has(i.id) && !!seen.add(i.id));
 
   const record = (r: "updated" | "no_session") => {
     if (r === "updated") updated++;

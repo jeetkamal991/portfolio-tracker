@@ -6,6 +6,7 @@ import { isUnknownSymbolError } from "@/lib/provider/errors";
 import { loadCloses, recomputeInstrument } from "./eod";
 import { pool } from "./pool";
 import { scorePass } from "./score";
+import { listUniverseStocks } from "@/lib/universe/stocks";
 
 export interface BackfillDeps {
   repo: Repo;
@@ -75,16 +76,12 @@ export interface BackfillUniverseResult {
   scoreFailed: string[];
 }
 
-/** Back-fill NIFTY200 constituents plus watchlist stocks from `from`, then score once. */
+/** Back-fill the stock universe (Nifty 200, sector constituents, watchlist) from `from`, then score once. */
 export async function backfillUniverse(
   deps: BackfillDeps,
   opts: { from: string; onProgress?: (key: string, n: number) => void },
 ): Promise<BackfillUniverseResult> {
-  const [constituents, watch] = await Promise.all([deps.repo.listConstituents("NIFTY200"), deps.repo.listWatchlist()]);
-  const seen = new Set<number>();
-  const stocks = [...constituents, ...watch].filter(
-    (i) => i.type === "stock" && i.active && !seen.has(i.id) && !!seen.add(i.id),
-  );
+  const stocks = await listUniverseStocks(deps.repo);
   const failed: string[] = [];
   const unknown: Instrument[] = [];
   let done = 0;

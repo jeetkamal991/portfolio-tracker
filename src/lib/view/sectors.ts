@@ -17,6 +17,8 @@ export interface ConstituentRow {
 export interface SectorTile extends SectorRow {
   score: number | null;
   scoreLabel: ScoreLabel | null;
+  /** Score computed from incomplete inputs (a thin sector's 50); shown muted. */
+  scorePartial: boolean;
   rsi: number | null;
   rsVsNifty: number | null;
   constituentCount: number;
@@ -72,6 +74,7 @@ export function buildSectorTiles(
       ...row,
       score: d?.score ?? null,
       scoreLabel: d?.scoreLabel ?? null,
+      scorePartial: d?.scoreComponents?.partial ?? false,
       rsi: d?.rsi14 ?? null,
       rsVsNifty: d?.rsVsNifty ?? null,
       constituentCount: cons.length,

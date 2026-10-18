@@ -128,6 +128,14 @@ describe("backfillUniverse", () => {
     expect(spy.mock.calls.map((c) => c[0]).sort()).toEqual([2, 3]);
   });
 
+  it("includes sector constituents that are not in the Nifty 200", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2]);
+    await repo.replaceConstituents("NIFTY_MEDIA", [3]);
+    const res = await backfillUniverse({ repo, provider: provider({ T_AAA: 300, T_BBB: 300 }, []), now: NOW }, { from: "2019-01-01" });
+    expect(res.done).toBe(2);
+    expect((await repo.getDays(3, 1000)).length).toBe(300);
+  });
   it("a failing instrument is listed and does not stop the others", async () => {
     const repo = setup();
     await repo.replaceConstituents("NIFTY200", [2, 3]);

@@ -62,6 +62,15 @@ describe("buildSectorTiles", () => {
     const [t] = buildSectorTiles([row("NIFTY_IT")], latest, new Map());
     expect(t).toMatchObject({ score: 64, scoreLabel: "Bullish", rsi: 58.2, rsVsNifty: 0.012 });
   });
+  it("flags a partial score (thin sector) so it isn't shown as a confident one", () => {
+    // Only `partial` matters here; the component scores are irrelevant.
+    const latest = new Map([
+      ["THIN", sd(D, { close: 1, score: 50, scoreLabel: "Neutral", scoreComponents: { partial: true } as unknown as StoredDay["scoreComponents"] })],
+      ["FULL", sd(D, { close: 1, score: 64, scoreLabel: "Bullish", scoreComponents: { partial: false } as unknown as StoredDay["scoreComponents"] })],
+    ]);
+    const [thin, full, none] = buildSectorTiles([row("THIN"), row("FULL"), row("NONE")], latest, new Map());
+    expect([thin.scorePartial, full.scorePartial, none.scorePartial]).toEqual([true, false, false]);
+  });
   it("no members → empty previews; no latest day → null stats", () => {
     const [t] = buildSectorTiles([row("NIFTY_IT")], new Map(), new Map());
     expect(t).toMatchObject({ topGainers: [], topLosers: [], constituentCount: 0, score: null, scoreLabel: null, rsi: null, rsVsNifty: null });

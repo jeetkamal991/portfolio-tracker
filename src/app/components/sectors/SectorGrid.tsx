@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fmtPct, heatColor, pctTone } from "@/lib/view/dashboard";
 import type { ConstituentRow, SectorTile } from "@/lib/view/sectors";
-import { ScoreLabelChip } from "../popup/ScoreBadge";
 import { Label } from "../ui";
 import { IMPORT_MESSAGE } from "./ConstituentTable";
+import { SectorScore } from "./SectorScore";
 
 const PREVIEW_W = 256; // px, matches w-64
 
@@ -58,7 +58,7 @@ export function SectorGrid({ tiles, selected }: { tiles: SectorTile[]; selected:
                 {fmtPct(t.d1)}
               </span>
               <span className="flex flex-wrap items-center gap-2">
-                {t.scoreLabel ? <ScoreLabelChip label={t.scoreLabel} score={t.score ?? undefined} /> : null}
+                {t.scoreLabel ? <SectorScore tile={t} /> : null}
                 <span className="font-mono text-xs tabular-nums text-[var(--muted)]">RSI {t.rsi === null ? "—" : t.rsi.toFixed(1)}</span>
               </span>
             </Link>
