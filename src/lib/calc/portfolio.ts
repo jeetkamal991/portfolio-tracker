@@ -93,7 +93,11 @@ const toOpt = (v: unknown) => (v === undefined || v === null || (typeof v === "s
 const required = (msg: string) => z.preprocess(toNum, z.number({ error: msg }).positive(msg));
 const optional = z.preprocess(toOpt, z.number({ error: MSG.optional }).positive(MSG.optional).nullable());
 
-const isRealDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+const isRealDate = (s: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(+d) && d.toISOString().slice(0, 10) === s;
+};
 
 export function validateHoldingInput(
   input: unknown,

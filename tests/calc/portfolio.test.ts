@@ -121,6 +121,10 @@ describe("validateHoldingInput", () => {
     const junk = validateHoldingInput({ ...good, buyDate: "nope", qty: "abc" }, ctx);
     expect(junk.ok).toBe(false);
   });
+  it("rejects impossible calendar dates", () => {
+    const r = validateHoldingInput({ ...good, buyDate: "2026-02-30" }, ctx);
+    expect(r).toEqual({ ok: false, errors: { buyDate: "Enter a valid buy date" } });
+  });
   it("warns without blocking", () => {
     const sl = validateHoldingInput({ ...good, stopLoss: 120 }, ctx);
     expect(sl.ok && sl.warnings).toEqual(["Stop loss is at or above your buy price"]);
