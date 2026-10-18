@@ -109,6 +109,14 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async listMemberships() {
       return [...constituents].flatMap(([indexKey, ids]) => [...ids].map((instrumentId) => ({ indexKey, instrumentId })));
     },
+    async getDaysOn(ids, date) {
+      const out = new Map<number, StoredDay>();
+      for (const id of ids) {
+        const d = days.get(id)?.get(date);
+        if (d) out.set(id, { ...d });
+      }
+      return out;
+    },
     async getLatestDay(id) {
       const priced = [...(days.get(id)?.values() ?? [])].filter((d) => d.close !== null);
       priced.sort((a, b) => a.date.localeCompare(b.date));

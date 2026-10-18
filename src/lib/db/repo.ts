@@ -23,6 +23,8 @@ export interface Repo {
   replaceConstituents(indexKey: string, instrumentIds: number[]): Promise<void>;
   listConstituents(indexKey: string): Promise<Instrument[]>;
   listMemberships(): Promise<{ indexKey: string; instrumentId: number }[]>;
+  /** Rows on exactly `date` for the given ids, keyed by instrument id; ids with no row are absent. */
+  getDaysOn(instrumentIds: number[], date: string): Promise<Map<number, StoredDay>>;
   /** Newest row with a non-null close. */
   getLatestDay(instrumentId: number): Promise<StoredDay | null>;
   /** Writes importedPct only (creates the row if absent). */

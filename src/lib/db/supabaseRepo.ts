@@ -206,6 +206,17 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       }
       return out;
     },
+    async getDaysOn(instrumentIds, date) {
+      const out = new Map<number, StoredDay>();
+      for (const c of chunks([...new Set(instrumentIds)], 300)) {
+        const rows = check(
+          await db.from("daily_prices").select("*").eq("date", date).in("instrument_id", c),
+          "getDaysOn",
+        ) as Row[];
+        for (const r of rows) out.set(Number(r.instrument_id), toDay(r));
+      }
+      return out;
+    },
     async getLatestDay(instrumentId) {
       const r = check(
         await db.from("daily_prices").select("*").eq("instrument_id", instrumentId)

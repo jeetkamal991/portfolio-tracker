@@ -207,4 +207,13 @@ describe("memoryRepo ema20", () => {
     await r.upsertImportedPct([{ instrumentId: 1, date: "2026-01-03", importedPct: 0.1 }]);
     expect((await r.getLatestDay(1))!.date).toBe("2026-01-02");
   });
+  it("getDaysOn returns only rows on that date for the given ids", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "A", "A"), inst(2, "B", "B"), inst(3, "C", "C")] });
+    await r.upsertCandles(1, [candle("2026-01-01", 1), candle("2026-01-02", 2)]);
+    await r.upsertCandles(2, [candle("2026-01-01", 3)]);
+    await r.upsertCandles(3, [candle("2026-01-02", 4)]);
+    const m = await r.getDaysOn([1, 2], "2026-01-02");
+    expect([...m.keys()]).toEqual([1]);
+    expect(m.get(1)!.close).toBe(2);
+  });
 });
