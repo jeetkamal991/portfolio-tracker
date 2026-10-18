@@ -240,3 +240,15 @@ describe("memoryRepo holdings", () => {
     expect(await r.listHoldings()).toEqual([]);
   });
 });
+
+describe("memoryRepo.getDaysRange", () => {
+  it("returns ascending rows within the inclusive range per instrument", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa"), inst(2, "BBB", "Bbb")] });
+    await r.upsertCandles(1, ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"].map((d) => candle(d, 10)));
+    await r.upsertCandles(2, [candle("2026-01-03", 20)]);
+    const m = await r.getDaysRange([1, 2, 3], "2026-01-02", "2026-01-03");
+    expect(m.get(1)!.map((d) => d.date)).toEqual(["2026-01-02", "2026-01-03"]);
+    expect(m.get(2)!.map((d) => d.date)).toEqual(["2026-01-03"]);
+    expect(m.has(3)).toBe(false);
+  });
+});

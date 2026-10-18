@@ -2,6 +2,7 @@ import { effectiveLevel } from "@/lib/calc/levels";
 import { levelStrength } from "@/lib/calc/levelsDetail";
 import type { PatternBias } from "@/lib/calc/patterns";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
+import { parseReportContent } from "@/lib/content/claude";
 import type { Instrument, InstrumentType, Levels, ReportRow, StoredDay } from "@/lib/db/types";
 import { fmtPct, fmtPrice } from "./dashboard";
 
@@ -26,7 +27,7 @@ export interface PopupData {
   indicatorTable: { label: string; value: string }[];
   onWatchlist: boolean;
   reports: {
-    id: number; status: string; requestedAt: string; completedAt: string | null; content: unknown; error: string | null;
+    id: number; status: string; requestedAt: string; completedAt: string | null; content: unknown; error: string | null; parsed: ReturnType<typeof parseReportContent>;
   }[];
 }
 
@@ -153,7 +154,7 @@ export function buildPopupData(input: PopupInput): PopupData {
     onWatchlist: input.onWatchlist,
     reports: input.reports.map((r) => ({
       id: r.id, status: r.status, requestedAt: r.requestedAt, completedAt: r.completedAt,
-      content: r.content, error: r.error,
+      content: r.content, error: r.error, parsed: parseReportContent(r.content),
     })),
   };
 }

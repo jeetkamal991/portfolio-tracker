@@ -124,6 +124,17 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       }
       return out;
     },
+    async getDaysRange(ids, fromDate, toDate) {
+      const out = new Map<number, StoredDay[]>();
+      for (const id of new Set(ids)) {
+        const rows = [...(days.get(id)?.values() ?? [])]
+          .filter((d) => d.date >= fromDate && d.date <= toDate)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((d) => ({ ...d }));
+        if (rows.length) out.set(id, rows);
+      }
+      return out;
+    },
     async getLatestDay(id) {
       const priced = [...(days.get(id)?.values() ?? [])].filter((d) => d.close !== null);
       priced.sort((a, b) => a.date.localeCompare(b.date));

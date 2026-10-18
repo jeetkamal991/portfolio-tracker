@@ -26,6 +26,8 @@ export interface Repo {
   listMemberships(): Promise<{ indexKey: string; instrumentId: number }[]>;
   /** Rows on exactly `date` for the given ids, keyed by instrument id; ids with no row are absent. */
   getDaysOn(instrumentIds: number[], date: string): Promise<Map<number, StoredDay>>;
+  /** Rows with fromDate <= date <= toDate for the given ids, ascending per instrument; ids with no rows are absent. */
+  getDaysRange(instrumentIds: number[], fromDate: string, toDate: string): Promise<Map<number, StoredDay[]>>;
   /** Newest row with a non-null close. */
   getLatestDay(instrumentId: number): Promise<StoredDay | null>;
   /** Writes importedPct only (creates the row if absent). */

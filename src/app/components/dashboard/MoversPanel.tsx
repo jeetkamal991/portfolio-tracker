@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { MoversResponse } from "@/lib/api/movers";
 import { fmtPrice } from "@/lib/view/dashboard";
 import { moversLabel, type MoverEntry, type Movers } from "@/lib/view/movers";
+import { BreadthBar } from "../BreadthBar";
 import { StockLink } from "../popup/StockLink";
 import { useQuotes } from "../QuotesProvider";
 import { Chip, Label, Panel, PctText } from "../ui";
@@ -97,26 +98,11 @@ function MoverList({ title, rows, tone }: { title: string; rows: MoverEntry[]; t
   );
 }
 
-function Breadth({ breadth: b }: { breadth: Movers["breadth"] }) {
-  const w = (n: number) => `${b.total > 0 ? (n / b.total) * 100 : 0}%`;
+function Breadth({ breadth }: { breadth: Movers["breadth"] }) {
   return (
     <div className="flex flex-col gap-2">
       <Label>BREADTH</Label>
-      <div
-        className="flex h-2 overflow-hidden rounded-full bg-[var(--panel-2)]"
-        role="img"
-        aria-label={`${b.advances} advances, ${b.unchanged} unchanged, ${b.declines} declines`}
-      >
-        <div style={{ width: w(b.advances), background: "var(--up)" }} />
-        <div style={{ width: w(b.unchanged), background: "var(--muted)" }} />
-        <div style={{ width: w(b.declines), background: "var(--down)" }} />
-      </div>
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-mono text-xs tabular-nums">
-        <span className="text-[var(--up)]">▲ {b.advances} advances</span>
-        <span className="text-[var(--muted)]">{b.unchanged} unchanged</span>
-        <span className="text-[var(--down)]">▼ {b.declines} declines</span>
-        <span className="text-[var(--text)]">A/D {b.declines > 0 ? (b.advances / b.declines).toFixed(2) : "—"}</span>
-      </div>
+      <BreadthBar breadth={breadth} />
     </div>
   );
 }
