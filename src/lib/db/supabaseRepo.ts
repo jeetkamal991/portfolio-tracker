@@ -229,6 +229,26 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       }
       return out;
     },
+    async getDaysRange(instrumentIds, fromDate, toDate) {
+      const out = new Map<number, StoredDay[]>();
+      for (const c of chunks([...new Set(instrumentIds)], 300)) {
+        for (let from = 0; ; from += PAGE) {
+          const page = check(
+            await db.from("daily_prices").select("*").in("instrument_id", c)
+              .gte("date", fromDate).lte("date", toDate)
+              .order("instrument_id").order("date").range(from, from + PAGE - 1),
+            "getDaysRange",
+          ) as Row[];
+          for (const r of page) {
+            const id = Number(r.instrument_id);
+            const list = out.get(id);
+            if (list) list.push(toDay(r)); else out.set(id, [toDay(r)]);
+          }
+          if (page.length < PAGE) break;
+        }
+      }
+      return out;
+    },
     async getLatestDay(instrumentId) {
       const r = check(
         await db.from("daily_prices").select("*").eq("instrument_id", instrumentId)

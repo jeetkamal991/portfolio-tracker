@@ -33,3 +33,27 @@ describe("listInstruments paging", () => {
     expect(ranges).toHaveLength(1);
   });
 });
+
+describe("getDaysRange paging", () => {
+  it("pages past 1000 rows and groups rows per instrument", async () => {
+    const ranges: [number, number][] = [];
+    const total = 2100;
+    const db = {
+      from: () => {
+        const q: Record<string, unknown> = {};
+        q.select = () => q; q.order = () => q; q.in = () => q; q.gte = () => q; q.lte = () => q;
+        q.range = (a: number, b: number) => {
+          ranges.push([a, b]);
+          const data = [];
+          for (let i = a; i <= Math.min(b, total - 1); i++) data.push({ instrument_id: 1 + Math.floor(i / 1050), date: `d${i}` });
+          return Promise.resolve({ data, error: null });
+        };
+        return q;
+      },
+    } as unknown as SupabaseClient;
+    const m = await createSupabaseRepo(db).getDaysRange([1, 2], "a", "b");
+    expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+    expect(m.get(1)).toHaveLength(1050);
+    expect(m.get(2)).toHaveLength(1050);
+  });
+});
