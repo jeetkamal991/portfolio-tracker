@@ -68,7 +68,7 @@ export function PortfolioView({
 
   return (
     <div className="flex flex-col gap-4">
-      <SummaryCards totals={view.totals} live={open && view.totals.count > 0} />
+      <SummaryCards totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} />
       <WarningsBar warnings={view.warnings} />
       <HoldingsTable rows={view.rows} onAdd={openAdd} onEdit={openEdit} />
       {formKey && (

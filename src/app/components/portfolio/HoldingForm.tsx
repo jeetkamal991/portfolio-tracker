@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { mergeHolding, validateHoldingInput, type HoldingInput } from "@/lib/calc/portfolio";
 import type { PrefillData } from "@/lib/api/portfolio";
 import { istDate } from "@/lib/time/ist";
@@ -64,7 +64,7 @@ export function HoldingForm({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [qty, setQty] = useState(editing ? String(editing.qty) : "");
-  const [price, setPrice] = useState(editing ? String(editing.avgPrice) : "");
+  const [price, setPrice] = useState(editing ? level(editing.avgPrice) : "");
   const [date, setDate] = useState(editing ? editing.buyDate : today);
   const [sl, setSl] = useState(editing ? level(editing.stopLoss) : "");
   const [t1, setT1] = useState(editing ? level(editing.target1) : "");
@@ -100,36 +100,63 @@ export function HoldingForm({
   }, [pickedKey, mode]);
 
   // Modal behaviour: focus in, scroll lock, focus back to the opener on close.
+  // Esc and the Tab trap listen on the document: picking a stock or pressing "Change" unmounts
+  // the focused element, and focus can land on <body>, outside the dialog.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const first = dialogRef.current?.querySelector<HTMLElement>("input");
     first?.focus();
+
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (items.length === 0) return;
+      const firstEl = items[0];
+      const lastEl = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = dialog.contains(active) && active !== dialog;
+      if (e.shiftKey && (active === firstEl || !inside)) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && (active === lastEl || !inside)) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
     return () => {
+      document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
       if (opener && opener.isConnected) opener.focus();
     };
   }, [opener]);
 
-  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-    if (e.key !== "Tab") return;
-    const items = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((el) => el.offsetParent !== null);
-    if (items.length === 0) return;
-    const firstEl = items[0];
-    const lastEl = items[items.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && (active === firstEl || !dialogRef.current?.contains(active))) {
-      e.preventDefault();
-      lastEl.focus();
-    } else if (!e.shiftKey && (active === lastEl || !dialogRef.current?.contains(active))) {
-      e.preventDefault();
-      firstEl.focus();
-    }
+  // After a pick, focus Quantity; after "Change", the search box. Runs once the new fields exist.
+  const focusNext = useRef<"qty" | "search" | null>(null);
+  useEffect(() => {
+    const target = focusNext.current;
+    if (!target) return;
+    focusNext.current = null;
+    const el =
+      target === "qty"
+        ? document.getElementById(`${uid}-qty`)
+        : dialogRef.current?.querySelector<HTMLElement>('input[type="search"]');
+    el?.focus();
+  }, [pickedKey, uid]);
+
+  function pick(hit: PickHit) {
+    focusNext.current = "qty";
+    setPicked(hit);
   }
 
   const cmp = prefill?.cmp ?? null;
@@ -171,7 +198,9 @@ export function HoldingForm({
     setFormError(null);
     setErrors({});
     try {
-      const body = { key: picked.key, qty, avgPrice: price, buyDate: date, stopLoss: sl, target1: t1, target2: t2 };
+      // An untouched edit keeps the exact stored average; the box shows it to 2 decimals.
+      const avgPrice = editing && !priceTouched.current ? String(editing.avgPrice) : price;
+      const body = { key: picked.key, qty, avgPrice, buyDate: date, stopLoss: sl, target1: t1, target2: t2 };
       const res = await fetch(mode === "edit" ? `/api/holdings/${encodeURIComponent(picked.key)}` : "/api/holdings", {
         method: mode === "edit" ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
@@ -207,7 +236,7 @@ export function HoldingForm({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
-        onKeyDown={onKeyDown}
+        tabIndex={-1}
         className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -220,7 +249,7 @@ export function HoldingForm({
         </div>
 
         <div className="flex flex-col gap-4">
-          {mode === "add" && !picked && <StockPicker autoFocus onPick={setPicked} />}
+          {mode === "add" && !picked && <StockPicker autoFocus onPick={pick} />}
           {mode === "add" && picked && !editing && (
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="truncate font-medium">
@@ -229,6 +258,7 @@ export function HoldingForm({
               <button
                 type="button"
                 onClick={() => {
+                  focusNext.current = "search";
                   setPicked(null);
                   setPrefill(null);
                   setLoadError(null);

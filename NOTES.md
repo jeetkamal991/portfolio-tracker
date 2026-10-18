@@ -1,73 +1,64 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-18 — stage 4 complete and reviewed_
+_Updated 2026-10-18 — paused by the owner during stage 5 (Portfolio), Task 4 fix round_
+
+## Branches
+- `main` now carries stage 5 (it holds what was `feat/redesign-stage5`, plus an "Initial commit" adding NOTES.md and RUN_LOCALLY.txt). Remote: `origin` = github.com/jeetkamal991/portfolio-tracker; pushed up to `f7acd48`, Task 4 (`863b0e0`) and its fix round not pushed.
+- Older branches still local: `feat/foundation-dashboard` → `feat/redesign-stage2` (stages 2–4) → `feat/daily-sector-log` (reviewed).
 
 ## Done
-- **Foundation + redesign stage 1**: on `feat/foundation-dashboard`. This covers the dark "Nifty Pulse" look, the six tabs, the Nifty card, the chart and the sector strip.
-- **Redesign stage 2**: built, reviewed and fixed on `feat/redesign-stage2`, with 311 tests passing.
-  - Stored indicators: EMA 20, MACD, Bollinger, 20-day average volume, 52-week high/low, candlestick patterns.
-  - **Technical Score** (0–100, five labels), computed nightly in order: Nifty, then sectors, then stocks.
-  - **Stock pop-up**: four tabs, opened from the top-bar search, the Nifty card, watchlist names and sector names. It opens and closes instantly, and `?stock=KEY` links work.
-  - Code for the Nifty 200 universe and the niftyindices import.
-- **Supabase (Tracker1)**:
-  - Migrations 0003 and 0004 are applied.
-  - Index/sector back-fill from 2015 has run, so EMA 20 is filled (Nifty 22,892) and 14 instruments are scored.
-  - JIOFIN has been back-filled from 2019.
-- **Stage 3 (watchlist redesign + movers)**: merged into `feat/redesign-stage2` (fast-forward; the stage 3 branch is deleted). All 5 tasks are done, reviewed and fixed (339 tests):
-  - the watchlist row model;
-  - the redesigned Watchlist tab: EMA 20/50/200 coloured by price, trend chip, RSI, levels, score chip, 1-month sparkline, sorting by any column;
-  - `/api/movers`: Nifty 200 top 5 gainers/losers + breadth, live during market hours;
-  - the MARKET MOVERS panel on the Dashboard, between the chart and the sector strip;
-  - README sections for both.
-- **niftyindices import**: all 12 constituent lists downloaded and imported; `backfill --universe` re-run after the stage 4 fix: 230/230 stocks (Nifty 200 + 30 sector-only), no failures; all 127 sector members priced and scored for 16 Oct.
-- **Stage 4 (Sector Analysis)**: merged into `feat/redesign-stage2` (fast-forward; the stage 4 branch is deleted). All 5 tasks done, reviewed and fixed (362 tests):
-  - 11 sector tiles (day %, score, RSI) with a hover/focus preview of the top 3 gainers and losers;
-  - selected-sector detail (`?s=KEY`): 1D/1W/1M/3M, trend, RS vs Nifty 4W, score, View chart, constituent table;
-  - sector rotation ranking from weekly RS with week change and an 8-week rank sparkline;
-  - fix: thin sectors' placeholder score of 50 is dimmed ("partial data");
-  - fix (stage 2 bug): the backfill, EOD and score jobs now include sector constituents outside the Nifty 200 (30 stocks, e.g. most of Nifty Media), as the stage 2 plan intended.
+- **Foundation + redesign stage 1**: dark "Nifty Pulse" look, six tabs, Nifty card, chart, sector strip.
+- **Stage 2**: stored indicators (EMA 20, MACD, Bollinger, 20-day avg volume, 52-week high/low, candle patterns), the Technical Score (0–100, five labels, computed nightly), the stock pop-up (four tabs, `?stock=KEY` links), the Nifty 200 universe and the niftyindices import.
+- **Stage 3**: redesigned Watchlist tab (EMA 20/50/200, trend chip, RSI, levels, score, 1-month sparkline, sort by any column); `/api/movers` and the MARKET MOVERS panel on the Dashboard (Nifty 200 top 5 gainers/losers + breadth).
+- **Stage 4**: Sector Analysis tab — 11 sector tiles with a top-3 hover preview, the selected sector's detail and constituent table (`?s=KEY`), the sector rotation ranking; thin sectors' placeholder score is dimmed; the jobs also price the 30 sector stocks outside the Nifty 200.
+- **Daily Sector Log** (stage 4 addendum, branch `feat/daily-sector-log`): your spreadsheet reproduced on the Sectors tab — 6 month tabs, Total row, one row per trading day, NIFTY + 11 sectors in the sheet's order, green/red cells (`?m=2026-10`). Checked against `data/history.xlsx`: every Oct/Sep/Aug cell matches; the Oct NIFTY Total is +2.36% vs the sheet's +2.37% (the app sums full-precision values, the sheet its rounded entries). Task reviews and the final review are clean.
+- **Data (Supabase Tracker1)**:
+  - Migrations 0001–0005 applied (0005 = the empty `holdings` table, applied 2026-10-18; row-level security on, no policies — server only, like the other tables).
+  - All 12 niftyindices constituent lists imported; `backfill --universe` covers 230 stocks (Nifty 200 + 30 sector-only), all priced and scored for 16 Oct.
+- **Stage 5 (Portfolio) — Tasks 1–3 done and reviewed** on `feat/redesign-stage5`:
+  - Task 1 `6b978d9`, `734daf1`: portfolio maths — P/L, day P/L (buy-date-today rule), totals, merge averaging, status (SL hit / near SL / target hit / near target), input validation and warnings. One review fix: impossible dates like 30 Feb are rejected.
+  - Task 2 `dbd6322`: `holdings` storage; holdings join the data universe (priced and scored nightly); `addHolding` job (fetches history for a new stock, merges a repeat add); live quotes include holdings.
+  - Task 3 `9d969f5`: `POST /api/holdings`, `PUT`/`DELETE /api/holdings/[key]`, `GET /api/holdings/prefill/[key]`, the portfolio view model, sorting, and ₹ formatters.
+  - Checked live against Tracker1 (with a test RELIANCE holding, since deleted): prefill, add, merge (10 + 5 shares → exact weighted average ₹1,170.83), warnings, field errors and "Unknown stock" all behave correctly.
 
-## In progress
-- Nothing. Stages 2–4 are all on `feat/redesign-stage2`; the work tree is clean apart from these notes.
+## In progress — stage 5, Task 4 (Portfolio tab UI)
+- Built in `863b0e0`: summary cards, risk-alerts bar, sortable holdings table, add/edit form (modal) with stock search, prefill and "Use suggested levels"; the form opens from `?add=1`, `?add=KEY`, `?edit=KEY`. Tests 418/418, typecheck, lint and build pass.
+- Browser check (headless, real data, test holding): summary, table, "STOP LOSS NEAR" alert chip, day P/L, no NaN; Esc closes the form and clears the URL; 390 px — table scrolls with the stock column pinned, no page scroll.
+- **Fix round 1 (uncommitted, in the work tree):** Esc and the Tab trap now listen on the document, so they keep working after a stock is picked; focus moves to Quantity after a pick and to the search box after "Change"; the dialog has `tabIndex={-1}`. The edit form shows Buy price to 2 decimals, and an untouched price still saves the exact stored average. The LIVE chip needs at least one priced holding. Tests 418/418, typecheck, lint and build pass.
+- **Not yet checked in a browser:** the headless check needs a signed-in session (opening the page and APIs without auth for the check was refused).
+- **Next step when resuming:** browser-check fix round 1, commit it, a scoped re-review, then Task 5 and Task 6. The plan's ledger, with every decision so far, is in `.superpowers/sdd/2026-10-18-redesign-stage5-portfolio/progress.md`. Resume with: "Execute docs/superpowers/plans/2026-10-18-redesign-stage5-portfolio.md using subagent-driven development".
 
-## Pending
-1. **Stage 3, wrap-up**:
-   - **You:** look at the Dashboard and confirm the movers panel sits between the chart and the sector strip. I couldn't sign in to check: the saved browser login had expired. Until the Nifty 200 import it shows "Market movers appear after the Nifty 200 list is imported."
-   - **You:** check the Watchlist tab and movers panel at full width and phone width, and confirm before stage 4 (Sector Analysis) is planned.
-2. **You: niftyindices downloads.** Put files into `data/niftyindices/`:
-   - **Stock lists** go in `constituents/`: `NIFTY200.csv`, `NIFTY_AUTO.csv`, `NIFTY_BANK.csv`, `NIFTY_FIN.csv`, `NIFTY_FMCG.csv`, `NIFTY_IT.csv`, `NIFTY_MEDIA.csv`, `NIFTY_METAL.csv`, `NIFTY_PHARMA.csv`, `NIFTY_PSU_BANK.csv`, `NIFTY_PVT_BANK.csv`, `NIFTY_HEALTHCARE.csv`.
-   - **Sector history** goes in `history/`. Name each file with the sector key first, e.g. `NIFTY_AUTO_2015-2019.csv`. Only these 8 need it: AUTO, FIN, FMCG, MEDIA, METAL, PSU_BANK, PVT_BANK, HEALTHCARE.
-   - Then run `npm run import-niftyindices -- --dry-run` and send me the report before the real import.
-3. **After the import:**
-   - Download the 8 thin-sector **history** files by hand (automated download is blocked); until then those sectors show "—" for 1W/1M/3M, RSI and RS and are unranked in rotation.
-   - Run `npm run backfill -- --universe` (about 200 stocks, 15–30 min).
-   - Then time one EOD run (now ~230 stocks). If it takes over 45 s, the two-part EOD split (stage 2 Task 8) must be built before relying on the Vercel cron.
-4. **You: click-through checks** (I skipped these because they write to your live data):
-   - Sectors tab (signed in): clicking a tile selects it without jumping to the top; a Dashboard sector-strip tile lands on the right sector.
-   - On the Watchlist tab: add a stock, set and clear a manual level, remove a stock.
-   - In a pop-up: "Add to Watchlist" should fill in the score and chart, and "Request new report" should create a pending report.
-5. **Merge / publish.** Nothing is pushed:
-   - `feat/foundation-dashboard` → `feat/redesign-stage2` (which now holds stages 3 and 4) are stacked, neither merged to `main`.
-   - The repo has no GitHub remote, and the `gh` CLI isn't installed.
-6. **Owner steps still open:**
+## To do
+1. **Stage 5, remaining:**
+   - Task 4 fix round (above), then re-review.
+   - Task 5: "YOUR PORTFOLIO" snapshot on the Dashboard; "Add to Portfolio" / "In portfolio · 10 @ ₹100" button in the stock pop-up (opens `/portfolio?add=KEY` or `?edit=KEY`).
+   - Task 6: README (Portfolio features, P/L and status rules, migration 0005).
+   - Final whole-branch review, then merge options.
+2. **You — signed-in checks** (I can't sign in; the saved browser login expired):
+   - Portfolio: search "reli" → prefill strip shows CMP, sector, score and levels; "Use suggested levels" fills SL/T1/T2; save; add the same stock again → merge message and new average; edit SL near/above CMP → status and alert chip; remove with the two-step confirm; the form fits a phone screen.
+   - Sectors: clicking a tile selects it without jumping to the top; month tabs on the Daily Sector Log switch without a jump; a Dashboard sector-strip tile opens the right sector.
+   - Dashboard: the movers panel sits between the chart and the sector strip.
+   - Watchlist: add a stock, set and clear a manual level, remove a stock. Pop-up: "Add to Watchlist" and "Request new report".
+3. **You — data:**
+   - Download the 8 thin-sector **history** files from niftyindices.com by hand (the automated download is blocked) into `data/niftyindices/history/`, named with the key first (e.g. `NIFTY_AUTO_2015-2019.csv`): AUTO, FIN, FMCG, MEDIA, METAL, PSU_BANK, PVT_BANK, HEALTHCARE. Then `npm run import-niftyindices -- --dry-run`, and the real import. Until then those sectors show "—" for 1W/1M/3M, RSI and RS, a dimmed score of 50, no rotation rank, and "—" in the Daily Sector Log before October.
+   - Time one EOD run (now ~230 stocks plus holdings). If it takes over 45 s, the two-part EOD split must be built before relying on the Vercel cron.
+4. **Merge decision:** `feat/daily-sector-log` and `feat/redesign-stage5` are stacked on `feat/redesign-stage2`; decide once stage 5 is finished.
+5. **Owner steps still open:**
    - Rotate the Supabase service-role key; it was pasted in chat.
    - Supabase Auth: turn off "Allow new users to sign up".
    - Deploy to Vercel.
+6. **Git housekeeping:** a commit named "Initial commit" (`f7acd48`, 13:59) on `feat/redesign-stage5` added `NOTES.md` and `RUN_LOCALLY.txt`. It wasn't one of the plan's commits — keep it, or move those files out before merging, as you prefer.
 
 ## Known issues (minor, deferred)
-- Stage 4 review minors:
-  - Each sector-tile click reloads the whole page's data (~25 queries); selecting on the client would be faster.
-  - The 8-week rank sparkline skips weeks with no rank instead of showing a gap.
-  - `hasConstituents` in the sector loader is unused.
-  - The hover preview isn't linked to its tile for screen readers; tabbing away hides it even while hovered.
-  - A tile's score/RSI/RS can be from an older session than the header date, with no cue.
-- Stage 3 review minors:
-  - During market hours the Dashboard's first render waits on the ~200-stock Yahoo batch (up to ~3 s more if Yahoo is slow).
-  - In the movers lists, a stock Yahoo omits keeps yesterday's %; a quote with no % counts as "unchanged" in breadth.
-  - A watchlist stock with no prices at all doesn't show in the table, so it can't be removed there.
-  - During market hours the sparkline's last point is replaced by the live price rather than a new point added.
-  - Watchlist day % can come from a newer imported-only row than the price.
-- `npm run build` sometimes fails while fetching Google Fonts (next/font). Re-run it. If it keeps happening, host the fonts in the repo.
-- The 8 thin sectors have only 1–2 days of Yahoo data until their history is imported, so they score a partial 50 ("limited data").
-- Pop-up: pattern effects are shown for 10 sessions, but the score counts only the last 3. The payload is heavy (full history). 52-week values come from short history on thin sectors.
-- The EOD job still retries a symbol Yahoo doesn't know until the next `backfill --universe` marks it inactive.
+- Stage 5 so far:
+  - `dayPct <= -1` from a bad feed would make day P/L non-finite (treat as null).
+  - A brand-new stock gets no SL/target warnings on add (no stored price yet).
+  - The universe looks up each holding separately (fine at personal scale).
+  - Some API/prefill details are only indirectly tested.
+- Daily Sector Log: each month-tab or sector-tile click reloads the whole Sectors page data (~25 queries); picking a sector resets the month tab to the current month.
+- Stage 4: the 8-week rank sparkline skips weeks with no rank; `hasConstituents` is unused; the hover preview isn't linked to its tile for screen readers; a tile's values can be from an older session than the header date.
+- Stage 3: during market hours the Dashboard's first render waits on the ~200-stock Yahoo batch; in movers a stock Yahoo omits keeps yesterday's %; a watchlist stock with no prices can't be removed from the table; the live price replaces the sparkline's last point; watchlist day % can come from a newer imported-only row than the price.
+- `npm run build` sometimes fails fetching Google Fonts (next/font) — re-run it.
+- The pop-up shows pattern effects for 10 sessions but the score counts only 3; its payload is heavy (full history).
+- The EOD job retries a symbol Yahoo doesn't know until the next `backfill --universe` marks it inactive.
+- The dev server is stopped; start it with `npm run dev` (http://localhost:3000).

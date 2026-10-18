@@ -8,7 +8,8 @@ const STICKY = "sticky left-0 z-10 sm:static";
 const STICKY_BG = "max-sm:bg-[var(--panel)]";
 
 const shortDate = (iso: string) => fmtDate(iso).slice(0, 6);
-const tone = (v: number | null) => (v === null ? "text-[var(--muted)]" : v < 0 ? "text-[var(--down)]" : "text-[var(--up)]");
+// The cell background carries the up/down colour; the number stays in the text colour so it reads on every shade.
+const tone = (v: number | null) => (v === null ? "text-[var(--muted)]" : "text-[var(--text)]");
 
 /** `selected` is the sector kept in ?s=; `monthId` the validated ?m= (null → current month). */
 export function DailyLog({ months, monthId, selected }: { months: LogMonth[]; monthId: string | null; selected: string | null }) {

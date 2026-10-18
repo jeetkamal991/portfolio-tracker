@@ -54,7 +54,8 @@ export function StockPicker({ onPick, autoFocus = false }: { onPick: (hit: PickH
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] py-2 pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--up)] focus:outline-none"
       />
       {hits.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] text-sm shadow-lg">
+        // In the page flow, not absolute: the form's dialog scrolls, so an overlay would be clipped by it.
+        <ul className="mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--border)] bg-[var(--panel)] text-sm shadow-lg">
           {hits.map((h) => (
             <li key={h.key}>
               <button type="button" onClick={() => onPick(h)} className="w-full px-3 py-2 text-left hover:bg-slate-800/60">

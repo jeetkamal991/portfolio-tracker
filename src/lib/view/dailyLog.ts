@@ -58,6 +58,7 @@ export function buildDailyLog(series: Record<string, StoredDay[]>, sessionDates:
 
 export function logCellColor(value: number | null, kind: "day" | "total"): string {
   if (value === null) return "transparent";
-  const a = 0.08 + 0.62 * Math.min(Math.abs(value) / (kind === "day" ? 0.03 : 0.1), 1);
+  // Capped at 0.5 so the light cell text keeps at least 4.5:1 contrast on the strongest shade.
+  const a = 0.08 + 0.42 * Math.min(Math.abs(value) / (kind === "day" ? 0.03 : 0.1), 1);
   return value >= 0 ? `rgba(52,211,153,${a.toFixed(3)})` : `rgba(251,113,133,${a.toFixed(3)})`;
 }
