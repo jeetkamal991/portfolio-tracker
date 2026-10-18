@@ -1,0 +1,147 @@
+NIFTY DASHBOARD - HOW TO RUN IT LOCALLY
+=======================================
+
+All commands are typed in PowerShell (or any terminal) from the project
+folder:  D:\Git\Tracker
+
+If this computer is already set up (it is, as of 18 Oct 2026), skip to
+PART B. After pulling new code, do PART A0 first.
+
+
+PART A0 - AFTER PULLING NEW CODE (e.g. redesign stage 1)
+--------------------------------------------------------
+
+1. Install any new packages (stage 1 added lightweight-charts for the chart):
+   npm install
+
+2. Apply new database migrations. Stage 1 added one. In the Supabase
+   SQL Editor (project Tracker1), run the contents of:
+     supabase\migrations\0003_ema20.sql
+   Check it worked (should return one row):
+     select column_name from information_schema.columns
+     where table_name='daily_prices' and column_name='ema20';
+
+3. Recompute indicators so EMA 20 fills in over full history:
+   npm run backfill -- --from 2015-01-01
+
+   Until steps 2-3 are done the app still runs, but EMA 20 shows "-" and the
+   price update (PART C) fails.
+
+
+PART A - ONE-TIME SETUP (new computer or fresh copy of the project)
+-------------------------------------------------------------------
+
+1. Install Node.js 20.12 or newer from https://nodejs.org
+   Check it:   node -v
+
+2. Open a terminal in the project folder and install the packages:
+   npm install
+
+3. Create the settings file .env.local (it is private and never committed):
+   copy .env.example .env.local
+   Then open .env.local in a text editor and fill in the four values:
+
+     NEXT_PUBLIC_SUPABASE_URL       Supabase -> Project Settings -> API
+     NEXT_PUBLIC_SUPABASE_ANON_KEY  Supabase -> Project Settings -> API Keys
+                                    (the publishable / anon key)
+     SUPABASE_SERVICE_ROLE_KEY      Supabase -> Project Settings -> API Keys
+                                    (the service_role / secret key - keep private)
+     CRON_SECRET                    any long random string. Make one with:
+                                    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+4. Database (only for a brand-new Supabase project; Tracker1 is already done):
+   In the Supabase SQL Editor, run these three files in order:
+     supabase\migrations\0001_init.sql
+     supabase\migrations\0002_drop_open_policies.sql
+     supabase\migrations\0003_ema20.sql
+
+5. Create your login (one time, in the Supabase dashboard):
+   Authentication -> Users -> Add user  (your email + a password)
+   Authentication -> Sign In / Providers -> turn OFF "Allow new users to sign up"
+
+6. Load the data (only for a brand-new database; Tracker1 already has it).
+   Put these two files in the data\ folder first:
+     data\EQUITY_L.csv   (NSE "Securities available for Equity segment")
+     data\history.xlsx   (your manual daily log)
+   Then run, one at a time:
+     npm run seed                              loads indices + NSE stock list
+     npm run backfill -- --from 2015-01-01     downloads daily prices (a few minutes)
+     npm run import-history -- --dry-run       checks your sheet, writes nothing
+     npm run import-history                    writes your sheet's values
+     npm run compare-import                    should end with mismatches=0
+
+
+PART B - RUN THE APP
+--------------------
+
+1. Start the app:
+   npm run dev
+
+2. Open http://localhost:3000 in your browser.
+   You will be sent to the login page. Sign in with the email and password
+   from Part A step 5.
+
+   Tabs: Dashboard (Nifty card, chart, sector strip), Portfolio (coming soon),
+   Watchlist, Sector Analysis, Market (Today by Claude), Alerts (coming soon).
+
+3. Stop the app: press Ctrl + C in the terminal.
+
+   If it says port 3000 is already in use, another copy is running.
+   Close that terminal, or start on another port:
+   npm run dev -- -p 3001     (then open http://localhost:3001)
+
+   To find and stop the other copy (PowerShell):
+   netstat -ano | findstr :3000          the last number on the line is the PID
+   Stop-Process -Id <PID>
+
+   If the page looks unstyled or broken after running "npm run build",
+   stop the app, delete the build folder and start again:
+   Remove-Item -Recurse -Force .next
+   npm run dev
+
+
+PART C - UPDATE PRICES BY HAND (optional)
+-----------------------------------------
+
+Once deployed, prices update automatically at 4:30 PM IST on weekdays.
+To update them on your own computer instead, keep "npm run dev" running and,
+in a second terminal, run (replace <CRON_SECRET> with the value from .env.local):
+
+   curl.exe -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/eod
+
+It replies with a status:
+   ok           new prices saved
+   no_session   no new trading day (weekend or holiday) - nothing to do
+   partial      some instruments failed; the message names them
+
+If the 8 "thin" sectors (Auto, Fin, FMCG, Media, Metal, PSU Bank, Pvt Bank,
+Healthcare) still show "-", Yahoo was not serving their history. Re-run later:
+   npm run verify-tickers                 shows OK or THIN per instrument
+   npm run backfill -- --from 2015-01-01
+
+
+PART D - CHECKS (optional)
+--------------------------
+
+   npm test           runs the automated tests (should all pass: 157)
+   npm run typecheck  checks the TypeScript types
+   npm run lint       checks code style
+   npm run build      checks the app builds for production
+                      (don't run it while "npm run dev" is running)
+
+   If "npm run build" fails with an error in next/font ("Cannot read
+   properties of null"), it is a Google Fonts download hiccup: run it again.
+
+
+TROUBLESHOOTING
+---------------
+
+- Errors like "SUPABASE_SERVICE_ROLE_KEY is not set", or a 500 error page:
+  .env.local is missing a value (Part A step 3).
+- Login says "Wrong email or password": check the user exists in
+  Supabase -> Authentication -> Users.
+- Page loads but shows "No data yet": the database is empty - do Part A step 6.
+- "Data as of" badge is amber: the latest prices are older than the last
+  trading day - run Part C.
+
+More detail (deploy to Vercel, security notes): see README.md
