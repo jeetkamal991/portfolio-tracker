@@ -75,9 +75,9 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
-| `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, sector strip |
+| `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, sector strip |
 | `/portfolio` | Portfolio | Coming soon |
-| `/watchlist` | Watchlist | Add stock, watchlist table with manual level overrides |
+| `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector heatmap (`?s=<KEY>` outlines one sector) |
 | `/market` | Market | Today by Claude |
 | `/alerts` | Alerts | Coming soon |
@@ -86,9 +86,19 @@ The top bar holds the tabs (a horizontal scroller under 1024 px). The status str
 
 The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) v5 (Apache-2.0): candlesticks, ranges 1D-ALL on daily bars, EMA 20/50/200 overlays, and a Volume (with 20-day average) or RSI lower pane.
 
+### Watchlist
+
+Columns: stock, price, day %, EMA 20/50/200 (each green when the price is at or above it, red below; EMA 200 shows "—" with a "not enough history" tooltip for a stock with too few sessions), trend chip (above all / mixed / below all three EMAs), RSI 14, support and resistance (a manual value overrides the auto one), Technical Score with its label, and a 1-month sparkline. Click any column header to sort; click it again to reverse. Empty values always sort last, ties sort by stock key, and the default is score, highest first. During market hours the price and day % update from live quotes every 60 s; a stock Yahoo omits keeps its stored values.
+
+### Market movers
+
+The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and losers by day % and an advance/decline breadth bar with the A/D ratio. It comes from `GET /api/movers`. During market hours it overlays one batched live quote call (refreshed every 60 s and labelled LIVE); otherwise it shows the newest stored session, dated from NIFTY 50, so weekends and holidays show the last trading day. A stock with a zero move counts as unchanged and appears in neither list.
+
+The panel depends on the Nifty 200 import (Stage 2 above). Until `NIFTY200.csv` has been imported it says "Market movers appear after the Nifty 200 list is imported."; with the list but no prices for the session date it says "No session data yet."
+
 ### Stock pop-up
 
-Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names and sector heatmap names. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
+Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names and sector heatmap names. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
 
 ## Known data caveat
 
