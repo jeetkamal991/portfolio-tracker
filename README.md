@@ -32,7 +32,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0002_drop_open_policies.sql` - drops the `owner_all` policies. RLS stays enabled with no policies, so the anon key and signed-in sessions cannot read or write any table. All data access goes through server code with the service-role key, which bypasses RLS.
    - `supabase/migrations/0003_ema20.sql` - adds the stored `ema20` column. Apply it **before** deploying code that writes EMA 20 (the EOD job and back-fill fail on the unknown column otherwise), then re-run `npm run backfill -- --from 2015-01-01` to compute EMA 20 over full history for the indices and sectors.
    - `supabase/migrations/0004_indicators_score_universe.sql` - adds the new indicator columns (MACD, Bollinger, 52-week range, volume average), the stored Technical Score, and the `index_constituents` table. Apply it **before** deploying stage 2 code.
-   A new project applies all four in order. The owner's Tracker1 project already has 0003 and 0004.
+   - `supabase/migrations/0005_holdings.sql` - adds the `holdings` table (one row per stock: quantity, average price, buy date, optional stop loss and targets). Row level security is on with no policies, like the other tables. Apply it **before** deploying stage 5 code.
+   A new project applies all five in order. The owner's Tracker1 project already has 0003 to 0005.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -75,8 +76,8 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
-| `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, sector strip |
-| `/portfolio` | Portfolio | Coming soon |
+| `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, YOUR PORTFOLIO snapshot, sector strip |
+| `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude |
@@ -85,6 +86,16 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
 The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview/lightweight-charts) v5 (Apache-2.0): candlesticks, ranges 1D-ALL on daily bars, EMA 20/50/200 overlays, and a Volume (with 20-day average) or RSI lower pane.
+
+### Portfolio
+
+The Portfolio tab tracks the owner's holdings, one position per stock.
+
+- **Adding.** "Add holding" opens a form with a stock search. Picking a stock fills in the current price, score, and suggested stop loss and targets from recent swing lows and highs ("Use suggested levels"). Quantity must be a whole number above 0, the buy date can't be in the future, and stop loss / targets are optional. The form warns, without blocking, when the stop loss is at or above the buy price, Target 1 is already below the current price, or Target 2 is not above Target 1. Adding a stock you already hold merges into one position: the quantities add, the average price is the weighted average, the earlier buy date is kept, and any new stop loss or target replaces the old one.
+- **New stocks.** A stock with no stored prices gets its history fetched when it is added. From then on, holdings are priced and scored by the nightly EOD job and included in the live quotes during market hours.
+- **P/L.** Invested = quantity × average price; current value = quantity × CMP (the live price during market hours, else the last close); P/L = value − invested, and P/L % is against invested. Today's P/L is measured from the previous close, or from the buy price for a stock bought today. Totals leave out holdings with no price yet (shown as "without price").
+- **Status and alerts.** Only the stop loss and Target 1 drive the status: SL hit (CMP at or below the stop loss), Target hit (CMP at or above Target 1), Near SL / Near target (within 2% of CMP), otherwise OK. Hits come before near warnings in the risk-alerts bar.
+- **Elsewhere.** The Dashboard's YOUR PORTFOLIO panel shows the same totals and the top 4 holdings by value, or an "Add your first holding" button when empty. In the stock pop-up, "Add to Portfolio" opens the add form with the stock picked; for a held stock the button reads "In portfolio · 10 @ ₹100" and opens the edit form.
 
 ### Watchlist
 
