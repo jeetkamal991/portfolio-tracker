@@ -84,6 +84,7 @@ Keep everything the foundation does (real Yahoo data, Supabase history, EOD job,
 - **Select** a tile (click/tap) to open the detail panel below the grid: 1D/1W/1M/3M returns, trend vs EMA 50/200, RS vs Nifty, a "View chart" button (opens pop-up), and the **constituent table** (stock, CMP, day %, score, trend chip, RSI) sorted by day % descending, rows open the pop-up.
 - **Rotation** sub-section: sectors ranked by RS vs Nifty (4-week), with rank change vs last week's Friday snapshot and an 8-week rank sparkline. This replaces the separate Rotation page in the original spec's build order.
 - Selected sector is kept in the URL (`/sectors?s=NIFTY_IT`).
+- **Daily Sector Log** (added 2026-10-18 at the owner's request): the owner's manual spreadsheet reproduced automatically — month tabs for the last 6 months (newest first), a Total row (sum of daily %, compounded on hover), one row per trading day, columns NIFTY + the 11 sectors in the sheet's order, green/red heat cells. Values are stored `pct_change`, falling back to the imported manual log.
 
 ### 4.7 Market (`/market`)
 - **Today by Claude:** summary, top 3 market happenings with source links, watchlist & portfolio news (≤5 items). Written by the daily Claude scheduled task (original spec §5) — the task now also covers portfolio stocks. Empty: "No summary for today".

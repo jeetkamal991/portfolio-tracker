@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship redesign spec stage 4 (§4.6): the Sector Analysis tab with a tile grid of the 11 sectors (day %, score, RSI, colour by move), a hover preview of each sector's top 3 gainers and losers, a selected-sector detail panel (returns, trend, RS vs Nifty, "View chart", full constituent table), and a rotation ranking with week-on-week rank change and an 8-week rank sparkline.
+**Goal:** Ship redesign spec stage 4 (§4.6): the Sector Analysis tab with a tile grid of the 11 sectors (day %, score, RSI, colour by move), a hover preview of each sector's top 3 gainers and losers, a selected-sector detail panel (returns, trend, RS vs Nifty, "View chart", full constituent table), a rotation ranking with week-on-week rank change and an 8-week rank sparkline, and (owner request 2026-10-18) a **Daily Sector Log**: the owner's manual spreadsheet reproduced automatically, with month tabs for the last 6 months.
 
 **Architecture:** One server loader (`loadSectorAnalysis`) reads, in a fixed small number of queries, each sector's last 70 days, every sector's constituents and all constituents' rows on the latest session. Pure builders turn that into tiles, constituent rows and rotation rows. The page is a server component; the grid is a client component for hover/focus previews; selection lives in `?s=KEY`. Rotation is computed on the fly from stored `rs_vs_nifty` at each week's last session, so no new job or table is needed.
 
@@ -46,8 +46,10 @@ src/app/components/sectors/SectorGrid.tsx      (client: tiles + hover/focus prev
 src/app/components/sectors/SectorDetail.tsx
 src/app/components/sectors/ConstituentTable.tsx
 src/app/components/sectors/RotationPanel.tsx
+src/lib/view/dailyLog.ts           buildDailyLog
+src/app/components/sectors/DailyLog.tsx        (client: month tabs + heat table)
 src/app/components/SectorHeatmap.tsx           (deleted when nothing imports it)
-tests/view/sectors.test.ts, tests/calc/rotation.test.ts, tests/api/sectors.test.ts
+tests/view/sectors.test.ts, tests/calc/rotation.test.ts, tests/api/sectors.test.ts, tests/view/dailyLog.test.ts
 ```
 
 ---
@@ -161,7 +163,53 @@ Rules per Global Constraints. `buildRotation` evaluates `weeks + 1` week ends (t
 
 ---
 
-### Task 5: Docs and owner check
+### Task 5: Daily Sector Log (owner's spreadsheet, automated)
 
-- [ ] **Step 1:** README: Sector Analysis features, the rotation rule (week-end sessions from stored RS), and that thin sectors need the niftyindices history files. Commit `docs: stage 4`.
+Reproduces the owner's manual sheet (`data/history.xlsx` layout): one tab per month, a Total row, one row per trading day, a column per index, green/red heat cells.
+
+**Files:** Create `src/lib/view/dailyLog.ts`, `src/app/components/sectors/DailyLog.tsx`; Modify `src/lib/api/sectors.ts` (load 140 days instead of 70 for Nifty and sectors, add `dailyLog` to `SectorAnalysis`), `src/app/(app)/sectors/page.tsx`; Test `tests/view/dailyLog.test.ts`, extend `tests/api/sectors.test.ts`
+
+**Interfaces (Produces):**
+```ts
+const LOG_COLUMNS: { key: string; label: string }[] = [
+  { key: "NIFTY50", label: "NIFTY" }, { key: "NIFTY_AUTO", label: "AUTO" }, { key: "NIFTY_BANK", label: "BANK" },
+  { key: "NIFTY_FIN", label: "Financial" }, { key: "NIFTY_FMCG", label: "FMCG" }, { key: "NIFTY_IT", label: "IT" },
+  { key: "NIFTY_MEDIA", label: "MEDIA" }, { key: "NIFTY_METAL", label: "METAL" }, { key: "NIFTY_PHARMA", label: "PHARMA" },
+  { key: "NIFTY_PSU_BANK", label: "PSU BANK" }, { key: "NIFTY_PVT_BANK", label: "PVT BANK" }, { key: "NIFTY_HEALTHCARE", label: "HEALTHCARE" },
+];
+interface LogMonth {
+  id: string;                    // "2026-10"
+  label: string;                 // "OCT"  (add the year, e.g. "DEC 2025", only when the 6 months span two years)
+  rows: { date: string; values: Record<string, number | null> }[];   // ascending by date
+  totals: Record<string, { sum: number | null; compound: number | null }>;
+}
+function buildDailyLog(series: Record<string, StoredDay[]>, sessionDates: string[], now: Date, months = 6): LogMonth[]
+function logCellColor(value: number | null, kind: "day" | "total"): string
+```
+Rules:
+- Months: the current IST month and the 5 before it, **newest first**. A month with no sessions yet still appears with no rows.
+- Rows: every Nifty session date (`sessionDates`) in that month, ascending. Cell value = that key's stored `pctChange ?? importedPct` on that date, else null.
+- `sum` = sum of non-null values in the column for the month (matches the owner's sheet Total); `compound` = ∏(1 + v) − 1 over the same values; both null when the column has no values.
+- `logCellColor`: null → transparent; otherwise green (`rgba(52,211,153,a)`) for ≥ 0 and red (`rgba(251,113,133,a)`) for < 0 with `a = 0.08 + 0.62 × min(|v| / S, 1)`, S = 0.03 for `day`, 0.10 for `total`.
+
+- [ ] **Step 1: Write failing tests**
+  - `now` = 2026-10-18 → month ids `["2026-10","2026-09","2026-08","2026-07","2026-06","2026-05"]`, labels `OCT … MAY`; `now` = 2026-02-10 → labels include the year (`FEB 2026`, `JAN 2026`, `DEC 2025`, …).
+  - OCT rows follow `sessionDates` in October ascending; a sector with no row on a date → null; imported-only row (`pctChange null`, `importedPct 0.0123`) → 0.0123.
+  - Totals on values `[0.01, −0.02, 0.005]` → `sum −0.005`, `compound` = 1.01 × 0.98 × 1.005 − 1 (≈ −0.005249); an all-null column → both null.
+  - Fixture with Nifty October values `[−0.0088, 0.0060, 0.0098, −0.0076, −0.0164, 0.0130, −0.0070, 0.0160, −0.0044, 0.0166, 0.0065]` → `sum` 0.0237 (the owner's OCT sheet Total, 2.37%).
+  - `logCellColor(0.03, "day")` equals `logCellColor(0.05, "day")` (saturated); `logCellColor(null, "day")` is transparent; negative values are red.
+- [ ] **Step 2: Run** — FAIL. **Step 3: Implement** the builder; extend the loader (140 days, `dailyLog: buildDailyLog(series, niftyPricedDates, new Date())`); then the component.
+- [ ] **Step 4: DailyLog component** (client), placed on the Sectors page below the rotation panel, Panel titled `DAILY SECTOR LOG`:
+  - Month tabs along the bottom edge of the panel styled like spreadsheet sheet tabs (active tab `--up` text with a top border), newest first; selected month kept in `?m=2026-10` (default current month; unknown value → current).
+  - Table: sticky first column `Date` (formatted `16 Oct`), 12 value columns in `LOG_COLUMNS` order; header row mono uppercase; first body row `Total` (bold, sum shown; hover title `Compounded: +2.33%`), then one row per session. Cells: mono tabular `±0.00%`, background `logCellColor`, "—" for null. Wrapper `overflow-x-auto`; on phones the Date column stays pinned.
+  - A month with no rows → "No trading days recorded for this month yet."
+- [ ] **Step 5: Run** `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` — PASS.
+- [ ] **Step 6: Verify manually:** OCT tab matches the owner's sheet day by day for the imported dates (e.g. 08 Oct NIFTY −1.64%, METAL −3.55%) and its Total row shows NIFTY +2.37%; SEP and AUG match their sheet tabs (note the three days the manual log lacked — 28 Aug, 21 Sep, 22 Sep — now appear filled from Yahoo, so those months' Totals can differ slightly from the sheet); older months fill from Yahoo / niftyindices history (thin sectors show "—" until their history files are imported); tabs switch without a page jump; 390 px scrolls inside the panel.
+- [ ] **Step 7: Commit** `feat(ui): daily sector log with month tabs`
+
+---
+
+### Task 6: Docs and owner check
+
+- [ ] **Step 1:** README: Sector Analysis features, the rotation rule (week-end sessions from stored RS), the Daily Sector Log, and that thin sectors need the niftyindices history files. Commit `docs: stage 4`.
 - [ ] **Step 2 (owner):** check the Sector Analysis tab at full width and phone width before stage 5 (Portfolio) is planned.
