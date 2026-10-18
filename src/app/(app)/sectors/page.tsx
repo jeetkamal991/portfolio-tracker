@@ -1,6 +1,7 @@
 import { loadSectorAnalysis } from "@/lib/api/sectors";
 import { getRepo } from "@/lib/api/server";
 import { fmtDate } from "@/lib/view/dashboard";
+import { DailyLog } from "../../components/sectors/DailyLog";
 import { RotationPanel } from "../../components/sectors/RotationPanel";
 import { SectorDetail } from "../../components/sectors/SectorDetail";
 import { SectorGrid } from "../../components/sectors/SectorGrid";
@@ -8,8 +9,8 @@ import { Label } from "../../components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function SectorsPage({ searchParams }: { searchParams: Promise<{ s?: string }> }) {
-  const { s } = await searchParams;
+export default async function SectorsPage({ searchParams }: { searchParams: Promise<{ s?: string; m?: string }> }) {
+  const { s, m } = await searchParams;
   const a = await loadSectorAnalysis(getRepo());
   // An unknown ?s= selects nothing (no fallback to the first tile).
   const selected = a.tiles.find((t) => t.key === s) ?? null;
@@ -27,6 +28,7 @@ export default async function SectorsPage({ searchParams }: { searchParams: Prom
         <p className="text-sm text-[var(--muted)]">Select a sector to see its stocks.</p>
       )}
       <RotationPanel rows={a.rotation} />
+      <DailyLog months={a.dailyLog} monthId={m ?? null} selected={selected?.key ?? null} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { Repo } from "@/lib/db/repo";
 import type { StoredDay } from "@/lib/db/types";
 import { SECTOR_KEYS } from "@/lib/instruments";
 import { buildSectorRows } from "@/lib/view/dashboard";
+import { buildDailyLog, type LogMonth } from "@/lib/view/dailyLog";
 import { buildConstituentRows, buildSectorTiles, type ConstituentRow, type SectorTile } from "@/lib/view/sectors";
 
 export interface SectorAnalysis {
@@ -13,10 +14,12 @@ export interface SectorAnalysis {
   rotation: RotationRow[];
   /** Any sector has members. */
   hasConstituents: boolean;
+  /** The Daily Sector Log: the current month and 5 before, newest first. */
+  dailyLog: LogMonth[];
 }
 
-// ~70 sessions: the 5/21/63-session returns and 9+ week ends for the rotation.
-const DAYS = 70;
+// ~140 sessions: the 5/21/63-session returns and 9+ week ends for the rotation, and 6 months of daily log.
+const DAYS = 140;
 
 /**
  * Fixed query count: one instruments query, getDays for each sector and Nifty, one
@@ -58,5 +61,10 @@ export async function loadSectorAnalysis(repo: Repo): Promise<SectorAnalysis> {
     constituents,
     rotation: buildRotation(series, niftyDates),
     hasConstituents: memberLists.some((m) => m.length > 0),
+    dailyLog: buildDailyLog(
+      { NIFTY50: niftyDays, ...Object.fromEntries(series.map((s) => [s.key, s.days])) },
+      niftyDates,
+      new Date(),
+    ),
   };
 }

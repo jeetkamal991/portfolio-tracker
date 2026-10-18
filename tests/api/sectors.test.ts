@@ -52,6 +52,22 @@ describe("loadSectorAnalysis", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0][1]).toBe(D2);
   });
+  it("builds the daily log from Nifty session dates and sector pct changes", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-18T06:00:00Z"));
+    try {
+      const repo = await setup();
+      await repo.upsertIndicators(1, [ind(D2, 0.004)]);
+      await repo.upsertIndicators(2, [ind(D2, -0.01)]);
+      const [oct] = (await loadSectorAnalysis(repo)).dailyLog;
+      expect(oct.id).toBe("2026-10");
+      expect(oct.rows.map((r) => r.date)).toEqual([D1, D2]);
+      expect(oct.rows[1].values).toMatchObject({ NIFTY50: 0.004, NIFTY_IT: -0.01, NIFTY_BANK: null });
+      expect(oct.totals.NIFTY50.sum).toBeCloseTo(0.004, 10);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("no memberships → hasConstituents false and empty lists", async () => {
     const a = await loadSectorAnalysis(await setup({ memberships: false }));
     expect(a.hasConstituents).toBe(false);
@@ -60,6 +76,8 @@ describe("loadSectorAnalysis", () => {
   });
   it("empty database → no session, no tiles", async () => {
     const a = await loadSectorAnalysis(createMemoryRepo());
-    expect(a).toEqual({ sessionDate: null, tiles: [], constituents: {}, rotation: [], hasConstituents: false });
+    expect(a).toMatchObject({ sessionDate: null, tiles: [], constituents: {}, rotation: [], hasConstituents: false });
+    expect(a.dailyLog).toHaveLength(6);
+    expect(a.dailyLog.every((m) => m.rows.length === 0)).toBe(true);
   });
 });
