@@ -30,9 +30,11 @@ function EventTile({ n, e }: { n: number; e: MarketEvent }) {
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-sm font-semibold">{e.title}</span>
         <p className="text-sm leading-relaxed text-[var(--muted)]">{e.explanation}</p>
-        <div>
-          <SourceChip url={e.sourceUrl} />
-        </div>
+        {e.sourceUrl && (
+          <div>
+            <SourceChip url={e.sourceUrl} />
+          </div>
+        )}
       </div>
     </li>
   );
