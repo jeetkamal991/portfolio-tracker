@@ -1,8 +1,18 @@
 /** Inline SVG trend line; green when the last value ≥ the first, red otherwise. Fewer than 2 values → "—". */
-export function Sparkline({ values, width = 96, height = 28 }: { values: number[]; width?: number; height?: number }) {
+export function Sparkline({
+  values,
+  width = 96,
+  height = 28,
+  label = "1-month trend",
+}: {
+  values: number[];
+  width?: number;
+  height?: number;
+  label?: string;
+}) {
   if (values.length < 2) {
     return (
-      <span aria-label="1-month trend" className="inline-block text-center font-mono text-[var(--muted)]" style={{ width }}>
+      <span aria-label={label} className="inline-block text-center font-mono text-[var(--muted)]" style={{ width }}>
         —
       </span>
     );
@@ -18,7 +28,7 @@ export function Sparkline({ values, width = 96, height = 28 }: { values: number[
   const lastX = x(values.length - 1);
   const lastY = y(values[values.length - 1]!);
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="1-month trend" className="block">
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className="block">
       <polygon points={`${x(0).toFixed(1)},${height} ${points} ${lastX.toFixed(1)},${height}`} fill={colour} fillOpacity={0.12} />
       <polyline points={points} fill="none" stroke={colour} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={lastX} cy={lastY} r={2} fill={colour} />

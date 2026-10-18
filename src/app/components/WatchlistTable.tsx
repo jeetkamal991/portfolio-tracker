@@ -2,20 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { EmaTrend } from "@/lib/calc/levels";
 import { fmtPct, fmtPrice, parseLevelInput, pctTone } from "@/lib/view/dashboard";
 import { buildWatchRow, sortWatchRows, type WatchInput, type WatchRow, type WatchSortKey } from "@/lib/view/watchlist";
 import { useQuotes } from "./QuotesProvider";
 import { ScoreLabelChip } from "./popup/ScoreBadge";
 import { StockLink } from "./popup/StockLink";
 import { Sparkline } from "./Sparkline";
-import { Chip, Panel, type Tone } from "./ui";
+import { TrendChip } from "./TrendChip";
+import { Panel } from "./ui";
 
-const TREND: Record<EmaTrend, { tone: Tone; label: string }> = {
-  above_all: { tone: "up", label: "Above all" },
-  mixed: { tone: "warn", label: "Mixed" },
-  below_all: { tone: "down", label: "Below all" },
-};
 
 type Side = "support" | "resistance";
 type Dir = "asc" | "desc";
@@ -217,7 +212,7 @@ export function WatchlistTable({ inputs }: { inputs: WatchInput[] }) {
                   <td className="px-2">{emaCell(r.ema20, r.above20, 20)}</td>
                   <td className="px-2">{emaCell(r.ema50, r.above50, 50)}</td>
                   <td className="px-2">{emaCell(r.ema200, r.above200, 200, r.notEnoughHistory ? "not enough history" : undefined)}</td>
-                  <td className="px-2">{r.trend ? <Chip tone={TREND[r.trend].tone}>{TREND[r.trend].label}</Chip> : "—"}</td>
+                  <td className="px-2"><TrendChip trend={r.trend} /></td>
                   <td
                     className={`px-2 font-mono tabular-nums ${
                       r.rsi !== null && (r.rsi > 70 || r.rsi < 30) ? "text-[var(--warn)]" : ""

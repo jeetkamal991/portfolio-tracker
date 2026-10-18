@@ -1,23 +1,32 @@
+import { loadSectorAnalysis } from "@/lib/api/sectors";
 import { getRepo } from "@/lib/api/server";
-import { buildSectorRows } from "@/lib/view/dashboard";
-import { SectorHeatmap } from "../../components/SectorHeatmap";
+import { fmtDate } from "@/lib/view/dashboard";
+import { RotationPanel } from "../../components/sectors/RotationPanel";
+import { SectorDetail } from "../../components/sectors/SectorDetail";
+import { SectorGrid } from "../../components/sectors/SectorGrid";
+import { Label } from "../../components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function SectorsPage({ searchParams }: { searchParams: Promise<{ s?: string }> }) {
   const { s } = await searchParams;
-  const repo = getRepo();
-  const instruments = await repo.listInstruments({ types: ["index", "sector"] });
-  const nifty = instruments.find((i) => i.key === "NIFTY50");
-  const [sectors, niftyDays] = await Promise.all([
-    Promise.all(
-      instruments
-        .filter((i) => i.type === "sector")
-        .map(async (i) => ({ key: i.key, name: i.name, days: await repo.getDays(i.id, 70) })),
-    ),
-    // ~70 sessions: the trading calendar for the heatmap's 5/21/63-session returns.
-    nifty ? repo.getDays(nifty.id, 70) : Promise.resolve([]),
-  ]);
-  const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
-  return <SectorHeatmap rows={buildSectorRows(sectors, niftyDates)} selected={s ?? null} />;
+  const a = await loadSectorAnalysis(getRepo());
+  // An unknown ?s= selects nothing (no fallback to the first tile).
+  const selected = a.tiles.find((t) => t.key === s) ?? null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Sector Analysis</h1>
+        {a.sessionDate && <Label>as of {fmtDate(a.sessionDate)}</Label>}
+      </div>
+      <SectorGrid tiles={a.tiles} selected={selected?.key ?? null} />
+      {selected ? (
+        <SectorDetail tile={selected} rows={a.constituents[selected.key] ?? []} />
+      ) : (
+        <p className="text-sm text-[var(--muted)]">Select a sector to see its stocks.</p>
+      )}
+      <RotationPanel rows={a.rotation} />
+    </div>
+  );
 }
