@@ -22,12 +22,12 @@ function cluster(prices: number[], tol: number): number[] {
   return out;
 }
 
-/** Nearest merged swing low below cmp (support) and swing high above cmp (resistance). */
-export function swingLevels(
+/** All merged swing lows below cmp (supports) and swing highs above cmp (resistances), nearest first. */
+export function swingLevelList(
   bars: Bar[],
   cmp: number,
   opts: { lookback?: number; side?: number; mergeTol?: number } = {},
-): { support: number | null; resistance: number | null } {
+): { supports: number[]; resistances: number[] } {
   const { lookback = 60, side = 5, mergeTol = 0.01 } = opts;
   const w = bars.slice(-lookback);
   const highs: number[] = [];
@@ -44,10 +44,18 @@ export function swingLevels(
     if (hiOk && hiStrict) highs.push(w[i]!.high);
     if (loOk && loStrict) lows.push(w[i]!.low);
   }
-  const below = cluster(lows, mergeTol).filter((p) => p < cmp);
-  const above = cluster(highs, mergeTol).filter((p) => p > cmp);
   return {
-    support: below.length ? Math.max(...below) : null,
-    resistance: above.length ? Math.min(...above) : null,
+    supports: cluster(lows, mergeTol).filter((p) => p < cmp).sort((a, b) => b - a),
+    resistances: cluster(highs, mergeTol).filter((p) => p > cmp).sort((a, b) => a - b),
   };
+}
+
+/** Nearest merged swing low below cmp (support) and swing high above cmp (resistance). */
+export function swingLevels(
+  bars: Bar[],
+  cmp: number,
+  opts: { lookback?: number; side?: number; mergeTol?: number } = {},
+): { support: number | null; resistance: number | null } {
+  const { supports, resistances } = swingLevelList(bars, cmp, opts);
+  return { support: supports[0] ?? null, resistance: resistances[0] ?? null };
 }
