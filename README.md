@@ -78,7 +78,7 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 | `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, sector strip |
 | `/portfolio` | Portfolio | Coming soon |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
-| `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking |
+| `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude |
 | `/alerts` | Alerts | Coming soon |
 
@@ -103,6 +103,8 @@ The tab shows the 11 sectors as tiles: day % (tile colour by direction, saturati
 **Rotation.** Sectors are ranked by RS vs Nifty (20 sessions) at the last session of each week: Friday, or the last trading day before a Friday holiday, and the latest session for the current week. Week change is last week's rank minus this week's, so ▲ means the sector moved up. The sparkline shows the rank over the last 8 weeks. Because this is computed from the stored daily RS, it needs no weekly job and has history from day one.
 
 Constituents come from the niftyindices import (Stage 2). Until then the previews and the table say "Constituents appear after the niftyindices import." The 8 thin sectors (Auto, Fin, FMCG, Media, Metal, PSU Bank, Pvt Bank, Healthcare) need their niftyindices **history** files for 1W/1M/3M returns, trend, RSI and RS; without them those show "—" and the score is a partial 50 and sit unranked at the bottom of the rotation list.
+
+**Daily sector log.** A DAILY SECTOR LOG panel at the bottom of the tab reproduces the owner's manual spreadsheet automatically. It has one tab per month for the last 6 months, newest first, shown along the bottom like spreadsheet sheet tabs. Each month starts with a Total row (the sum of its daily %; hovering shows the compounded figure), followed by one row per trading day, with columns for NIFTY and the 11 sectors in the sheet's order. Cells are green or red, and the colour strengthens with the move, saturating at 3% for a day and 10% for a total. The selected month is kept in the URL (`/sectors?m=2026-10`, alongside `?s=`); an unknown month shows the current one. Values are the stored daily % (`pct_change`), falling back to the owner's imported manual log (`data/history.xlsx`), so imported months match the sheet cell for cell and days the manual log lacked are filled from Yahoo. Totals can differ from the sheet by a rounding hair because the app sums full-precision values. Thin sectors show "—" in months before their niftyindices history files are imported.
 
 ### Stock pop-up
 
