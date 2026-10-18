@@ -94,7 +94,10 @@ order by i.key;
 ## 4. Research (web search)
 
 1. Indian market news for the session date: what drove the Nifty move, FII/DII flow headlines, sector news that explains the biggest sector moves and the top gainers and losers.
-2. For each stock returned by input (e), search for news dated that day. Skip stocks with nothing relevant.
+2. For each stock returned by input (e), look for what the owner should know or be aware of going forward. Not routine price moves.
+   - **Today** (news dated the session): results, big company news, broker rating changes, block or bulk deals, management changes, regulatory or legal news.
+   - **Upcoming** (announced, with a date): results date, ex-dividend or record date, split or bonus, board meeting.
+   - Skip quiet stocks: no item for a stock with nothing material. A normal up or down day is not news.
 
 Only use sources you actually opened. Every item needs a real `http` or `https` URL.
 
@@ -102,7 +105,12 @@ Only use sources you actually opened. Every item needs a real `http` or `https` 
 
 - `summary`: plain text, 3 to 4 sentences. Index moves, VIX, sector breadth, the main driver.
 - `market_events`: JSON array, at most 3 items, each `{ "title": string, "explanation": string, "source_url": string }`.
-- `watchlist_news`: JSON array, at most 5 items, each `{ "key": string, "title": string, "explanation": string, "source_url": string }`. `key` must be a key returned by input (e) (watchlist or holdings stock). Use `[]` when nothing is relevant.
+- `watchlist_news`: JSON array, at most 5 items, most important first, each `{ "key": string, "kind": "today" | "upcoming", "date": "YYYY-MM-DD", "note": string, "source_url": string }`.
+  - `key` must be a key returned by input (e) (watchlist or holdings stock).
+  - `kind`: `today` for something that happened on the session, `upcoming` for an announced future event.
+  - `date`: the event date, for `upcoming` items only (omit it for `today`). Omit it if the exact date is not stated.
+  - `note`: one line, about 20 words at most, saying what it is and why it matters. Facts only, no buy/sell/hold advice.
+  - Use `[]` when nothing is material. The app then shows "Nothing to flag for your stocks today."
 
 Example of the two arrays:
 
@@ -112,7 +120,8 @@ Example of the two arrays:
     { "title": "FIIs turn net buyers", "explanation": "Foreign investors bought ... which supported banks.", "source_url": "https://example.com/article" }
   ],
   "watchlist_news": [
-    { "key": "RELIANCE", "title": "Q2 results", "explanation": "Reported ...", "source_url": "https://example.com/reliance" }
+    { "key": "RELIANCE", "kind": "today", "note": "Q2 profit up 9% year on year, ahead of estimates; retail margins improved.", "source_url": "https://example.com/reliance" },
+    { "key": "INFY", "kind": "upcoming", "date": "2026-10-23", "note": "Q2 results and possible interim dividend announcement after market hours.", "source_url": "https://example.com/infy" }
   ]
 }
 ```

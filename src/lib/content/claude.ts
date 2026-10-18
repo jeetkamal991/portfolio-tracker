@@ -2,7 +2,9 @@ import { z } from "zod";
 import type { DailySummary } from "@/lib/db/types";
 
 export interface MarketEvent { title: string; explanation: string; sourceUrl: string | null }
-export interface WatchNews extends MarketEvent { key: string }
+export type WatchNewsKind = "today" | "upcoming";
+/** One line on a watchlist/portfolio stock; `date` is the event date for an upcoming item (ISO, or null). */
+export interface WatchNews { key: string; kind: WatchNewsKind; date: string | null; note: string; sourceUrl: string | null }
 export interface ParsedSummary { date: string; summary: string; events: MarketEvent[]; news: WatchNews[] }
 
 export interface ReportContent {
@@ -39,7 +41,25 @@ const eventSchema = z.object({
   explanation: z.string(),
   source_url: z.unknown().optional(),
 });
-const newsSchema = eventSchema.extend({ key: z.string() });
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const newsSchema = z.union([
+  z.object({ key: z.string(), kind: z.unknown().optional(), date: z.unknown().optional(), note: z.string().min(1), source_url: z.unknown().optional() }),
+  // the first format: title + explanation, read as a "today" item
+  eventSchema.extend({ key: z.string() }),
+]);
+type RawNews = z.infer<typeof newsSchema>;
+
+function toNews(e: RawNews): WatchNews {
+  if ("note" in e) {
+    const date = isoDate.safeParse(e.date);
+    return {
+      key: e.key, kind: e.kind === "upcoming" ? "upcoming" : "today",
+      date: date.success ? date.data : null, note: e.note, sourceUrl: sourceUrl(e.source_url),
+    };
+  }
+  const note = e.explanation ? `${e.title} — ${e.explanation}` : e.title;
+  return { key: e.key, kind: "today", date: null, note, sourceUrl: sourceUrl(e.source_url) };
+}
 
 const sourceUrl = (v: unknown): string | null => {
   const r = httpUrl.safeParse(v);
@@ -73,9 +93,7 @@ export function parseDailySummary(row: DailySummary): ParsedSummary {
   const events = collect(asArray(row.marketEvents), eventSchema, MAX_EVENTS).map((e) => ({
     title: e.title, explanation: e.explanation, sourceUrl: sourceUrl(e.source_url),
   }));
-  const news = collect(asArray(row.watchlistNews), newsSchema, MAX_NEWS).map((e) => ({
-    key: e.key, title: e.title, explanation: e.explanation, sourceUrl: sourceUrl(e.source_url),
-  }));
+  const news = collect(asArray(row.watchlistNews), newsSchema, MAX_NEWS).map(toNews);
   return { date: row.date, summary: typeof row.summary === "string" ? row.summary : "", events, news };
 }
 

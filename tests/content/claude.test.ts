@@ -17,7 +17,7 @@ describe("parseDailySummary", () => {
     expect(p).toEqual({
       date: "2026-10-16", summary: "Markets rose.",
       events: [{ title: "T1", explanation: "E1", sourceUrl: "https://example.com/1" }],
-      news: [{ key: "RELIANCE", title: "T2", explanation: "E2", sourceUrl: "https://example.com/2" }],
+      news: [{ key: "RELIANCE", kind: "today", date: null, note: "T2 — E2", sourceUrl: "https://example.com/2" }],
     });
   });
 
@@ -59,6 +59,29 @@ describe("parseDailySummary", () => {
     const p = parseDailySummary(row({ summary: 42, watchlistNews: [ev(1)] }));
     expect(p.summary).toBe("");
     expect(p.news).toEqual([]);
+  });
+
+  it("reads the today / upcoming news format", () => {
+    const p = parseDailySummary(row({
+      watchlistNews: [
+        { key: "TCS", kind: "today", note: "Q2 profit up 9%, beat estimates.", source_url: "https://example.com/t" },
+        { key: "INFY", kind: "upcoming", date: "2026-10-23", note: "Q2 results." },
+        { key: "ITC", kind: "upcoming", date: "next week", note: "Board meeting on bonus." },
+        { key: "HDFC", kind: "weird", note: "Unknown kind reads as today." },
+        { key: "SBIN", kind: "today", note: "" },
+      ],
+    }));
+    expect(p.news).toEqual([
+      { key: "TCS", kind: "today", date: null, note: "Q2 profit up 9%, beat estimates.", sourceUrl: "https://example.com/t" },
+      { key: "INFY", kind: "upcoming", date: "2026-10-23", note: "Q2 results.", sourceUrl: null },
+      { key: "ITC", kind: "upcoming", date: null, note: "Board meeting on bonus.", sourceUrl: null },
+      { key: "HDFC", kind: "today", date: null, note: "Unknown kind reads as today.", sourceUrl: null },
+    ]);
+  });
+
+  it("reads an old-format item with an empty explanation as just its title", () => {
+    const p = parseDailySummary(row({ watchlistNews: [{ key: "TCS", title: "Results", explanation: "" }] }));
+    expect(p.news[0].note).toBe("Results");
   });
 });
 
