@@ -1,6 +1,6 @@
 # Nifty Pulse
 
-A private, single-user dark trading-terminal dashboard for Indian market data (Nifty indices, sector heatmap, watchlist with level overrides). It runs on free tiers of Vercel and Supabase. Prices come from Yahoo Finance (`yahoo-finance2`), and a daily Vercel cron stores the end-of-day candles. It does not call the Claude API.
+A private, single-user dark trading-terminal dashboard for Indian market data (Nifty indices, sector analysis with rotation, watchlist with level overrides). It runs on free tiers of Vercel and Supabase. Prices come from Yahoo Finance (`yahoo-finance2`), and a daily Vercel cron stores the end-of-day candles. It does not call the Claude API.
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 | `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, sector strip |
 | `/portfolio` | Portfolio | Coming soon |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
-| `/sectors` | Sector Analysis | Sector heatmap (`?s=<KEY>` outlines one sector) |
+| `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking |
 | `/market` | Market | Today by Claude |
 | `/alerts` | Alerts | Coming soon |
 
@@ -96,9 +96,17 @@ The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and
 
 The panel depends on the Nifty 200 import (Stage 2 above). Until `NIFTY200.csv` has been imported it says "Market movers appear after the Nifty 200 list is imported."; with the list but no prices for the session date it says "No session data yet."
 
+### Sector Analysis
+
+The tab shows the 11 sectors as tiles: day % (tile colour by direction, saturating at a 2% move), Technical Score and RSI. On a desktop, hovering or tabbing to a tile previews its top 3 gainers and losers. Clicking a tile selects it (`/sectors?s=NIFTY_IT`, also where the Dashboard's sector strip lands) and opens the detail panel: 1D/1W/1M/3M returns, trend vs EMA 50/200, RS vs Nifty over 4 weeks, score, a View chart button, and the constituent table sorted by day %. An unknown `?s=` selects nothing. All values come from the last stored session (no live quotes on this tab).
+
+**Rotation.** Sectors are ranked by RS vs Nifty (20 sessions) at the last session of each week: Friday, or the last trading day before a Friday holiday, and the latest session for the current week. Week change is last week's rank minus this week's, so ▲ means the sector moved up. The sparkline shows the rank over the last 8 weeks. Because this is computed from the stored daily RS, it needs no weekly job and has history from day one.
+
+Constituents come from the niftyindices import (Stage 2). Until then the previews and the table say "Constituents appear after the niftyindices import." The 8 thin sectors (Auto, Fin, FMCG, Media, Metal, PSU Bank, Pvt Bank, Healthcare) need their niftyindices **history** files for 1W/1M/3M returns, trend, RSI and RS; without them those show "—" and the score is a partial 50 and sit unranked at the bottom of the rotation list.
+
 ### Stock pop-up
 
-Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names and sector heatmap names. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
+Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names, sector constituent names and a sector's View chart button. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
 
 ## Known data caveat
 
