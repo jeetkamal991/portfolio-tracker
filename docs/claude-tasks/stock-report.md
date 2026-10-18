@@ -47,6 +47,8 @@ select h.quantity, h.avg_price, h.stop_loss, h.target1, h.target2
 from holdings h join instruments i on i.id = h.instrument_id where i.key = '$key';
 ```
 
+Use the holdings row only to note that the owner holds the stock. Never comment on their stop loss, targets, or whether to hold, add or sell.
+
 If the stock has no price rows at all, fail the report (section 6) with `No price data`.
 
 ## 2. Research (web search)
@@ -61,10 +63,10 @@ Valid JSON, exactly this shape. Technicals come from the data you read (trend fr
 {
   "summary": "2-3 sentences",
   "fundamentals": { "valuation": "...", "growth": "...", "balance_sheet": "...", "recent_results": "...", "news": "..." },
-  "technicals": { "trend": "...", "momentum": "...", "volume": "...", "support": [0], "resistance": [0], "notes": "..." },
+  "technicals": { "trend": "...", "momentum": "...", "volume": "...", "support": [<number>], "resistance": [<number>], "notes": "..." },
   "scenarios": {
-    "bullish": { "case": "...", "confirm_above": 0 },
-    "bearish": { "case": "...", "invalidate_below": 0 }
+    "bullish": { "case": "...", "confirm_above": <number> },
+    "bearish": { "case": "...", "invalidate_below": <number> }
   },
   "risks": ["...", "..."],
   "sources": [{ "title": "...", "url": "https://..." }],
@@ -73,6 +75,7 @@ Valid JSON, exactly this shape. Technicals come from the data you read (trend fr
 ```
 
 - `support`, `resistance`, `confirm_above`, `invalidate_below` are plain numbers (no strings, no currency symbols).
+- Omit a level you cannot derive from the data rather than guessing; never write 0. A missing `confirm_above` / `invalidate_below` or an empty `support` / `resistance` list is fine: the app treats them as absent.
 - Every source `url` must start with `http://` or `https://`; the app drops others.
 - Keep the disclaimer text exactly as shown.
 
@@ -84,7 +87,7 @@ where id = $id and status = 'pending'
 returning id;
 ```
 
-Put no spaces or newlines just inside the `$json$` quotes; they would be stored in the content. `execute_sql` gives no affected-row count, so `returning id` is how you confirm the write. An empty result means the write did not happen: the report was already handled (not `pending`) or the id does not exist. Skip it and move on; never claim it was written, and do not overwrite it.
+Put no spaces or newlines just inside the `$json$` quotes; they would be stored in the content. Before writing, check that the text does not contain `$json$` (or `$err$` for an error message); if it does, use a different, unusual tag (for example `$q7x$`) for that value. Never put more than one SQL statement in a single `execute_sql` call. `execute_sql` gives no affected-row count, so `returning id` is how you confirm the write. An empty result means the write did not happen: the report was already handled (not `pending`) or the id does not exist. Skip it and move on; never claim it was written, and do not overwrite it.
 
 ## 5. Write (from chat, no id)
 

@@ -121,7 +121,9 @@ The app drops items that do not parse, so keep the shapes exact. `source_url` mu
 
 ## 6. Write
 
-Use dollar-quoted strings so you never have to escape quotes. Replace the placeholders. Put no spaces or newlines just inside the quotes (`$sum$text$sum$`, not `$sum$ text $sum$`); they would be stored in the text.
+Use dollar-quoted strings so you never have to escape quotes. Replace the placeholders. Put no spaces or newlines just inside the quotes (`$sum$text$sum$`, not `$sum$ text $sum$`); they would be stored in the text. Before writing, check that the text does not contain its own tag (`$sum$`, `$ev$` or `$nw$`); if it does, use a different, unusual tag (for example `$q7x$`) for that value.
+
+Never put more than one SQL statement in a single `execute_sql` call.
 
 ```sql
 insert into daily_summaries (date, summary, market_events, watchlist_news)
@@ -131,8 +133,11 @@ values (
   $ev$[market_events array]$ev$::jsonb,
   $nw$[watchlist_news array]$nw$::jsonb
 )
-on conflict (date) do nothing;
+on conflict (date) do nothing
+returning date;
 ```
+
+An empty result means a row already existed (nothing was written): stop and do not claim a write.
 
 Then confirm:
 
