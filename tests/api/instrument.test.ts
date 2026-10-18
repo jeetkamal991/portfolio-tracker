@@ -27,6 +27,14 @@ describe("handleInstrumentGet", () => {
     expect(p.instrument.yahooTicker).toBe("TCS.NS");
     expect(p.onWatchlist).toBe(true);
     expect(p.days).toHaveLength(1);
+    expect(p.holding).toBeNull();
+  });
+  it("includes the holding when the stock is held", async () => {
+    const repo = await setup();
+    const h = { qty: 10, avgPrice: 100, buyDate: "2026-01-01", stopLoss: 90, target1: 120, target2: null };
+    await repo.upsertHolding(1, h);
+    const p = (await handleInstrumentGet(repo, "TCS")).body as PopupData;
+    expect(p.holding).toEqual(h);
   });
   it("404s on unknown key", async () => {
     expect(await handleInstrumentGet(await setup(), "NOPE")).toEqual({ status: 404, body: { error: "not_found" } });

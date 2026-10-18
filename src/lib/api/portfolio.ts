@@ -2,7 +2,7 @@ import { type HoldingInput, validateHoldingInput } from "@/lib/calc/portfolio";
 import { swingLevelList } from "@/lib/calc/swing";
 import type { ScoreLabel } from "@/lib/calc/score";
 import type { Repo } from "@/lib/db/repo";
-import type { Instrument } from "@/lib/db/types";
+import type { Holding, Instrument, StoredDay } from "@/lib/db/types";
 import { addHolding, type BackfillDeps } from "@/lib/jobs/backfill";
 import { istDate } from "@/lib/time/ist";
 import { primarySector } from "@/lib/universe/sectors";
@@ -99,4 +99,21 @@ export async function handleHoldingPrefill(repo: Repo, key: string): Promise<Api
       : null,
   };
   return { status: 200, body: data };
+}
+
+/**
+ * Holdings with each one's latest stored day, shared by the Portfolio tab and the Dashboard snapshot so their totals match.
+ * The latest Nifty session first (one query), then each straggler's own latest.
+ */
+export async function loadHoldingsLatest(repo: Repo): Promise<{ holdings: Holding[]; latest: [number, StoredDay | null][] }> {
+  const holdings = await repo.listHoldings();
+  if (holdings.length === 0) return { holdings, latest: [] };
+  const nifty = await repo.getInstrumentByKey("NIFTY50");
+  const niftyDay = nifty ? await repo.getLatestDay(nifty.id) : null;
+  const ids = holdings.map((h) => h.instrumentId);
+  const onSession = niftyDay ? await repo.getDaysOn(ids, niftyDay.date) : new Map<number, StoredDay>();
+  const latest = await Promise.all(
+    ids.map(async (id): Promise<[number, StoredDay | null]> => [id, onSession.get(id) ?? (await repo.getLatestDay(id))]),
+  );
+  return { holdings, latest };
 }

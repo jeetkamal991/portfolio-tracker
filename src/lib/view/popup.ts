@@ -1,4 +1,5 @@
 import { effectiveLevel } from "@/lib/calc/levels";
+import type { HoldingInput } from "@/lib/calc/portfolio";
 import { levelStrength } from "@/lib/calc/levelsDetail";
 import type { PatternBias } from "@/lib/calc/patterns";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
@@ -26,6 +27,8 @@ export interface PopupData {
   patterns: { date: string; name: string; bias: PatternBias; effect: number }[];
   indicatorTable: { label: string; value: string }[];
   onWatchlist: boolean;
+  /** The owner's position in this stock, or null when not held. */
+  holding: HoldingInput | null;
   reports: {
     id: number; status: string; requestedAt: string; completedAt: string | null; content: unknown; error: string | null; parsed: ReturnType<typeof parseReportContent>;
   }[];
@@ -38,6 +41,7 @@ export interface PopupInput {
   levels: Levels;
   niftyLatest: StoredDay | null;
   onWatchlist: boolean;
+  holding: HoldingInput | null;
   reports: ReportRow[];
 }
 
@@ -152,6 +156,7 @@ export function buildPopupData(input: PopupInput): PopupData {
       { label: "RS vs sector (4W)", value: fmtPct(rsVsSector) },
     ],
     onWatchlist: input.onWatchlist,
+    holding: input.holding,
     reports: input.reports.map((r) => ({
       id: r.id, status: r.status, requestedAt: r.requestedAt, completedAt: r.completedAt,
       content: r.content, error: r.error, parsed: parseReportContent(r.content),

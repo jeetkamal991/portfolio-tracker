@@ -12,13 +12,14 @@ export async function handleInstrumentGet(repo: Repo, key: string): Promise<ApiR
   const inst = await repo.getInstrumentByKey(key);
   if (!inst) return { status: 404, body: { error: "not_found" } };
 
-  const [days, levels, watchlist, memberships, nifty, reports] = await Promise.all([
+  const [days, levels, watchlist, memberships, nifty, reports, held] = await Promise.all([
     repo.getDays(inst.id, HISTORY_LIMIT),
     repo.getLevels(inst.id),
     repo.listWatchlist(),
     repo.listMemberships(),
     repo.getInstrumentByKey(NIFTY_KEY),
     repo.listReports(inst.id),
+    repo.getHolding(inst.id),
   ]);
   const sectorKey =
     inst.type === "stock"
@@ -32,6 +33,9 @@ export async function handleInstrumentGet(repo: Repo, key: string): Promise<ApiR
   const data = buildPopupData({
     instrument: inst, sector, days, levels, niftyLatest,
     onWatchlist: watchlist.some((w) => w.id === inst.id), reports,
+    holding: held
+      ? { qty: held.qty, avgPrice: held.avgPrice, buyDate: held.buyDate, stopLoss: held.stopLoss, target1: held.target1, target2: held.target2 }
+      : null,
   });
   return { status: 200, body: data };
 }

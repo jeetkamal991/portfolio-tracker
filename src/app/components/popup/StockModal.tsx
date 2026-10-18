@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { fmtPrice } from "@/lib/view/dashboard";
 import type { PopupData } from "@/lib/view/popup";
+import { fmtInr } from "@/lib/view/portfolio";
 import { useQuotes } from "../QuotesProvider";
 import { Chip, PctText } from "../ui";
 import { ChartSetupTab } from "./ChartSetupTab";
@@ -81,18 +83,21 @@ function Header({ data, titleId, onWatchlist, onAdd, adding, addError, onClose }
         </div>
         {isStock && (
           <div className="flex flex-col gap-1">
-            {onWatchlist ? (
-              <span className="w-fit"><Chip tone="up">On watchlist</Chip></span>
-            ) : (
-              <button
-                type="button"
-                onClick={onAdd}
-                disabled={adding}
-                className="w-fit rounded-lg border border-[var(--border)] bg-slate-800 px-3 py-1.5 text-sm font-medium text-[var(--up)] hover:bg-slate-700 disabled:opacity-50"
-              >
-                {adding ? "Adding…" : "Add to Watchlist"}
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {onWatchlist ? (
+                <span className="w-fit"><Chip tone="up">On watchlist</Chip></span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  disabled={adding}
+                  className="w-fit rounded-lg border border-[var(--border)] bg-slate-800 px-3 py-1.5 text-sm font-medium text-[var(--up)] hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {adding ? "Adding…" : "Add to Watchlist"}
+                </button>
+              )}
+              <PortfolioButton data={data} />
+            </div>
             {addError && <p role="alert" className="text-xs text-[var(--down)]">{addError}</p>}
           </div>
         )}
@@ -102,6 +107,20 @@ function Header({ data, titleId, onWatchlist, onAdd, adding, addError, onClose }
         <CloseButton onClose={onClose} className="hidden sm:inline-flex" />
       </div>
     </div>
+  );
+}
+
+/** Opens the Portfolio tab's form with this stock: edit when held, add otherwise. */
+function PortfolioButton({ data }: { data: PopupData }) {
+  const key = encodeURIComponent(data.instrument.key);
+  const h = data.holding;
+  return (
+    <Link
+      href={h ? `/portfolio?edit=${key}` : `/portfolio?add=${key}`}
+      className="w-fit rounded-lg border border-[var(--border)] bg-slate-800 px-3 py-1.5 text-sm font-medium text-[var(--up)] hover:bg-slate-700"
+    >
+      {h ? `In portfolio · ${h.qty} @ ${fmtInr(h.avgPrice, h.avgPrice % 1 === 0 ? 0 : 2)}` : "Add to Portfolio"}
+    </Link>
   );
 }
 

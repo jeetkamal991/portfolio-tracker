@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
 import type { Candle, MarketDataProvider } from "@/lib/provider/types";
 import { addDays } from "@/lib/time/ist";
-import { handleHoldingDelete, handleHoldingPost, handleHoldingPrefill, handleHoldingPut, type PrefillData } from "@/lib/api/portfolio";
+import { handleHoldingDelete, handleHoldingPost, handleHoldingPrefill, handleHoldingPut, loadHoldingsLatest, type PrefillData } from "@/lib/api/portfolio";
 
 const NOW = new Date("2026-10-16T11:00:00Z");
 const provider = (): MarketDataProvider => ({
@@ -116,5 +116,22 @@ describe("handleHoldingPrefill", () => {
     const repo = await setup();
     expect((await handleHoldingPrefill(repo, "NOPE")).status).toBe(404);
     expect((await handleHoldingPrefill(repo, "NIFTY_IT")).status).toBe(404);
+  });
+});
+
+describe("loadHoldingsLatest", () => {
+  const h = { qty: 1, avgPrice: 100, buyDate: "2026-10-01", stopLoss: null, target1: null, target2: null };
+  it("empty portfolio gives no holdings", async () => {
+    expect(await loadHoldingsLatest(await setup())).toEqual({ holdings: [], latest: [] });
+  });
+  it("pairs each holding with its latest priced day; an unpriced stock gets null", async () => {
+    const repo = await setup();
+    await repo.upsertHolding(1, h);
+    await repo.upsertHolding(3, h);
+    const r = await loadHoldingsLatest(repo);
+    expect(r.holdings.map((x) => x.key).sort()).toEqual(["AAA", "BBB"]);
+    const byId = new Map(r.latest);
+    expect(byId.get(1)?.date).toBe("2026-10-15");
+    expect(byId.get(3)).toBeNull();
   });
 });

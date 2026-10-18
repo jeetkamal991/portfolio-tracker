@@ -13,7 +13,7 @@ const day = (date: string, o: Partial<StoredDay> = {}): StoredDay => ({
   rsVsSector: null, score: null, scoreComponents: null, scoreLabel: null, scoreConfidence: null, scoreSignal: null,
   ...o,
 });
-const base = { instrument: inst, sector: null as Instrument | null, levels: noLevels, niftyLatest: null as StoredDay | null, onWatchlist: false, reports: [] };
+const base = { instrument: inst, sector: null as Instrument | null, levels: noLevels, niftyLatest: null as StoredDay | null, onWatchlist: false, holding: null, reports: [] };
 const d = (n: number) => `2026-01-${String(n).padStart(2, "0")}`;
 
 describe("buildPopupData", () => {
