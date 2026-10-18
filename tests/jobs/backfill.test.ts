@@ -3,7 +3,7 @@ import { createMemoryRepo } from "@/lib/db/memoryRepo";
 import type { Instrument } from "@/lib/db/types";
 import type { Candle, MarketDataProvider } from "@/lib/provider/types";
 import { addDays } from "@/lib/time/ist";
-import { addStock, backfillInstrument, backfillUniverse } from "@/lib/jobs/backfill";
+import { addHolding, addStock, backfillInstrument, backfillUniverse } from "@/lib/jobs/backfill";
 
 const NOW = new Date("2026-10-16T11:00:00Z");
 const TODAY = "2026-10-16";
@@ -95,6 +95,53 @@ describe("addStock", () => {
     expect(await addStock({ repo, provider: provider({ T_BBB: 120 }), now: NOW }, "BBB")).toEqual({ ok: true });
     const days = await repo.getDays(3, 1000);
     expect(days[days.length - 1]!.ema200).toBeNull();
+  });
+});
+
+describe("addHolding", () => {
+  const input = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120, target2: null };
+
+  it("new stock: stores candles, saves the holding, scores it, merged false", async () => {
+    const repo = setup();
+    expect(await addHolding({ repo, provider: provider({ T_AAA: 300 }), now: NOW }, "AAA", input)).toEqual({ ok: true, merged: false });
+    expect((await repo.getDays(2, 1000)).length).toBe(300);
+    expect(await repo.getHolding(2)).toMatchObject({ qty: 10, avgPrice: 100, key: "AAA" });
+    const days = await repo.getDays(2, 1000);
+    expect(days[days.length - 1]!.score).not.toBeNull();
+  });
+
+  it("same key again merges: qty summed, average weighted, no refetch", async () => {
+    const repo = setup();
+    const p = provider({ T_AAA: 300 });
+    const spy = vi.spyOn(p, "getDailyHistory");
+    const deps = { repo, provider: p, now: NOW };
+    await addHolding(deps, "AAA", input);
+    const calls = spy.mock.calls.length;
+    expect(await addHolding(deps, "AAA", { ...input, qty: 30, avgPrice: 200, stopLoss: null })).toEqual({ ok: true, merged: true });
+    expect(spy.mock.calls.length).toBe(calls);
+    expect(await repo.getHolding(2)).toMatchObject({ qty: 40, avgPrice: 175, stopLoss: 90 });
+  });
+
+  it("no history -> no_data and nothing saved", async () => {
+    const repo = setup();
+    expect(await addHolding({ repo, provider: provider({ T_AAA: 0 }), now: NOW }, "AAA", input)).toEqual({ ok: false, error: "no_data" });
+    expect(await repo.listHoldings()).toEqual([]);
+  });
+
+  it("unknown or non-stock key -> unknown_symbol", async () => {
+    const deps = { repo: setup(), provider: provider({}), now: NOW };
+    expect(await addHolding(deps, "NOPE", input)).toEqual({ ok: false, error: "unknown_symbol" });
+    expect(await addHolding(deps, "NIFTY_IT", input)).toEqual({ ok: false, error: "unknown_symbol" });
+  });
+
+  it("a stock already priced yesterday is not refetched", async () => {
+    const repo = setup();
+    await repo.replaceConstituents("NIFTY200", [2]);
+    await repo.upsertCandles(2, [{ date: "2026-10-15", open: 1, high: 2, low: 1, close: 1.5, volume: 10 }]);
+    const p = provider({ T_AAA: 300 });
+    const spy = vi.spyOn(p, "getDailyHistory");
+    expect(await addHolding({ repo, provider: p, now: NOW }, "AAA", input)).toEqual({ ok: true, merged: false });
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 

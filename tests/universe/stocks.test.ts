@@ -24,3 +24,13 @@ describe("listUniverseStocks", () => {
     expect(keys).toEqual(["BOTH", "N200", "SECTORONLY", "WATCH"]);
   });
 });
+
+describe("listUniverseStocks holdings", () => {
+  it("includes a holding that is in neither Nifty 200, a sector nor the watchlist", async () => {
+    const repo = createMemoryRepo({ instruments: [stock(1, "N200"), stock(2, "HELD")] });
+    await repo.replaceConstituents("NIFTY200", [1]);
+    await repo.upsertHolding(2, { qty: 1, avgPrice: 10, buyDate: "2026-10-01", stopLoss: null, target1: null, target2: null });
+    const keys = (await listUniverseStocks(repo)).map((i) => i.key).sort();
+    expect(keys).toEqual(["HELD", "N200"]);
+  });
+});

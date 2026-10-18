@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { DailySummary, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
+import type { DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -67,6 +68,17 @@ const toReport = (r: Row): ReportRow => ({
   content: r.content ?? null,
   error: (r.error as string | null) ?? null,
 });
+const toHolding = (r: Row, inst: Row): Holding => ({
+  instrumentId: Number(r.instrument_id),
+  key: inst.key as string,
+  name: inst.name as string,
+  yahooTicker: inst.yahoo_ticker as string,
+  qty: Number(r.quantity),
+  avgPrice: Number(r.avg_price),
+  buyDate: r.buy_date as string,
+  stopLoss: num(r.stop_loss), target1: num(r.target1), target2: num(r.target2),
+});
+const oneInstrument = (v: Row | Row[] | null): Row | null => (Array.isArray(v) ? v[0] ?? null : v);
 // ---------------------------------------------------------
 
 function chunks<T>(rows: T[], size = CHUNK): T[][] {
@@ -249,6 +261,39 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async removeFromWatchlist(instrumentId) {
       check(await db.from("watchlist").delete().eq("instrument_id", instrumentId), "removeFromWatchlist");
+    },
+    async listHoldings() {
+      const rows = check(
+        await db.from("holdings").select("*, instruments(*)").order("created_at").order("instrument_id"),
+        "listHoldings",
+      ) as unknown as (Row & { instruments: Row | Row[] | null })[];
+      return rows.flatMap((r) => {
+        const inst = oneInstrument(r.instruments);
+        return inst ? [toHolding(r, inst)] : [];
+      });
+    },
+    async getHolding(instrumentId) {
+      const r = check(
+        await db.from("holdings").select("*, instruments(*)").eq("instrument_id", instrumentId).maybeSingle(),
+        "getHolding",
+      ) as unknown as (Row & { instruments: Row | Row[] | null }) | null;
+      const inst = r ? oneInstrument(r.instruments) : null;
+      return r && inst ? toHolding(r, inst) : null;
+    },
+    async upsertHolding(instrumentId, h: HoldingInput) {
+      check(
+        await db.from("holdings").upsert(
+          {
+            instrument_id: instrumentId, quantity: h.qty, avg_price: h.avgPrice, buy_date: h.buyDate,
+            stop_loss: h.stopLoss, target1: h.target1, target2: h.target2, updated_at: now(),
+          },
+          { onConflict: "instrument_id" },
+        ),
+        "upsertHolding",
+      );
+    },
+    async deleteHolding(instrumentId) {
+      check(await db.from("holdings").delete().eq("instrument_id", instrumentId), "deleteHolding");
     },
     async getLevels(instrumentId) {
       const r = check(await db.from("levels").select("*").eq("instrument_id", instrumentId).maybeSingle(), "getLevels");

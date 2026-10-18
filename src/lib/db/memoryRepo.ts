@@ -1,6 +1,7 @@
+import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { DailySummary, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
+import type { DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -21,6 +22,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   let nextId = Math.max(0, ...instruments.keys()) + 1;
   const days = new Map<number, Map<string, StoredDay>>();
   const watchlist = new Set<number>();
+  const holdings = new Map<number, HoldingInput>();
   const levels = new Map<number, Levels>();
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
@@ -39,6 +41,11 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     let l = levels.get(id);
     if (!l) levels.set(id, (l = emptyLevels()));
     return l;
+  };
+  const holdingFor = (id: number): Holding | null => {
+    const h = holdings.get(id);
+    const i = instruments.get(id);
+    return h && i ? { ...h, instrumentId: id, key: i.key, name: i.name, yahooTicker: i.yahooTicker } : null;
   };
   const byKey = (key: string) => [...instruments.values()].find((i) => i.key === key);
 
@@ -131,6 +138,12 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     },
     async addToWatchlist(id) { watchlist.add(id); },
     async removeFromWatchlist(id) { watchlist.delete(id); },
+    async listHoldings() {
+      return [...holdings.keys()].flatMap((id) => holdingFor(id) ?? []);
+    },
+    async getHolding(id) { return holdingFor(id); },
+    async upsertHolding(id, h) { holdings.set(id, { ...h }); },
+    async deleteHolding(id) { holdings.delete(id); },
     async getLevels(id) { return { ...(levels.get(id) ?? emptyLevels()) }; },
     async setAutoLevels(id, support, resistance) {
       const l = levelsFor(id);

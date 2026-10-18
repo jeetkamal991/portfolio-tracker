@@ -1,4 +1,5 @@
 import type { PatternHit } from "@/lib/calc/patterns";
+import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
 
 export type InstrumentType = "index" | "sector" | "stock";
@@ -90,6 +91,14 @@ export interface Levels {
   autoResistance: number | null;
   manualSupport: number | null;
   manualResistance: number | null;
+}
+
+/** A stored position joined with its instrument. */
+export interface Holding extends HoldingInput {
+  instrumentId: number;
+  key: string;
+  name: string;
+  yahooTicker: string;
 }
 
 export interface DailySummary {

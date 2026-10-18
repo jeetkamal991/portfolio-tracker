@@ -10,6 +10,7 @@ export async function handleQuotes(
 ): Promise<{ quotes: Quote[]; marketOpen: boolean }> {
   const strip = (await Promise.all(STRIP_KEYS.map((k) => repo.getInstrumentByKey(k)))).flatMap((i) => i ?? []);
   const watch = await repo.listWatchlist();
-  const tickers = [...new Set([...strip, ...watch].map((i) => i.yahooTicker))];
+  const held = await repo.listHoldings();
+  const tickers = [...new Set([...strip, ...watch, ...held].map((i) => i.yahooTicker))];
   return { quotes: await cache.get(tickers), marketOpen: isMarketOpen(now) };
 }

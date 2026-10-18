@@ -217,3 +217,26 @@ describe("memoryRepo ema20", () => {
     expect(m.get(1)!.close).toBe(2);
   });
 });
+
+describe("memoryRepo holdings", () => {
+  const h = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120, target2: null };
+
+  it("upsert then list joins key, name and ticker; get returns it", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa Ltd")] });
+    await r.upsertHolding(1, h);
+    expect(await r.listHoldings()).toEqual([{ ...h, instrumentId: 1, key: "AAA", name: "Aaa Ltd", yahooTicker: "AAA.NS" }]);
+    expect((await r.getHolding(1))?.qty).toBe(10);
+    expect(await r.getHolding(2)).toBeNull();
+  });
+
+  it("upserting again replaces; delete removes", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    await r.upsertHolding(1, h);
+    await r.upsertHolding(1, { ...h, qty: 25, stopLoss: null });
+    const all = await r.listHoldings();
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ qty: 25, stopLoss: null });
+    await r.deleteHolding(1);
+    expect(await r.listHoldings()).toEqual([]);
+  });
+});

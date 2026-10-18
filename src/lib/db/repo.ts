@@ -1,5 +1,6 @@
 import type { Candle } from "@/lib/provider/types";
-import type { DailySummary, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
+import type { HoldingInput } from "@/lib/calc/portfolio";
+import type { DailySummary, Holding, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -32,6 +33,11 @@ export interface Repo {
   listWatchlist(): Promise<Instrument[]>;
   addToWatchlist(instrumentId: number): Promise<void>;
   removeFromWatchlist(instrumentId: number): Promise<void>;
+  listHoldings(): Promise<Holding[]>;
+  getHolding(instrumentId: number): Promise<Holding | null>;
+  /** Insert or replace the position for one instrument; sets updated_at. */
+  upsertHolding(instrumentId: number, h: HoldingInput): Promise<void>;
+  deleteHolding(instrumentId: number): Promise<void>;
   /** All-null if no row. */
   getLevels(instrumentId: number): Promise<Levels>;
   /** Never touches manual_*. */

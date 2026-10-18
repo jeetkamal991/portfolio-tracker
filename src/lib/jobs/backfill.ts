@@ -1,3 +1,4 @@
+import { mergeHolding, type HoldingInput } from "@/lib/calc/portfolio";
 import type { Repo } from "@/lib/db/repo";
 import type { Instrument } from "@/lib/db/types";
 import type { MarketDataProvider } from "@/lib/provider/types";
@@ -39,12 +40,18 @@ export async function backfillInstrument(deps: BackfillDeps, inst: Instrument, f
 
 export type AddStockResult = { ok: true } | { ok: false; error: "unknown_symbol" | "no_data" | "already_added" };
 
-export async function addStock(deps: BackfillDeps, key: string): Promise<AddStockResult> {
-  const inst = await deps.repo.getInstrumentByKey(key);
-  if (!inst || inst.type !== "stock") return { ok: false, error: "unknown_symbol" };
-  if ((await deps.repo.listWatchlist()).some((w) => w.id === inst.id)) return { ok: false, error: "already_added" };
+/** A stock with a priced day this recent is considered up to date. */
+const FRESH_DAYS = 10;
 
+/** Make sure the stock has price history: no-op if recently priced, else fetch 730 days and store them. Does not score. */
+export async function ensureStockData(
+  deps: BackfillDeps,
+  inst: Instrument,
+): Promise<{ ok: true; fetched: boolean } | { ok: false; error: "no_data" }> {
   const today = istDate(deps.now);
+  const latest = await deps.repo.getLatestDay(inst.id);
+  if (latest && latest.date >= addDays(today, -FRESH_DAYS)) return { ok: true, fetched: false };
+
   let candles;
   try {
     candles = await deps.provider.getDailyHistory(inst.yahooTicker, addDays(today, -STOCK_HISTORY_DAYS), today);
@@ -52,16 +59,44 @@ export async function addStock(deps: BackfillDeps, key: string): Promise<AddStoc
     return { ok: false, error: "no_data" };
   }
   if (candles.length === 0) return { ok: false, error: "no_data" };
-
   await store(deps, inst, candles);
-  await deps.repo.addToWatchlist(inst.id);
-  // The stock is stored and watchlisted; a scoring hiccup only delays its score to the next EOD run.
+  return { ok: true, fetched: true };
+}
+
+/** A scoring hiccup only delays the score to the next EOD run. */
+async function scoreOne(deps: BackfillDeps, inst: Instrument): Promise<void> {
   try {
     await scorePass(deps.repo, { onlyIds: new Set([inst.id]) });
   } catch {
     /* scored by the next EOD run */
   }
+}
+
+export async function addStock(deps: BackfillDeps, key: string): Promise<AddStockResult> {
+  const inst = await deps.repo.getInstrumentByKey(key);
+  if (!inst || inst.type !== "stock") return { ok: false, error: "unknown_symbol" };
+  if ((await deps.repo.listWatchlist()).some((w) => w.id === inst.id)) return { ok: false, error: "already_added" };
+
+  const data = await ensureStockData(deps, inst);
+  if (!data.ok) return data;
+  await deps.repo.addToWatchlist(inst.id);
+  await scoreOne(deps, inst);
   return { ok: true };
+}
+
+export type AddHoldingResult = { ok: true; merged: boolean } | { ok: false; error: "unknown_symbol" | "no_data" };
+
+/** Save a position (merging into an existing one), after making sure the stock has data; the holding joins the universe before it is scored. */
+export async function addHolding(deps: BackfillDeps, key: string, input: HoldingInput): Promise<AddHoldingResult> {
+  const inst = await deps.repo.getInstrumentByKey(key);
+  if (!inst || inst.type !== "stock") return { ok: false, error: "unknown_symbol" };
+
+  const data = await ensureStockData(deps, inst);
+  if (!data.ok) return data;
+  const existing = await deps.repo.getHolding(inst.id);
+  await deps.repo.upsertHolding(inst.id, existing ? mergeHolding(existing, input) : input);
+  await scoreOne(deps, inst);
+  return { ok: true, merged: !!existing };
 }
 
 const UNIVERSE_CONCURRENCY = 4;
@@ -76,7 +111,7 @@ export interface BackfillUniverseResult {
   scoreFailed: string[];
 }
 
-/** Back-fill the stock universe (Nifty 200, sector constituents, watchlist) from `from`, then score once. */
+/** Back-fill the stock universe (Nifty 200, sector constituents, watchlist, holdings) from `from`, then score once. */
 export async function backfillUniverse(
   deps: BackfillDeps,
   opts: { from: string; onProgress?: (key: string, n: number) => void },
