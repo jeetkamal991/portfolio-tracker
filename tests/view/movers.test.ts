@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMovers, type MoverEntry } from "@/lib/view/movers";
+import { buildMovers, moversLabel, type MoverEntry } from "@/lib/view/movers";
 
 const e = (key: string, pct: number | null): MoverEntry => ({ key, name: key, price: 100, pct });
 
@@ -25,5 +25,21 @@ describe("buildMovers", () => {
     const m = buildMovers([e("A", 0.02), e("B", 0.01), e("C", 0.03)]);
     expect(m.losers).toEqual([]);
     expect(m.gainers.map((g) => g.key)).toEqual(["C", "A", "B"]);
+  });
+});
+
+describe("moversLabel", () => {
+  const ok = (live: boolean) => ({ state: "ok" as const, date: "2026-01-02", live, movers: buildMovers([]) });
+  it("LIVE only while live data and the market is open", () => {
+    expect(moversLabel(ok(true), true)).toEqual({ kind: "live" });
+  });
+  it("live data after the close → at close, not LIVE", () => {
+    expect(moversLabel(ok(true), false)).toEqual({ kind: "text", text: "at close" });
+  });
+  it("stored data → as of the session date", () => {
+    expect(moversLabel(ok(false), true)).toEqual({ kind: "text", text: "as of 02 Jan 2026" });
+  });
+  it("empty states → no label", () => {
+    expect(moversLabel({ state: "no_universe" }, true)).toBeNull();
   });
 });

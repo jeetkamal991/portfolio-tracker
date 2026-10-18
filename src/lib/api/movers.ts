@@ -1,6 +1,6 @@
 import type { Repo } from "@/lib/db/repo";
 import type { Quote } from "@/lib/provider/types";
-import { isMarketOpen } from "@/lib/time/ist";
+import { isMarketOpen, istDate } from "@/lib/time/ist";
 import { buildMovers, type MoverEntry, type Movers } from "@/lib/view/movers";
 
 export type MoversResponse =
@@ -37,7 +37,9 @@ export async function handleMovers(
         const i = byTicker.get(q.ticker);
         if (i) entries.set(q.ticker, { key: i.key, name: i.name, price: q.price, pct: q.changePct });
       }
-      live = quotes.length > 0;
+      // isMarketOpen ignores NSE holidays; on one Yahoo returns the last session's quotes.
+      const today = istDate(now);
+      live = quotes.some((q) => istDate(new Date(q.asOf)) === today);
     } catch {
       live = false;
     }

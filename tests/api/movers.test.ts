@@ -8,8 +8,8 @@ const OPEN = new Date("2026-01-05T04:30:00Z");
 const CLOSED = new Date("2026-01-05T14:30:00Z");
 const DATE = "2026-01-02";
 
-const q = (ticker: string, price: number, changePct: number): Quote =>
-  ({ ticker, price, changePct, prevClose: price, dayHigh: null, dayLow: null, asOf: "2026-01-05T04:30:00Z" });
+const q = (ticker: string, price: number, changePct: number, asOf = "2026-01-05T04:30:00Z"): Quote =>
+  ({ ticker, price, changePct, prevClose: price, dayHigh: null, dayLow: null, asOf });
 
 const setup = async (opts: { constituents?: boolean; rows?: boolean } = {}) => {
   const repo = createMemoryRepo({
@@ -73,5 +73,12 @@ describe("handleMovers", () => {
     if (r.state !== "ok") throw new Error(r.state);
     expect(r.live).toBe(false);
     expect(r.movers.breadth).toEqual({ advances: 2, declines: 1, unchanged: 0, total: 3 });
+  });
+  it("weekday holiday (quotes dated before today) → not live", async () => {
+    // Market hours on a weekday, but Yahoo's newest quote is the previous session's close.
+    const cache = { get: vi.fn(async () => [q("AAA.NS", 110, -0.05, "2026-01-02T10:00:00Z")]) };
+    const r = await handleMovers(await setup(), cache, OPEN);
+    if (r.state !== "ok") throw new Error(r.state);
+    expect(r.live).toBe(false);
   });
 });

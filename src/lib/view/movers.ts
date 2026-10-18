@@ -1,3 +1,6 @@
+import type { MoversResponse } from "@/lib/api/movers";
+import { fmtDate } from "./dashboard";
+
 export interface MoverEntry { key: string; name: string; price: number | null; pct: number | null }
 export interface Movers {
   gainers: MoverEntry[];
@@ -22,4 +25,13 @@ export function buildMovers(entries: MoverEntry[], n = 5): Movers {
       total: priced.length,
     },
   };
+}
+
+export type MoversLabel = { kind: "live" } | { kind: "text"; text: string } | null;
+
+/** LIVE only while the market is open; live values left on screen after the close read "at close". */
+export function moversLabel(data: MoversResponse, open: boolean): MoversLabel {
+  if (data.state !== "ok") return null;
+  if (data.live) return open ? { kind: "live" } : { kind: "text", text: "at close" };
+  return { kind: "text", text: `as of ${fmtDate(data.date)}` };
 }

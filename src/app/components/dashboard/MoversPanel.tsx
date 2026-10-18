@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { MoversResponse } from "@/lib/api/movers";
-import { fmtDate, fmtPrice } from "@/lib/view/dashboard";
-import type { MoverEntry, Movers } from "@/lib/view/movers";
+import { fmtPrice } from "@/lib/view/dashboard";
+import { moversLabel, type MoverEntry, type Movers } from "@/lib/view/movers";
 import { StockLink } from "../popup/StockLink";
 import { useQuotes } from "../QuotesProvider";
 import { Chip, Label, Panel, PctText } from "../ui";
@@ -34,14 +34,14 @@ export function MoversPanel({ initial }: { initial: MoversResponse }) {
     };
   }, [open]);
 
-  const action =
-    data.state !== "ok" ? null : data.live ? (
-      <Chip tone="up">LIVE</Chip>
-    ) : (
-      <span className="whitespace-nowrap">
-        <Label>as of {fmtDate(data.date)}</Label>
-      </span>
-    );
+  const label = moversLabel(data, open);
+  const action = !label ? null : label.kind === "live" ? (
+    <Chip tone="up">LIVE</Chip>
+  ) : (
+    <span className="whitespace-nowrap">
+      <Label>{label.text}</Label>
+    </span>
+  );
 
   return (
     <Panel title="MARKET MOVERS · NIFTY 200" action={action}>

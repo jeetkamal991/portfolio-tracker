@@ -35,7 +35,13 @@ const COLUMNS: { key: WatchSortKey | null; label: string; align?: "left" }[] = [
   { key: null, label: "1M" },
 ];
 
-const STICKY = "sticky left-0 z-10 bg-[var(--panel)]";
+// The sticky first column needs an opaque background only at phone widths; from sm up it is static
+// and transparent so the row's hover and near-level tints show through.
+const STICKY = "sticky left-0 z-10";
+const STICKY_BG = "max-sm:bg-[var(--panel)]";
+// Near-level marker lives on the first cell, since a cell background paints over the row's. At phone
+// width the tint is amber-950 at 20% pre-mixed onto the panel so the sticky cell stays opaque.
+const NEAR_FIRST = "shadow-[inset_3px_0_0_var(--warn)] max-sm:bg-[color-mix(in_srgb,#451a03_20%,var(--panel))]";
 
 export function WatchlistTable({ inputs }: { inputs: WatchInput[] }) {
   const router = useRouter();
@@ -169,7 +175,7 @@ export function WatchlistTable({ inputs }: { inputs: WatchInput[] }) {
               <tr className="text-right">
                 {COLUMNS.map((c, i) => {
                   const active = c.key !== null && sort.key === c.key;
-                  const cls = `${c.align === "left" ? "text-left" : ""} px-2 py-2 font-medium ${i === 0 ? `${STICKY} pl-0 sm:static` : ""}`;
+                  const cls = `${c.align === "left" ? "text-left" : ""} px-2 py-2 font-medium ${i === 0 ? `${STICKY} ${STICKY_BG} pl-2.5 sm:static` : ""}`;
                   return (
                     <th key={c.label} className={cls} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
                       {c.key === null ? (
@@ -197,10 +203,10 @@ export function WatchlistTable({ inputs }: { inputs: WatchInput[] }) {
                 <tr
                   key={r.key}
                   className={`border-t border-[var(--border)] text-right hover:bg-slate-800/40 ${
-                    r.nearLevel ? "bg-amber-950/20 shadow-[inset_3px_0_0_var(--warn)]" : ""
+                    r.nearLevel ? "bg-amber-950/20" : ""
                   }`}
                 >
-                  <td className={`${STICKY} py-2 pl-0 pr-2 text-left sm:static`}>
+                  <td className={`${STICKY} py-2 pl-2.5 pr-2 text-left sm:static ${r.nearLevel ? NEAR_FIRST : STICKY_BG}`}>
                     <StockLink stockKey={r.key} className="block">
                       <div className="max-w-[12rem] truncate font-medium hover:text-[var(--up)]">{r.name}</div>
                       <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
