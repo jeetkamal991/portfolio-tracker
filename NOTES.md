@@ -1,6 +1,6 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-19 — stage 7 (Alerts + Telegram) built, Tasks 1–7 done; waiting on your Telegram/Vercel steps and checks, then merge_
+_Updated 2026-10-19 — PAUSED by the owner. Stage 7 (Alerts + Telegram) built, Tasks 1–7 done; waiting on your Telegram/Vercel steps and checks, then merge. Resume with: "continue from NOTES.md"_
 
 ## Status at a glance (2026-10-19)
 **Done**
@@ -19,7 +19,7 @@ _Updated 2026-10-19 — stage 7 (Alerts + Telegram) built, Tasks 1–7 done; wai
 - Older items: To do 3–8 below.
 
 ## Branches
-- `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; the 7 new commits are local, not pushed.
+- `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
 - `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).
 - Merged and can be deleted: `feat/redesign-stage6-market`, `feat/redesign-stage5-finish`. Older local branches: `feat/foundation-dashboard` → `feat/redesign-stage2` → `feat/daily-sector-log`.
 
