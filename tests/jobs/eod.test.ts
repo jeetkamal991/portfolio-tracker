@@ -362,3 +362,41 @@ describe("runEod score pass robustness and reporting", () => {
     expect(run.message).toContain("constituents 0");
   });
 });
+
+describe("runEod alert pass", () => {
+  const universe = async () => {
+    const instruments = [inst(1, "NIFTY50", "index"), inst(3, "AAA", "stock")];
+    const repo = createMemoryRepo({ instruments });
+    await repo.replaceConstituents("NIFTY200", [3]);
+    await seedHistory(repo, instruments, addDays(TODAY, -1));
+    return repo;
+  };
+
+  it("runs after the score pass, sends to Telegram and reports the counts", async () => {
+    const repo = await universe();
+    await repo.createAlertRule({ instrumentId: 3, condition: "price_above", value: 1, mode: "once", source: "user", lastState: false, lastLevel: null });
+    const send = vi.fn(async () => "sent" as const);
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW, send });
+    expect(run.status).toBe("ok");
+    expect(run.message).toContain("alerts fired 1, telegram failed 0");
+    expect(send).toHaveBeenCalledTimes(1);
+    const [event] = await repo.listAlertEvents(10);
+    expect(event).toMatchObject({ key: "AAA", telegramStatus: "sent" });
+    expect(event.price).toBe((await repo.getLatestDay(3))!.close);
+  });
+
+  it("creates the SL/target rules of holdings that have none yet", async () => {
+    const repo = await universe();
+    await repo.upsertHolding(3, { qty: 1, avgPrice: 900, buyDate: "2026-10-01", stopLoss: 800, target1: 2000, target2: null });
+    await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect((await repo.listAlertRules()).map((r) => r.condition)).toEqual(["holding_sl", "holding_target"]);
+  });
+
+  it("an alert-pass error marks the run partial with the error, not failed", async () => {
+    const repo = await universe();
+    repo.listAlertRules = async () => { throw new Error("alerts table missing"); };
+    const run = await runEod({ repo, provider: fakeProvider(), now: NOW });
+    expect(run.status).toBe("partial");
+    expect(run.message).toContain("alert pass error: alerts table missing");
+  });
+});

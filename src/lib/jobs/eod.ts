@@ -3,7 +3,9 @@ import type { Instrument, JobRun, JobRunResult, PriceBar } from "@/lib/db/types"
 import type { MarketDataProvider } from "@/lib/provider/types";
 import { computeIndicators } from "@/lib/calc/indicators";
 import { swingLevels } from "@/lib/calc/swing";
+import { createTelegramSender, type Sender } from "@/lib/notify/telegram";
 import { addDays, istDate } from "@/lib/time/ist";
+import { latestDaySnapshots, runAlerts, syncHoldingAlerts } from "./alerts";
 import { pool } from "./pool";
 import { scorePass } from "./score";
 import { listUniverseStocks } from "@/lib/universe/stocks";
@@ -13,6 +15,8 @@ export interface EodDeps {
   provider: MarketDataProvider;
   now: Date;
   concurrency?: number;
+  /** Telegram delivery for the alert pass; without it events are saved as `not_configured`. */
+  send?: Sender;
 }
 
 const NIFTY_KEY = "NIFTY50";
@@ -159,9 +163,20 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
     scoreError = e instanceof Error ? e.message : String(e);
   }
 
+  // Alerts after scores (they read the new score rows). Holding rules are synced first so a holding added
+  // before alerts existed gets its SL/target rules. A problem here also only downgrades the run to partial.
+  let alerts: Awaited<ReturnType<typeof runAlerts>> | null = null;
+  let alertError: string | null = null;
+  try {
+    await syncHoldingAlerts(repo, latestDaySnapshots(repo, deps.now));
+    alerts = await runAlerts({ repo, send: deps.send ?? createTelegramSender({}), now: deps.now, mode: "eod" });
+  } catch (e) {
+    alertError = e instanceof Error ? e.message : String(e);
+  }
+
   let status: JobRunResult["status"];
   if (targets.length > 0 && failed.length === targets.length) status = "failed";
-  else if (failed.length > 0 || scoreFailed.length > 0 || scoreError) status = "partial";
+  else if (failed.length > 0 || scoreFailed.length > 0 || scoreError || alertError) status = "partial";
   else if (targets.length > 0 && noSession === targets.length) status = "no_session";
   else status = "ok";
   const notes = [
@@ -169,10 +184,12 @@ async function work(deps: EodDeps): Promise<Omit<JobRunResult, "finishedAt">> {
     skipped.length ? `skipped: ${skipped.join(", ")}` : "",
     scoreFailed.length ? `score failed: ${scoreFailed.join("; ")}` : "",
     scoreError ? `score pass error: ${scoreError}` : "",
+    alertError ? `alert pass error: ${alertError}` : "",
   ].filter(Boolean);
   const message =
     `updated ${updated}, no_session ${noSession}, failed ${failed.length}, skipped ${skipped.length}, ` +
-    `constituents ${constituents.length}` + (notes.length ? `: ${notes.join(" | ")}` : "");
+    `constituents ${constituents.length}` +
+    (alerts ? `, alerts fired ${alerts.fired}, telegram failed ${alerts.telegramFailed}` : "") + (notes.length ? `: ${notes.join(" | ")}` : "");
   return { status, message };
 }
 

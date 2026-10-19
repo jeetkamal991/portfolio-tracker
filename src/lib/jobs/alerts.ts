@@ -1,6 +1,7 @@
-import { initialState, type AlertCondition, type Snapshot } from "@/lib/calc/alerts";
+import { alertMessage, CONDITIONS, evaluateRule, initialState, type AlertCondition, type Snapshot } from "@/lib/calc/alerts";
 import type { Repo } from "@/lib/db/repo";
-import type { StoredDay } from "@/lib/db/types";
+import type { AlertRule, AlertStateUpdate, NewAlertEvent, StoredDay } from "@/lib/db/types";
+import type { Sender } from "@/lib/notify/telegram";
 
 /** A stored day as an alert snapshot: price = close. */
 export function snapshotFromDay(key: string, day: StoredDay | null, at: Date): Snapshot {
@@ -65,4 +66,91 @@ export async function syncHoldingAlerts(repo: Repo, snapshotFor: (instrumentId: 
   }
   await repo.saveAlertStates(updates);
   for (const r of existing.values()) if (!keep.has(r.id)) await repo.deleteAlertRule(r.id);
+}
+
+export const INTRADAY_CONDITIONS = CONDITIONS.filter((c) => c.intraday).map((c) => c.id);
+
+export interface AlertRunDeps {
+  repo: Repo;
+  send: Sender;
+  now: Date;
+  mode: "eod" | "intraday";
+  /** Intraday: live prices by Yahoo ticker. */
+  quotes?: Record<string, { price: number }>;
+  /** Already-loaded rules (the quotes route reads them once to pick tickers); inactive ones are ignored. */
+  rules?: AlertRule[];
+}
+
+/** Each instrument's latest stored day: the latest Nifty session in one query, then each straggler's own latest. */
+async function latestDays(repo: Repo, ids: number[]): Promise<Map<number, StoredDay | null>> {
+  const nifty = await repo.getInstrumentByKey("NIFTY50");
+  const niftyDay = nifty ? await repo.getLatestDay(nifty.id) : null;
+  const onSession = niftyDay ? await repo.getDaysOn(ids, niftyDay.date) : new Map<number, StoredDay>();
+  const pairs = await Promise.all(ids.map(async (id) => [id, onSession.get(id) ?? (await repo.getLatestDay(id))] as const));
+  return new Map(pairs);
+}
+
+/**
+ * Evaluate the active rules against stored days (`eod`) or live quotes (`intraday`, price and holding rules only),
+ * save every known state in one write, send each fired message to Telegram in parallel, then store the events
+ * with their Telegram status. A rule with missing data is skipped and keeps its state.
+ */
+export async function runAlerts(deps: AlertRunDeps): Promise<{ evaluated: number; fired: number; telegramFailed: number }> {
+  const { repo, now, mode } = deps;
+  const loaded = deps.rules ?? (await repo.listAlertRules({ activeOnly: true, ...(mode === "intraday" && { conditions: INTRADAY_CONDITIONS }) }));
+  const rules = loaded.filter((r) => r.active && (mode === "eod" || INTRADAY_CONDITIONS.includes(r.condition)));
+
+  const snapshots = new Map<number, Snapshot | null>();
+  if (mode === "eod") {
+    const days = await latestDays(repo, [...new Set(rules.map((r) => r.instrumentId))]);
+    for (const [id, day] of days) snapshots.set(id, day ? snapshotFromDay("", day, now) : null);
+  }
+  const snapshotOf = (r: AlertRule): Snapshot | null => {
+    if (mode === "eod") {
+      const s = snapshots.get(r.instrumentId);
+      return s ? { ...s, key: r.key } : null;
+    }
+    const q = deps.quotes?.[r.yahooTicker];
+    if (!q) return null;
+    return { key: r.key, price: q.price, ema20: null, ema50: null, ema200: null, rsi14: null, score: null, scoreLabel: null, at: now, live: true };
+  };
+
+  let evaluated = 0;
+  const updates: AlertStateUpdate[] = [];
+  const fired: { rule: AlertRule; snap: Snapshot; message: string }[] = [];
+  for (const r of rules) {
+    const snap = snapshotOf(r);
+    if (!snap) continue;
+    const ev = evaluateRule(
+      { condition: r.condition, value: r.value, mode: r.mode, lastState: r.lastState, lastLevel: r.lastLevel, lastFiredAt: r.lastFiredAt ? new Date(r.lastFiredAt) : null },
+      snap,
+      {},
+    );
+    if (!ev.known) continue;
+    evaluated++;
+    const update: AlertStateUpdate = { id: r.id, lastState: ev.state, lastLevel: ev.level };
+    if (ev.fire) {
+      update.lastFiredAt = now.toISOString();
+      if (r.mode === "once") update.active = false;
+      fired.push({ rule: r, snap, message: alertMessage(r.key, r.condition, ev, snap, r.value) });
+    }
+    // Unchanged rules are not rewritten (the intraday pass runs every minute).
+    if (ev.fire || ev.state !== r.lastState || ev.level !== r.lastLevel) updates.push(update);
+  }
+  await repo.saveAlertStates(updates);
+
+  const statuses = await Promise.allSettled(fired.map((f) => deps.send(f.message)));
+  const events: NewAlertEvent[] = fired.map((f, i) => {
+    const s = statuses[i]!;
+    return {
+      alertId: f.rule.id,
+      instrumentId: f.rule.instrumentId,
+      firedAt: now.toISOString(),
+      price: f.snap.price,
+      message: f.message,
+      telegramStatus: s.status === "fulfilled" ? s.value : `failed: ${String(s.reason)}`.slice(0, 200),
+    };
+  });
+  if (events.length > 0) await repo.insertAlertEvents(events);
+  return { evaluated, fired: events.length, telegramFailed: events.filter((e) => e.telegramStatus?.startsWith("failed")).length };
 }
