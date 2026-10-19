@@ -18,6 +18,8 @@ Copy the keys from `.env.example` into `.env.local` (never commit it):
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | no (public; RLS denies it all table access) | Supabase anon key, used only for sign-in |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server routes and `scripts/` only. Never expose it to the browser. |
 | `CRON_SECRET` | yes | Bearer token for `/api/cron/eod` |
+| `TELEGRAM_BOT_TOKEN` | yes | Optional. Your alert bot's token from @BotFather (see Alerts) |
+| `TELEGRAM_CHAT_ID` | no | Optional. Your chat with the bot; `npm run telegram-setup` prints it |
 
 Generate `CRON_SECRET`:
 
@@ -33,7 +35,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0003_ema20.sql` - adds the stored `ema20` column. Apply it **before** deploying code that writes EMA 20 (the EOD job and back-fill fail on the unknown column otherwise), then re-run `npm run backfill -- --from 2015-01-01` to compute EMA 20 over full history for the indices and sectors.
    - `supabase/migrations/0004_indicators_score_universe.sql` - adds the new indicator columns (MACD, Bollinger, 52-week range, volume average), the stored Technical Score, and the `index_constituents` table. Apply it **before** deploying stage 2 code.
    - `supabase/migrations/0005_holdings.sql` - adds the `holdings` table (one row per stock: quantity, average price, buy date, optional stop loss and targets). Row level security is on with no policies, like the other tables. Apply it **before** deploying stage 5 code.
-   A new project applies all five in order. The owner's Tracker1 project already has 0003 to 0005.
+   - `supabase/migrations/0006_alerts.sql` - adds the `alerts` (rules) and `alert_events` (fired alerts) tables, RLS on with no policies. Apply it **before** deploying stage 7 code.
+   A new project applies all six in order. The owner's Tracker1 project already has 0003 to 0006.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -68,7 +71,7 @@ Then, from the repo root:
 Measure-Command { curl.exe -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/eod }
 ```
 
-If it takes more than 45 seconds, build the two-part EOD split (Task 8 of `docs/superpowers/plans/2026-10-18-redesign-stage2-score-universe-popup.md`) before relying on the Vercel cron, which stops at 60 seconds.
+The cron route's `maxDuration` is 300 seconds (the most Vercel Hobby allows). If a run takes more than about 4 minutes, build the two-part EOD split (Task 8 of `docs/superpowers/plans/2026-10-18-redesign-stage2-score-universe-popup.md`) before relying on the Vercel cron.
 
 ## Screens
 
@@ -96,6 +99,29 @@ The Portfolio tab tracks the owner's holdings, one position per stock.
 - **P/L.** Invested = quantity × average price; current value = quantity × CMP (the live price during market hours, else the last close); P/L = value − invested, and P/L % is against invested. Today's P/L is measured from the previous close, or from the buy price for a stock bought today. Totals leave out holdings with no price yet (shown as "without price").
 - **Status and alerts.** Only the stop loss and Target 1 drive the status: SL hit (CMP at or below the stop loss), Target hit (CMP at or above Target 1), Near SL / Near target (within 2% of CMP), otherwise OK. Hits come before near warnings in the risk-alerts bar.
 - **Elsewhere.** The Dashboard's YOUR PORTFOLIO panel shows the same totals and the top 4 holdings by value, or an "Add your first holding" button when empty. In the stock pop-up, "Add to Portfolio" opens the add form with the stock picked; for a held stock the button reads "In portfolio · 10 @ ₹100" and opens the edit form.
+
+### Alerts
+
+The Alerts tab sets alerts on any stock, index or sector, lists every rule, and shows the feed of fired alerts. "Set alert" in the stock pop-up opens the form with that stock picked.
+
+| Condition | Fires when | Checked |
+| --- | --- | --- |
+| Price goes above / below a price | the price crosses to the other side of it | live during market hours, and at end of day on the close |
+| Crosses EMA 20 / 50 / 200 | the close moves from one side of the EMA to the other, either way | end of day |
+| RSI goes above 70 / below 30 | RSI 14 moves past the level | end of day |
+| Score turns Bullish / Bearish | the label becomes Bullish or Strong Bullish (Bearish or Strong Bearish) | end of day |
+| Holding stop loss / target (automatic) | the price comes within 2% of the holding's stop loss or Target 1, or reaches it | live and end of day |
+
+- **When an alert fires.** An alert fires only on a change. A stock that stays above its EMA 200 for weeks fires once, on the day it crosses. A new rule records where things stand now and doesn't fire; if the condition is already true, the form says so, and the alert fires the next time it becomes true. If data is missing (no price, no EMA yet), the alert is skipped and keeps its last state.
+- **Once / Every time.** "Once" switches the rule off after it fires; resume it from the list. "Every time" fires again only after the condition has gone false and then true again. A rule fires at most once every 15 minutes.
+- **Holdings.** Every holding with a stop loss or Target 1 gets its own rules automatically, listed under "From your portfolio". They follow the holding: editing the stop loss changes the rule, and removing the holding removes them. They can't be paused or deleted from the Alerts tab. A holding rule fires each time its level rises: from clear to near, and from near to hit (straight to hit counts too). Falling back doesn't fire, so a price sitting near the stop loss all afternoon fires once.
+- **Live and end of day.** During market hours the price and holding rules are checked against live quotes at most once a minute, but only while the dashboard is open somewhere, because the check runs inside the live quotes request. The nightly EOD run (after the scores) checks every rule on the close, so nothing is missed when the site is closed. The EOD run message reports `alerts fired N, telegram failed N`.
+- **Feed and bell.** The bell in the top bar shows the unread count, refreshed every minute and when you come back to the tab, and lists the latest five alerts. Opening the bell doesn't mark them read; click an alert in the feed, or "Mark all read".
+- **Telegram.** Each alert is also sent to your own Telegram bot. A failed send is recorded on the alert (⚠ in the feed, with the reason on hover) and never stops other alerts. To connect:
+  1. In Telegram, open **@BotFather**, send `/newbot`, choose a name and a username ending in `bot`, and copy the token. Open your new bot and send it any message.
+  2. Add `TELEGRAM_BOT_TOKEN=<token>` to `.env.local` and run `npm run telegram-setup`. It prints your chat id.
+  3. Add `TELEGRAM_CHAT_ID=<id>` to `.env.local` and run `npm run telegram-setup` again: "✅ Nifty Pulse alerts are connected" arrives in Telegram.
+  4. Add both settings in Vercel (Settings > Environment Variables) and redeploy. The Alerts tab then shows "Telegram connected".
 
 ### Watchlist
 
@@ -139,7 +165,7 @@ npm run build
 
 1. Create a private GitHub repo and push this project.
 2. In Vercel, import the repo.
-3. Set the four env vars from the table above (use the generated `CRON_SECRET`).
+3. Set the env vars from the table above (use the generated `CRON_SECRET`; the two Telegram ones are optional).
 4. Deploy.
 5. Verify the cron route:
    ```powershell
