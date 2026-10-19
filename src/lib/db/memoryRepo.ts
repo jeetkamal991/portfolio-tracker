@@ -247,7 +247,10 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async listAlertEvents(limit) {
       return [...events]
         .sort((a, b) => Number(a.read) - Number(b.read) || b.firedAt.localeCompare(a.firedAt) || b.id - a.id)
-        .flatMap((e) => withInstrument(e).map(({ yahooTicker: _t, ...x }) => x))
+        .flatMap((e) => {
+          const i = instruments.get(e.instrumentId);
+          return i ? [{ ...e, key: i.key, name: i.name }] : [];
+        })
         .slice(0, limit);
     },
     async unreadAlertCount() {

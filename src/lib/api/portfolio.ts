@@ -3,6 +3,7 @@ import { swingLevelList } from "@/lib/calc/swing";
 import type { ScoreLabel } from "@/lib/calc/score";
 import type { Repo } from "@/lib/db/repo";
 import type { Holding, Instrument, StoredDay } from "@/lib/db/types";
+import { latestDaySnapshots, syncHoldingAlerts } from "@/lib/jobs/alerts";
 import { addHolding, type BackfillDeps } from "@/lib/jobs/backfill";
 import { istDate } from "@/lib/time/ist";
 import { primarySector } from "@/lib/universe/sectors";
@@ -31,6 +32,9 @@ async function validate(repo: Repo, inst: Instrument, input: unknown, now: Date)
   return validateHoldingInput(input, { today: istDate(now), cmp: latest?.close ?? null });
 }
 
+/** After a holding changes, its SL/target alert rules follow. */
+const syncAlerts = (repo: Repo, now: Date) => syncHoldingAlerts(repo, latestDaySnapshots(repo, now));
+
 export async function handleHoldingPost(deps: BackfillDeps, body: unknown): Promise<ApiResult> {
   if (!isObject(body) || typeof body.key !== "string" || body.key === "") {
     return { status: 400, body: { errors: { key: "Pick a stock" } } };
@@ -44,6 +48,7 @@ export async function handleHoldingPost(deps: BackfillDeps, body: unknown): Prom
   if (!r.ok) {
     return { status: 400, body: { error: r.error === "no_data" ? "No price data for this stock" : "Unknown stock" } };
   }
+  await syncAlerts(deps.repo, deps.now);
   return { status: 200, body: { ok: true, merged: r.merged, warnings: v.warnings } };
 }
 
@@ -54,12 +59,16 @@ export async function handleHoldingPut(deps: Pick<BackfillDeps, "repo" | "now">,
   const v = await validate(deps.repo, inst, body, deps.now);
   if (!v.ok) return { status: 400, body: { errors: v.errors } };
   await deps.repo.upsertHolding(inst.id, v.value);
+  await syncAlerts(deps.repo, deps.now);
   return { status: 200, body: { ok: true, warnings: v.warnings } };
 }
 
-export async function handleHoldingDelete(deps: Pick<BackfillDeps, "repo">, key: string): Promise<ApiResult> {
+export async function handleHoldingDelete(deps: Pick<BackfillDeps, "repo" | "now">, key: string): Promise<ApiResult> {
   const inst = await deps.repo.getInstrumentByKey(key);
-  if (inst) await deps.repo.deleteHolding(inst.id);
+  if (inst) {
+    await deps.repo.deleteHolding(inst.id);
+    await syncAlerts(deps.repo, deps.now);
+  }
   return { status: 204, body: null };
 }
 

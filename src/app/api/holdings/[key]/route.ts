@@ -13,6 +13,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ key:
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  await handleHoldingDelete({ repo: getRepo() }, key);
+  await handleHoldingDelete({ repo: getRepo(), now: new Date() }, key);
   return new NextResponse(null, { status: 204 });
 }

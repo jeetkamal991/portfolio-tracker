@@ -454,7 +454,8 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       const rows = updates.flatMap((u) => {
         const r = current.get(u.id);
         if (!r) return [];
-        const { created_at: _c, ...rest } = r;
+        const rest = { ...r };
+        delete rest.created_at;
         return [{
           ...rest,
           last_state: u.lastState,

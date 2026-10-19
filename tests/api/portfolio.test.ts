@@ -92,9 +92,24 @@ describe("handleHoldingPut / Delete", () => {
   it("DELETE removes it (204) and is idempotent", async () => {
     const repo = await setup();
     await handleHoldingPost(deps(repo), body);
-    expect((await handleHoldingDelete({ repo }, "AAA")).status).toBe(204);
+    expect((await handleHoldingDelete({ repo, now: NOW }, "AAA")).status).toBe(204);
     expect(await repo.listHoldings()).toEqual([]);
-    expect((await handleHoldingDelete({ repo }, "AAA")).status).toBe(204);
+    expect((await handleHoldingDelete({ repo, now: NOW }, "AAA")).status).toBe(204);
+  });
+  it("keeps the holding SL/target alert rules in step with add, edit and delete", async () => {
+    const repo = await setup();
+    const rules = async () => (await repo.listAlertRules()).map((r) => ({ id: r.id, condition: r.condition, value: r.value, source: r.source }));
+    await handleHoldingPost(deps(repo), body);
+    const added = await rules();
+    expect(added).toEqual([
+      expect.objectContaining({ condition: "holding_sl", value: 90, source: "holding" }),
+      expect.objectContaining({ condition: "holding_target", value: 120, source: "holding" }),
+    ]);
+    await handleHoldingPut(deps(repo), "AAA", { ...body, stopLoss: 95, target1: null });
+    expect(await rules()).toEqual([{ ...added[0], value: 95 }]);
+    await handleHoldingDelete({ repo, now: NOW }, "AAA");
+    expect(await rules()).toEqual([]);
+    expect(await repo.listAlertEvents(10)).toEqual([]);
   });
 });
 
