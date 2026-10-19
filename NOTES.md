@@ -2,8 +2,24 @@
 
 _Updated 2026-10-19 — stage 7 (Alerts + Telegram) built, Tasks 1–7 done; waiting on your Telegram/Vercel steps and checks, then merge_
 
+## Status at a glance (2026-10-19)
+**Done**
+- Stages 1–6 merged to `main` and pushed.
+- Stage 7 (Alerts + Telegram) built on `feat/redesign-stage7-alerts`: alert rules, holding SL/target alerts, end-of-day and live checks, Telegram sender and `npm run telegram-setup`, Alerts tab, bell, "Set alert" in the pop-up, README. 551 tests; typecheck, lint, build clean.
+- Migration 0006 applied to Tracker1; the alert storage was tested live there (test rows removed). Your holdings have their alert rules (ACE SL + T1, RELIANCE T1).
+
+**What I'm doing now**
+- Nothing running. Stage 7 is finished on its branch and I'm waiting on you: the Telegram setup, the signed-in checks, and your go-ahead to merge and push.
+
+**Needs to be done**
+- You: Telegram bot setup and the two Vercel settings, then redeploy (steps under To do 1).
+- You: signed-in check of the Alerts tab and the bell (never seen signed in).
+- Me, when you say so: merge `feat/redesign-stage7-alerts` into `main` and push.
+- You: the stage 6 sample-row cleanup in Supabase (the connector failed again for deletes).
+- Older items: To do 3–8 below.
+
 ## Branches
-- `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; the 6 new commits are local, not pushed.
+- `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; the 7 new commits are local, not pushed.
 - `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).
 - Merged and can be deleted: `feat/redesign-stage6-market`, `feat/redesign-stage5-finish`. Older local branches: `feat/foundation-dashboard` → `feat/redesign-stage2` → `feat/daily-sector-log`.
 
