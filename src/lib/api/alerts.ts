@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { CONDITIONS, initialState, type AlertCondition } from "@/lib/calc/alerts";
 import type { Repo } from "@/lib/db/repo";
-import type { AlertRule } from "@/lib/db/types";
+import type { ScoreLabel } from "@/lib/calc/score";
+import type { AlertRule, Instrument } from "@/lib/db/types";
 import { snapshotFromDay } from "@/lib/jobs/alerts";
 import type { Quote } from "@/lib/provider/types";
 import { isMarketOpen } from "@/lib/time/ist";
@@ -102,4 +103,31 @@ export async function handleAlertRead(repo: Repo, body: unknown): Promise<ApiRes
   if (!parsed.success) return { status: 400, body: { error: "invalid_body" } };
   await repo.markAlertsRead("all" in parsed.data ? "all" : parsed.data.ids);
   return { status: 204, body: null };
+}
+
+export interface AlertSnapshot {
+  key: string;
+  name: string;
+  type: Instrument["type"];
+  date: string | null;
+  price: number | null;
+  ema20: number | null;
+  ema50: number | null;
+  ema200: number | null;
+  rsi14: number | null;
+  score: number | null;
+  scoreLabel: ScoreLabel | null;
+}
+
+/** The form's "where it is now" line: the latest stored day only (no history). */
+export async function handleAlertSnapshot(repo: Repo, key: string): Promise<ApiResult> {
+  const inst = await repo.getInstrumentByKey(key);
+  if (!inst) return { status: 404, body: { error: "not_found" } };
+  const d = await repo.getLatestDay(inst.id);
+  const body: AlertSnapshot = {
+    key: inst.key, name: inst.name, type: inst.type, date: d?.date ?? null, price: d?.close ?? null,
+    ema20: d?.ema20 ?? null, ema50: d?.ema50 ?? null, ema200: d?.ema200 ?? null, rsi14: d?.rsi14 ?? null,
+    score: d?.score ?? null, scoreLabel: d?.scoreLabel ?? null,
+  };
+  return { status: 200, body };
 }

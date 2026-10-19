@@ -97,16 +97,30 @@ function Header({ data, titleId, onWatchlist, onAdd, adding, addError, onClose }
                 </button>
               )}
               <PortfolioButton data={data} />
+              <SetAlertLink stockKey={data.instrument.key} />
             </div>
             {addError && <p role="alert" className="text-xs text-[var(--down)]">{addError}</p>}
           </div>
         )}
+        {!isStock && <SetAlertLink stockKey={data.instrument.key} />}
       </div>
       <div className="flex items-start gap-3">
         <ScoreBadge score={data.score?.value ?? null} label={data.score?.label ?? null} partial={data.score?.partial ?? false} size="sm" />
         <CloseButton onClose={onClose} className="hidden sm:inline-flex" />
       </div>
     </div>
+  );
+}
+
+/** Opens the Alerts tab's form with this stock or index picked. */
+function SetAlertLink({ stockKey }: { stockKey: string }) {
+  return (
+    <Link
+      href={`/alerts?new=${encodeURIComponent(stockKey)}`}
+      className="w-fit rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--muted)] hover:bg-slate-800 hover:text-[var(--text)]"
+    >
+      Set alert
+    </Link>
   );
 }
 

@@ -5,8 +5,16 @@ import { useEffect, useState } from "react";
 export interface PickHit { key: string; name: string }
 interface Hit extends PickHit { type?: string }
 
-/** Debounced stock search, styled like the watchlist's AddStock. Stocks only. */
-export function StockPicker({ onPick, autoFocus = false }: { onPick: (hit: PickHit) => void; autoFocus?: boolean }) {
+/** Debounced stock search, styled like the watchlist's AddStock. Stocks only, unless `scope="all"` (indices and sectors too). */
+export function StockPicker({
+  onPick,
+  autoFocus = false,
+  scope = "stocks",
+}: {
+  onPick: (hit: PickHit) => void;
+  autoFocus?: boolean;
+  scope?: "stocks" | "all";
+}) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
 
@@ -19,8 +27,9 @@ export function StockPicker({ onPick, autoFocus = false }: { onPick: (hit: PickH
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/instruments/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
-        if (res.ok) setHits(((await res.json()) as Hit[]).filter((h) => h.type === undefined || h.type === "stock"));
+        const all = scope === "all";
+        const res = await fetch(`/api/instruments/search?q=${encodeURIComponent(term)}${all ? "&scope=all" : ""}`, { signal: ctrl.signal });
+        if (res.ok) setHits(((await res.json()) as Hit[]).filter((h) => all || h.type === undefined || h.type === "stock"));
       } catch {
         // aborted or offline: leave the previous hits
       }
@@ -29,7 +38,7 @@ export function StockPicker({ onPick, autoFocus = false }: { onPick: (hit: PickH
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q]);
+  }, [q, scope]);
 
   return (
     <div className="relative">
@@ -49,7 +58,7 @@ export function StockPicker({ onPick, autoFocus = false }: { onPick: (hit: PickH
         autoFocus={autoFocus}
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search a stock — name or symbol"
+        placeholder={scope === "all" ? "Search a stock or index — name or symbol" : "Search a stock — name or symbol"}
         aria-label="Search stock"
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] py-2 pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--up)] focus:outline-none"
       />

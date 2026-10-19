@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/login/actions";
 import { activeTab, TABS } from "@/lib/view/shell";
+import { Bell } from "../alerts/Bell";
 import { SearchBox } from "./SearchBox";
 
 function Tabs({ className }: { className: string }) {
@@ -46,6 +47,7 @@ export function TopBar() {
         <Tabs className="hidden items-center gap-1 lg:flex" />
         <div className="flex items-center gap-3">
           <SearchBox />
+          <Bell />
           <form action={signOut}>
             <button type="submit" className="whitespace-nowrap text-sm text-[var(--muted)] hover:text-[var(--text)]">
               Sign out

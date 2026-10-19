@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
 import type { Instrument } from "@/lib/db/types";
 import type { Quote } from "@/lib/provider/types";
-import { handleAlertCreate, handleAlertDelete, handleAlertFeed, handleAlertPatch, handleAlertRead, handleAlertsList } from "@/lib/api/alerts";
+import { handleAlertCreate, handleAlertDelete, handleAlertFeed, handleAlertPatch, handleAlertRead, handleAlertSnapshot, handleAlertsList } from "@/lib/api/alerts";
 
 const CLOSED = new Date("2026-10-16T12:00:00Z"); // 17:30 IST
 const OPEN = new Date("2026-10-16T05:00:00Z"); // 10:30 IST
@@ -108,5 +108,17 @@ describe("feed, list and read", () => {
     expect((r.body as { rules: unknown[]; events: unknown[] }).rules).toHaveLength(1);
     expect((r.body as { rules: unknown[]; events: unknown[] }).events).toHaveLength(6);
     expect((await handleAlertsList(repo, true)).body).toMatchObject({ telegram: "connected" });
+  });
+});
+
+describe("handleAlertSnapshot", () => {
+  it("returns the latest stored values for the form", async () => {
+    const repo = await setup();
+    expect(await handleAlertSnapshot(repo, "NIFTY_IT")).toEqual({
+      status: 200,
+      body: { key: "NIFTY_IT", name: "NIFTY_IT", type: "sector", date: "2026-10-16", price: 100, ema20: null, ema50: null, ema200: null, rsi14: null, score: null, scoreLabel: null },
+    });
+    expect((await handleAlertSnapshot(repo, "NODATA")).body).toMatchObject({ date: null, price: null });
+    expect((await handleAlertSnapshot(repo, "NOPE")).status).toBe(404);
   });
 });
