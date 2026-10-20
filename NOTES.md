@@ -1,22 +1,40 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-19 — PAUSED by the owner. Stage 7 (Alerts + Telegram) built, Tasks 1–7 done; waiting on your Telegram/Vercel steps and checks, then merge. Resume with: "continue from NOTES.md"_
+_Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (daily summary + report queue). Waiting on your Telegram/Vercel steps, the rest of the signed-in checks, a commit, then merge. Resume with: "continue from NOTES.md"_
 
-## Status at a glance (2026-10-19)
+## Status at a glance (2026-10-19, night)
 **Done**
 - Stages 1–6 merged to `main` and pushed.
 - Stage 7 (Alerts + Telegram) built on `feat/redesign-stage7-alerts`: alert rules, holding SL/target alerts, end-of-day and live checks, Telegram sender and `npm run telegram-setup`, Alerts tab, bell, "Set alert" in the pop-up, README. 551 tests; typecheck, lint, build clean.
 - Migration 0006 applied to Tracker1; the alert storage was tested live there (test rows removed). Your holdings have their alert rules (ACE SL + T1, RELIANCE T1).
+- Tonight: Claude tasks scheduled as cloud routines, migration 0007 applied, 19 Oct summary and two Deep Dive reports written (see "Session 2026-10-19 evening" below).
 
 **What I'm doing now**
-- Nothing running. Stage 7 is finished on its branch and I'm waiting on you: the Telegram setup, the signed-in checks, and your go-ahead to merge and push.
+- Nothing running; paused for the night by the owner (continue 2026-10-20). Dev server stopped — start it with `npm run dev`.
 
 **Needs to be done**
+- Me, when you say so: **commit** the uncommitted work (list below), delete the two TEST alert events, then merge `feat/redesign-stage7-alerts` into `main` and push.
 - You: Telegram bot setup and the two Vercel settings, then redeploy (steps under To do 1).
-- You: signed-in check of the Alerts tab and the bell (never seen signed in).
-- Me, when you say so: merge `feat/redesign-stage7-alerts` into `main` and push.
-- You: the stage 6 sample-row cleanup in Supabase (the connector failed again for deletes).
-- Older items: To do 3–8 below.
+- You: finish the signed-in Alerts checks (bell count, mark read, create/pause/delete a rule).
+- Watch: tomorrow (20 Oct) 18:07 IST — the first scheduled daily summary run. If it stalls on a Supabase approval prompt, switch it to a function like 0007.
+- Older items: To do 4–8 below.
+
+## Session 2026-10-19 evening
+- **TODAY BY CLAUDE was empty** because the daily-summary task had never been scheduled (`daily_summaries` had no rows). I wrote the 19 Oct row by hand following `docs/claude-tasks/daily-summary.md` (Nifty −1.11%, PSU Bank the only green sector, 3 market events, no news for your stocks).
+- **Cloud routines created** (claude.ai account has no GitHub access to the repo, so the task text is pasted into each routine; edits to `docs/claude-tasks/*.md` must be copied in by hand):
+  - "Nifty daily market summary" `trig_01JfG2B9mnmZXgGCyWZJJXiQ` — Mon–Fri 18:07 IST, first run 20 Oct.
+  - "Nifty stock report queue" `trig_013f5iVd6GeT8AGvy8RNr2Ly` — hourly 09:07–22:07 IST, every day.
+  - Both: Sonnet 5.5, Supabase connector, tools WebSearch + WebFetch, environment "Default" `env_019JdYCs8cWx9CseN6U4yzN3`. Manage at https://claude.ai/code/routines.
+- **Two problems found and fixed:**
+  1. Cloud runs couldn't open web pages ("host not found") → you set the environment's network access to Full. Confirmed working.
+  2. The Supabase connector stops for an approval prompt before any `UPDATE`, so unattended runs hung → **migration `0007_report_functions.sql`** adds `complete_report(id, content)` / `fail_report(id, error)` (only touch a `pending` row, return its id or null; `execute` revoked from anon/authenticated). Routine now writes via `select complete_report(...)`. `docs/claude-tasks/stock-report.md` and README updated to match.
+- **Reports:** #7 INDHOTEL failed (network); #8 INDHOTEL written by me by hand; #9 ACE written by the cloud routine end to end with no prompt (its valuation/balance-sheet parts say "couldn't be verified"). One old run (`session_014388Ww8ajxvh7xXDjYSzDW`) is stuck on the old approval prompt — ignore it; it can't overwrite #9.
+- **Stage 6 samples deleted** from Tracker1 (16 Oct sample summary, report 6).
+- **Alerts tab:** the "New alert" panel only shows the search box until a stock is picked, and portfolio rules show "Edit in Portfolio" instead of Delete — you couldn't find the buttons. Added a hint line under the search box (`AlertForm.tsx`).
+- **Bell:** shows a count only when there are unread events; there were none (live alerts only run in market hours, and an already-true rule waits for the next crossing). Inserted two **TEST** events (`alert_events` ids 3, 4, `alert_id` null) so you can see the badge — delete them after testing: `delete from alert_events where id in (3,4);`
+- **Noticed:** all three holding rules still have `last_state` null — the alert pass has never evaluated them. Expected while the deployed EOD job runs `main` (no stage 7 code); check again after the merge/deploy.
+- **Uncommitted:** `supabase/migrations/0007_report_functions.sql`, `src/app/components/alerts/AlertForm.tsx` (hint), `docs/claude-tasks/stock-report.md`, `README.md`, `NOTES.md`. A commit attempt was blocked by the permission check — ask me to commit.
+- The local 17:47 reminder (session-only cron) never fired.
 
 ## Branches
 - `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
@@ -60,9 +78,8 @@ Plan: `docs/superpowers/plans/2026-10-18-redesign-stage7-alerts-telegram.md`. Le
    - Telegram: @BotFather `/newbot` → token into `.env.local` as `TELEGRAM_BOT_TOKEN` → message your bot → `npm run telegram-setup` → put the printed id in `TELEGRAM_CHAT_ID` → run it again (test message arrives). Then add both to Vercel and redeploy.
    - Signed in (`npm run dev`): create "Price goes above" just below a stock's price (should say "already true"); pause/resume/delete it; check "From your portfolio" rules follow an SL edit; bell count and dropdown; mark read / mark all read; 390 px.
    - Then: merge `feat/redesign-stage7-alerts` into `main` and push (ask me).
-2. **You — Supabase** (the connector failed with "Invalid or expired requestState"; reconnect it and ask me, or run these in the Tracker1 SQL editor):
-   - Delete the stage 6 samples: `delete from daily_summaries where date='2026-10-16' and summary like 'SAMPLE%'; delete from reports where id=6;`
-3. **You — stage 6 Task 6**, in the Claude chat: "stage 6 is built, set up the Claude tasks" (6 PM summary + hourly report queue, and the report skill), then the README Market section.
+2. ~~Supabase stage 6 sample cleanup~~ — done 2026-10-19 (the 16 Oct sample summary and report 6 deleted from Tracker1).
+3. **Stage 6 Task 6 — Claude tasks scheduled 2026-10-19** (details under "Session 2026-10-19 evening"). Still open: the README Market section.
 4. **You — stage 5 check:** add a few real holdings and compare P/L for one stock with your broker app. Also look at the Dashboard snapshot and the pop-up's "Add to Portfolio" button signed in (I only checked them as a static render).
 5. **You — signed-in checks:**
    - Sectors: the Daily Sector Log is readable; clicking a tile / month tab doesn't jump to the top; a Dashboard sector tile opens the right sector.

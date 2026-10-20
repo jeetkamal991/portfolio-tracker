@@ -81,7 +81,10 @@ export function AlertForm({ initial }: { initial: AlertSnapshot | null }) {
     <Panel title="New alert">
       <div className="flex flex-col gap-4">
         {!picked ? (
-          <StockPicker scope="all" onPick={(h) => { setPicked(h); setDone(null); }} />
+          <>
+            <StockPicker scope="all" onPick={(h) => { setPicked(h); setDone(null); }} />
+            <p className="-mt-2 text-xs text-[var(--muted)]">Pick a stock or index to choose a condition and create the alert.</p>
+          </>
         ) : (
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="truncate font-medium">

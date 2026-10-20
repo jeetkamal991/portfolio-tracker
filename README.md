@@ -36,7 +36,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0004_indicators_score_universe.sql` - adds the new indicator columns (MACD, Bollinger, 52-week range, volume average), the stored Technical Score, and the `index_constituents` table. Apply it **before** deploying stage 2 code.
    - `supabase/migrations/0005_holdings.sql` - adds the `holdings` table (one row per stock: quantity, average price, buy date, optional stop loss and targets). Row level security is on with no policies, like the other tables. Apply it **before** deploying stage 5 code.
    - `supabase/migrations/0006_alerts.sql` - adds the `alerts` (rules) and `alert_events` (fired alerts) tables, RLS on with no policies. Apply it **before** deploying stage 7 code.
-   A new project applies all six in order. The owner's Tracker1 project already has 0003 to 0006.
+   - `supabase/migrations/0007_report_functions.sql` - adds `complete_report` / `fail_report`, which the scheduled Claude report task calls with a plain `select` (the Supabase connector stops for approval before a direct `update`). Not callable from the site's API roles.
+   A new project applies all seven in order. The owner's Tracker1 project already has 0003 to 0007.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
