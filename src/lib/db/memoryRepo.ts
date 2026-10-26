@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -34,6 +34,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const rules = new Map<number, StoredRule>();
   let nextRuleId = 1;
   const events: StoredEvent[] = [];
+  const shareholding = new Map<string, ShareholdingRow>();
 
   const dayFor = (id: number, date: string): StoredDay => {
     let m = days.get(id);
@@ -258,6 +259,15 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     },
     async markAlertsRead(ids) {
       for (const e of events) if (ids === "all" || ids.includes(e.id)) e.read = true;
+    },
+    async listShareholding(quarterEnds) {
+      return [...shareholding.values()].filter((r) => quarterEnds.includes(r.quarterEnd)).map((r) => ({ ...r }));
+    },
+    async latestShareholdingQuarter() {
+      return [...shareholding.values()].reduce<string | null>((m, r) => (m === null || r.quarterEnd > m ? r.quarterEnd : m), null);
+    },
+    async upsertShareholding(rows) {
+      for (const r of rows) shareholding.set(`${r.instrumentId}|${r.quarterEnd}`, { ...r });
     },
   };
 }

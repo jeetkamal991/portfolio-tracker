@@ -176,3 +176,14 @@ export interface AlertStateUpdate {
   value?: number | null;
 }
 export type NewAlertEvent = Omit<AlertEvent, "id" | "key" | "name" | "read">;
+
+/** Quarterly holding pattern. Percent numbers (48.1 = 48.1%), unlike the fractions used elsewhere. */
+export interface ShareholdingRow {
+  instrumentId: number;
+  /** Quarter end date, e.g. "2026-09-30". */
+  quarterEnd: string;
+  fiiPct: number | null;
+  diiPct: number | null;
+  promoterPct: number | null;
+  sourceUrl: string | null;
+}

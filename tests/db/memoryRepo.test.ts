@@ -306,4 +306,15 @@ describe("memoryRepo alerts", () => {
     expect(await r.unreadAlertCount()).toBe(0);
     expect(await r.listAlertEvents(2)).toHaveLength(2);
   });
+
+  it("stores shareholding per (instrument, quarter) and finds the newest quarter", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa")] });
+    expect(await r.latestShareholdingQuarter()).toBeNull();
+    const row = (quarterEnd: string, fiiPct: number) => ({ instrumentId: 1, quarterEnd, fiiPct, diiPct: 10, promoterPct: 50, sourceUrl: null });
+    await r.upsertShareholding([row("2026-06-30", 20), row("2026-09-30", 21)]);
+    await r.upsertShareholding([row("2026-09-30", 22)]);
+    expect(await r.latestShareholdingQuarter()).toBe("2026-09-30");
+    expect((await r.listShareholding(["2026-09-30"])).map((x) => x.fiiPct)).toEqual([22]);
+    expect(await r.listShareholding(["2026-06-30", "2026-09-30"])).toHaveLength(2);
+  });
 });

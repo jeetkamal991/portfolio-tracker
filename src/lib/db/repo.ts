@@ -1,7 +1,7 @@
 import type { Candle } from "@/lib/provider/types";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { AlertCondition } from "@/lib/calc/alerts";
-import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ScoreRow, ShareholdingRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -72,4 +72,10 @@ export interface Repo {
   listAlertEvents(limit: number): Promise<AlertEvent[]>;
   unreadAlertCount(): Promise<number>;
   markAlertsRead(ids: number[] | "all"): Promise<void>;
+  /** Rows for the given quarter ends (any order). */
+  listShareholding(quarterEnds: string[]): Promise<ShareholdingRow[]>;
+  /** Newest quarter end with at least one row, or null. */
+  latestShareholdingQuarter(): Promise<string | null>;
+  /** Insert or replace on (instrument, quarter). The app only reads; Claude writes in SQL — this serves tests and sample data. */
+  upsertShareholding(rows: ShareholdingRow[]): Promise<void>;
 }

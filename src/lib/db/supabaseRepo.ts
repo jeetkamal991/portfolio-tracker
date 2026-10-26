@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -19,6 +19,10 @@ const toInstrument = (r: Row): Instrument => ({
   type: r.type as InstrumentType,
   yahooTicker: r.yahoo_ticker as string,
   active: r.active as boolean,
+});
+const toShareholding = (r: Row): ShareholdingRow => ({
+  instrumentId: Number(r.instrument_id), quarterEnd: r.quarter_end as string,
+  fiiPct: num(r.fii_pct), diiPct: num(r.dii_pct), promoterPct: num(r.promoter_pct), sourceUrl: (r.source_url as string | null) ?? null,
 });
 const fromInstrument = (i: Omit<Instrument, "id">): Row => ({
   key: i.key, name: i.name, type: i.type, yahoo_ticker: i.yahooTicker, active: i.active,
@@ -499,6 +503,28 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       } else if (ids.length > 0) {
         check(await db.from("alert_events").update({ read: true }).in("id", ids), "markAlertsRead");
       }
+    },
+    async listShareholding(quarterEnds) {
+      if (quarterEnds.length === 0) return [];
+      const rows = check(await db.from("shareholding").select("*").in("quarter_end", quarterEnds), "listShareholding") as Row[];
+      return rows.map(toShareholding);
+    },
+    async latestShareholdingQuarter() {
+      const r = check(
+        await db.from("shareholding").select("quarter_end").order("quarter_end", { ascending: false }).limit(1).maybeSingle(),
+        "latestShareholdingQuarter",
+      ) as Row | null;
+      return r ? (r.quarter_end as string) : null;
+    },
+    async upsertShareholding(rows) {
+      if (rows.length === 0) return;
+      check(
+        await db.from("shareholding").upsert(rows.map((r) => ({
+          instrument_id: r.instrumentId, quarter_end: r.quarterEnd, fii_pct: r.fiiPct, dii_pct: r.diiPct,
+          promoter_pct: r.promoterPct, source_url: r.sourceUrl,
+        }))),
+        "upsertShareholding",
+      );
     },
   };
 }
