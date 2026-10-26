@@ -37,7 +37,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0005_holdings.sql` - adds the `holdings` table (one row per stock: quantity, average price, buy date, optional stop loss and targets). Row level security is on with no policies, like the other tables. Apply it **before** deploying stage 5 code.
    - `supabase/migrations/0006_alerts.sql` - adds the `alerts` (rules) and `alert_events` (fired alerts) tables, RLS on with no policies. Apply it **before** deploying stage 7 code.
    - `supabase/migrations/0007_report_functions.sql` - adds `complete_report` / `fail_report`, which the scheduled Claude report task calls with a plain `select` (the Supabase connector stops for approval before a direct `update`). Not callable from the site's API roles.
-   A new project applies all seven in order. The owner's Tracker1 project already has 0003 to 0007.
+   - `supabase/migrations/0008_shareholding.sql` - adds the `shareholding` table (FII, DII and promoter percent per stock per quarter), RLS on with no policies. Apply it **before** deploying stage 6b code.
+   - `supabase/migrations/0009_record_shareholding.sql` - adds `record_shareholding`, which the scheduled shareholding task calls with a plain `select`. Not callable from the site's API roles.
+   A new project applies all nine in order. The owner's Tracker1 project already has 0003 to 0009.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -133,6 +135,12 @@ Columns: stock, price, day %, EMA 20/50/200 (each green when the price is at or 
 The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and losers by day % and an advance/decline breadth bar with the A/D ratio. It comes from `GET /api/movers`. During market hours it overlays one batched live quote call (refreshed every 60 s and labelled LIVE, or "at close" if the tab stays open past 15:30 IST; on a weekday NSE holiday Yahoo's quotes are the last session's, so it is not labelled LIVE); otherwise it shows the newest stored session, dated from NIFTY 50, so weekends and holidays show the last trading day. A stock with a zero move counts as unchanged and appears in neither list.
 
 The panel depends on the Nifty 200 import (Stage 2 above). Until `NIFTY200.csv` has been imported it says "Market movers appear after the Nifty 200 list is imported."; with the list but no prices for the session date it says "No session data yet."
+
+### Stake-increase screeners
+
+Below the screeners, the Market tab shows "FII increased stake" and "DII increased stake": the ten Nifty 200 stocks whose holding rose most in percentage points versus the previous quarter (for example `48.1% -> 49.6%`, `+1.5 pts`). Only stocks with a row for both quarters count, and the sub-header shows how many of the 200 have reported for the latest quarter (`164 / 200 reported`), so a half-collected quarter is visible. The stock pop-up's indicator table also gets FII holding and DII holding rows with the change versus the previous quarter. Until the first collection the cards say "Shareholding data appears after the quarterly update runs."
+
+The data is collected by a Claude scheduled task that follows `docs/claude-tasks/shareholding.md` (about 50 stocks per run; it writes through `record_shareholding`, and a re-run replaces, never duplicates). To fill or refresh a quarter by hand, tell Claude "run the shareholding task".
 
 ### Sector Analysis
 
