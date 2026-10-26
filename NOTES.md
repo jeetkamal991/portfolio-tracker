@@ -41,7 +41,7 @@ _Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (d
 - Migrations **0008** (`shareholding` table) and **0009** (`record_shareholding` function, so unattended runs avoid the update-approval prompt) applied to Tracker1; 0009 tested in a rolled-back block. Plan said 0007 for the table; renumbered because 0007 was taken.
 - Added `upsertShareholding` to the repo (tests and sample data; the plan said read-only).
 - Live loader check on Tracker1 with sample rows (removed). Cards rendered statically (dark only; the app has no light theme).
-- **Not done (Task 4):** schedule the "Nifty shareholding update" cloud routines and run Jul–Sep 2026 once. Needs your go-ahead. Task text must be pasted into the routine by hand (as with the other routines).
+- **Task 4 done (2026-10-26):** two cloud routines (task text pasted in; edits to `docs/claude-tasks/shareholding.md` must be copied in by hand), same Supabase connector and "Default" environment, Sonnet 5.5: "Nifty shareholding update" `trig_017GAh5Z1tfkeuEyNCGZF5C9` (22–28 of Jan/Apr/Jul/Oct) and "(late filers)" `trig_01AZ2VZEjPwwZv4rZ5XQDRhn` (5–10 of Feb/May/Aug/Nov). Both run hourly 19:00–22:00 IST on those days (UTC cron `30 13-16`); each run does up to 50 stocks and stops quietly when none are missing, so the hourly runs cover all 200. First run 26 Oct about 21:07 IST (Jul–Sep 2026). Check afterwards: `select count(distinct instrument_id) from shareholding where quarter_end = '2026-09-30';`
 - Stage 7 still unmerged; 6b sits on top of it, so merge stage 7 first.
 - Also committed 0007 + the 6b plan (3418666).
 
