@@ -36,6 +36,15 @@ _Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (d
 - **Uncommitted:** `supabase/migrations/0007_report_functions.sql`, `src/app/components/alerts/AlertForm.tsx` (hint), `docs/claude-tasks/stock-report.md`, `README.md`, `NOTES.md`. A commit attempt was blocked by the permission check — ask me to commit.
 - The local 17:47 reminder (session-only cron) never fired.
 
+## Session 2026-10-26 — Stage 6b (FII/DII stake screeners) built
+- Branch `feat/stage6b-shareholding`, stacked on stage 7 (4b19c1d, 8352cd2, 19c0004, 82b4a2a). Plan `docs/superpowers/plans/2026-10-20-stage6b-fii-dii-shareholding.md`. 563 tests; typecheck, lint, build clean.
+- Migrations **0008** (`shareholding` table) and **0009** (`record_shareholding` function, so unattended runs avoid the update-approval prompt) applied to Tracker1; 0009 tested in a rolled-back block. Plan said 0007 for the table; renumbered because 0007 was taken.
+- Added `upsertShareholding` to the repo (tests and sample data; the plan said read-only).
+- Live loader check on Tracker1 with sample rows (removed). Cards rendered statically (dark only; the app has no light theme).
+- **Not done (Task 4):** schedule the "Nifty shareholding update" cloud routines and run Jul–Sep 2026 once. Needs your go-ahead. Task text must be pasted into the routine by hand (as with the other routines).
+- Stage 7 still unmerged; 6b sits on top of it, so merge stage 7 first.
+- Also committed 0007 + the 6b plan (3418666).
+
 ## Branches
 - `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
 - `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).
