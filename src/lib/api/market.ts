@@ -1,6 +1,7 @@
 import type { Repo } from "@/lib/db/repo";
 import { runScreeners, type ScreenerResult } from "@/lib/calc/screeners";
 import { runWatchSignals, type WatchSignals } from "@/lib/calc/watchSignals";
+import { previousQuarterEnd, rankStakeIncreases, type StakeScreener } from "@/lib/calc/shareholding";
 import { parseDailySummary, type ParsedSummary } from "@/lib/content/claude";
 import { buildBreadth, type Breadth } from "@/lib/view/breadth";
 
@@ -13,9 +14,18 @@ export interface MarketData {
   /** Crosses and candle patterns on watchlist + portfolio stocks over the last 5 sessions. */
   watchSignals: WatchSignals;
   hasWatchStocks: boolean;
+  /** Quarterly FII / DII stake increases; null until shareholding data exists. */
+  stakes: { fii: StakeScreener; dii: StakeScreener } | null;
 }
 
 const NO_SIGNALS: WatchSignals = { crosses: [], formations: [] };
+
+async function loadStakes(repo: Repo, members: { id: number; key: string; name: string }[]): Promise<MarketData["stakes"]> {
+  const latest = await repo.latestShareholdingQuarter();
+  if (!latest) return null;
+  const rows = await repo.listShareholding([latest, previousQuarterEnd(latest)]);
+  return { fii: rankStakeIncreases("FII", members, rows, latest), dii: rankStakeIncreases("DII", members, rows, latest) };
+}
 
 /**
  * The session is NIFTY50's latest priced date, so a weekend shows Friday's data and summary;
@@ -31,6 +41,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
     repo.listHoldings(),
   ]);
   const hasUniverse = constituents.length > 0;
+  const stakes = hasUniverse ? await loadStakes(repo, constituents) : null;
   // watchlist first, then holdings not already on it
   const watch = new Map<number, { key: string; name: string }>();
   for (const w of watchlist) watch.set(w.id, { key: w.key, name: w.name });
@@ -39,7 +50,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
 
   const latest = nifty ? await repo.getLatestDay(nifty.id) : null;
   if (!nifty || !latest) {
-    return { session: null, summary: null, screeners: [], breadth: null, hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks };
+    return { session: null, summary: null, screeners: [], breadth: null, hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes };
   }
 
   const session = latest.date;
@@ -50,7 +61,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
   ]);
   const summary = summaryRow ? parseDailySummary(summaryRow) : null;
   if (!hasUniverse && !hasWatchStocks) {
-    return { session, summary, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks };
+    return { session, summary, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes };
   }
 
   // Newer or unpriced rows must not shrink the window: keep priced sessions up to `session`, then the last 6.
@@ -68,5 +79,6 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
     hasUniverse,
     watchSignals: runWatchSignals(watchStocks, session),
     hasWatchStocks,
+    stakes,
   };
 }

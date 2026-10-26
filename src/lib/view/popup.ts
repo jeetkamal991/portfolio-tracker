@@ -1,10 +1,11 @@
 import { effectiveLevel } from "@/lib/calc/levels";
 import type { HoldingInput } from "@/lib/calc/portfolio";
+import { previousQuarterEnd, quarterLabel } from "@/lib/calc/shareholding";
 import { levelStrength } from "@/lib/calc/levelsDetail";
 import type { PatternBias } from "@/lib/calc/patterns";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
 import { parseReportContent } from "@/lib/content/claude";
-import type { Instrument, InstrumentType, Levels, ReportRow, StoredDay } from "@/lib/db/types";
+import type { Instrument, InstrumentType, Levels, ReportRow, ShareholdingRow, StoredDay } from "@/lib/db/types";
 import { fmtPct, fmtPrice } from "./dashboard";
 
 export interface PopupData {
@@ -43,10 +44,25 @@ export interface PopupInput {
   onWatchlist: boolean;
   holding: HoldingInput | null;
   reports: ReportRow[];
+  /** This stock's rows for the latest and previous reported quarters. */
+  shareholding: ShareholdingRow[];
 }
 
 const PATTERN_SESSIONS = 10;
 const DASH = "—";
+
+/** "49.6% (+1.5 pts vs Apr–Jun)"; just the percent when the previous quarter is missing. */
+function holdingLine(rows: ShareholdingRow[], pick: (r: ShareholdingRow) => number | null): string {
+  const latest = rows.reduce<ShareholdingRow | null>((m, r) => (m === null || r.quarterEnd > m.quarterEnd ? r : m), null);
+  const to = latest ? pick(latest) : null;
+  if (!latest || to === null) return DASH;
+  const prevEnd = previousQuarterEnd(latest.quarterEnd);
+  const prev = rows.find((r) => r.quarterEnd === prevEnd);
+  const from = prev ? pick(prev) : null;
+  if (from === null) return `${to}%`;
+  const diff = Math.round((to - from) * 10) / 10;
+  return `${to}% (${diff > 0 ? "+" : ""}${diff} pts vs ${quarterLabel(prevEnd).replace(/ \d{4}$/, "")})`;
+}
 
 function niftyLine(label: ScoreLabel | null): string {
   if (label === "Strong Bullish" || label === "Bullish") return "Broad market trend supports longs";
@@ -154,6 +170,8 @@ export function buildPopupData(input: PopupInput): PopupData {
       price("52W low", low),
       { label: "RS vs Nifty (4W)", value: fmtPct(latest?.rsVsNifty ?? null) },
       { label: "RS vs sector (4W)", value: fmtPct(rsVsSector) },
+      { label: "FII holding", value: holdingLine(input.shareholding, (r) => r.fiiPct) },
+      { label: "DII holding", value: holdingLine(input.shareholding, (r) => r.diiPct) },
     ],
     onWatchlist: input.onWatchlist,
     holding: input.holding,

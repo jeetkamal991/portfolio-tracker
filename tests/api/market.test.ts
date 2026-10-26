@@ -34,7 +34,7 @@ describe("loadMarket", () => {
     await repo.replaceConstituents("NIFTY200", [3]);
     expect(await loadMarket(repo, "2026-01-09")).toEqual({
       session: null, summary: null, screeners: [], breadth: null, hasUniverse: true,
-      watchSignals: { crosses: [], formations: [] }, hasWatchStocks: false,
+      watchSignals: { crosses: [], formations: [] }, hasWatchStocks: false, stakes: null,
     });
   });
   it("no constituents gives hasUniverse false and no screeners", async () => {
@@ -125,5 +125,19 @@ describe("loadMarket", () => {
       expect(m.screeners).toEqual([]);
       expect(m.watchSignals.crosses.map((c) => c.label)).toEqual(["Closed above EMA 200"]);
     });
+  });
+
+  it("stakes is null until shareholding exists, then ranks FII and DII increases", async () => {
+    const repo = await setup();
+    expect((await loadMarket(repo, "2026-01-09")).stakes).toBeNull();
+    const row = (instrumentId: number, quarterEnd: string, fiiPct: number, diiPct: number) => ({ instrumentId, quarterEnd, fiiPct, diiPct, promoterPct: 50, sourceUrl: null });
+    await repo.upsertShareholding([
+      row(3, "2026-06-30", 10, 20), row(3, "2026-09-30", 11, 19),
+      row(4, "2026-06-30", 10, 20), row(4, "2026-09-30", 9, 21.5),
+    ]);
+    const m = await loadMarket(repo, "2026-01-09");
+    expect(m.stakes?.fii.hits.map((h) => [h.key, h.change])).toEqual([["AAA", 1]]);
+    expect(m.stakes?.dii.hits.map((h) => [h.key, h.change])).toEqual([["BBB", 1.5]]);
+    expect(m.stakes?.fii).toMatchObject({ label: "Jul–Sep 2026", reported: 2, total: 2 });
   });
 });

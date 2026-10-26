@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildPopupData } from "@/lib/view/popup";
-import type { Instrument, Levels, StoredDay } from "@/lib/db/types";
+import type { Instrument, Levels, ShareholdingRow, StoredDay } from "@/lib/db/types";
 
 const inst: Instrument = { id: 1, key: "TCS", name: "TCS", type: "stock", yahooTicker: "TCS.NS", active: true };
 const sector: Instrument = { id: 2, key: "NIFTY_IT", name: "Nifty IT", type: "sector", yahooTicker: "^CNXIT", active: true };
@@ -13,7 +13,7 @@ const day = (date: string, o: Partial<StoredDay> = {}): StoredDay => ({
   rsVsSector: null, score: null, scoreComponents: null, scoreLabel: null, scoreConfidence: null, scoreSignal: null,
   ...o,
 });
-const base = { instrument: inst, sector: null as Instrument | null, levels: noLevels, niftyLatest: null as StoredDay | null, onWatchlist: false, holding: null, reports: [] };
+const base = { shareholding: [] as ShareholdingRow[], instrument: inst, sector: null as Instrument | null, levels: noLevels, niftyLatest: null as StoredDay | null, onWatchlist: false, holding: null, reports: [] };
 const d = (n: number) => `2026-01-${String(n).padStart(2, "0")}`;
 
 describe("buildPopupData", () => {
@@ -79,9 +79,9 @@ describe("buildPopupData", () => {
     expect(res.patterns[0].effect).toBe(-3.75);
   });
 
-  it("indicator table has 16 rows with dashes for nulls", () => {
+  it("indicator table has 18 rows with dashes for nulls", () => {
     const empty = buildPopupData({ ...base, days: [day(d(1))] });
-    expect(empty.indicatorTable).toHaveLength(16);
+    expect(empty.indicatorTable).toHaveLength(18);
     expect(empty.indicatorTable.map((r) => r.label).slice(0, 4)).toEqual(["CMP", "EMA 20", "EMA 50", "EMA 200"]);
     expect(empty.indicatorTable.find((r) => r.label === "EMA 20")!.value).toBe("—");
     expect(empty.indicatorTable.find((r) => r.label === "Volume vs 20-day avg")!.value).toBe("—");
@@ -100,7 +100,7 @@ describe("buildPopupData", () => {
     const p = buildPopupData({ ...base, days: [] });
     expect(p.latest).toBeNull();
     expect(p.score).toBeNull();
-    expect(p.indicatorTable).toHaveLength(16);
+    expect(p.indicatorTable).toHaveLength(18);
     expect(p.patterns).toEqual([]);
   });
 
@@ -113,5 +113,18 @@ describe("buildPopupData", () => {
     });
     expect(p.score).toMatchObject({ value: 61, label: "Bullish", confidence: "High", signal: "x", partial: true });
     expect(p.onWatchlist).toBe(true);
+  });
+
+  it("shows FII and DII holding with the change versus the previous quarter, dashes when absent", () => {
+    const sh = (quarterEnd: string, fiiPct: number, diiPct: number): ShareholdingRow => ({ instrumentId: 1, quarterEnd, fiiPct, diiPct, promoterPct: 50, sourceUrl: null });
+    const none = buildPopupData({ ...base, days: [day(d(1))] });
+    expect(none.indicatorTable.slice(-2)).toEqual([{ label: "FII holding", value: "—" }, { label: "DII holding", value: "—" }]);
+    const both = buildPopupData({ ...base, days: [day(d(1))], shareholding: [sh("2026-06-30", 48.1, 12), sh("2026-09-30", 49.6, 11.5)] });
+    expect(both.indicatorTable.slice(-2)).toEqual([
+      { label: "FII holding", value: "49.6% (+1.5 pts vs Apr–Jun)" },
+      { label: "DII holding", value: "11.5% (-0.5 pts vs Apr–Jun)" },
+    ]);
+    const only = buildPopupData({ ...base, days: [day(d(1))], shareholding: [sh("2026-09-30", 49.6, 11.5)] });
+    expect(only.indicatorTable.slice(-2).map((r) => r.value)).toEqual(["49.6%", "11.5%"]);
   });
 });

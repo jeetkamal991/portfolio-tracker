@@ -4,6 +4,7 @@ import { istDate } from "@/lib/time/ist";
 import { BreadthPanel } from "../../components/market/BreadthPanel";
 import { ClaudeSummaryCard } from "../../components/market/ClaudeSummaryCard";
 import { ScreenerGrid } from "../../components/market/ScreenerGrid";
+import { StakeScreeners } from "../../components/market/StakeScreeners";
 import { WatchSignalsPanel } from "../../components/market/WatchSignalsPanel";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function MarketPage() {
         <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
           <WatchSignalsPanel signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />
           <ScreenerGrid screeners={m.screeners} session={m.session} hasUniverse={m.hasUniverse} />
+          {m.hasUniverse && <StakeScreeners stakes={m.stakes} />}
         </div>
         <div className="min-w-0">
           <BreadthPanel breadth={m.breadth} hasUniverse={m.hasUniverse} />

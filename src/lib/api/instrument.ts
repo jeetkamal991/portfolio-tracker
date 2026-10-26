@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Repo } from "@/lib/db/repo";
+import { previousQuarterEnd } from "@/lib/calc/shareholding";
 import { primarySector } from "@/lib/universe/sectors";
 import { buildPopupData } from "@/lib/view/popup";
 import type { ApiResult } from "./levels";
@@ -25,13 +26,16 @@ export async function handleInstrumentGet(repo: Repo, key: string): Promise<ApiR
     inst.type === "stock"
       ? primarySector(memberships.filter((m) => m.instrumentId === inst.id).map((m) => m.indexKey))
       : null;
-  const [sector, niftyLatest] = await Promise.all([
+  const latestQuarter = await repo.latestShareholdingQuarter();
+  const [sector, niftyLatest, quarterRows] = await Promise.all([
     sectorKey ? repo.getInstrumentByKey(sectorKey) : Promise.resolve(null),
     nifty ? repo.getLatestDay(nifty.id) : Promise.resolve(null),
+    latestQuarter ? repo.listShareholding([latestQuarter, previousQuarterEnd(latestQuarter)]) : Promise.resolve([]),
   ]);
 
   const data = buildPopupData({
     instrument: inst, sector, days, levels, niftyLatest,
+    shareholding: quarterRows.filter((r) => r.instrumentId === inst.id),
     onWatchlist: watchlist.some((w) => w.id === inst.id), reports,
     holding: held
       ? { qty: held.qty, avgPrice: held.avgPrice, buyDate: held.buyDate, stopLoss: held.stopLoss, target1: held.target1, target2: held.target2 }
