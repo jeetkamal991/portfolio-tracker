@@ -1,6 +1,7 @@
 import { loadMarket } from "@/lib/api/market";
 import { getRepo } from "@/lib/api/server";
 import { istDate } from "@/lib/time/ist";
+import { AlphaGrid } from "../../components/market/AlphaGrid";
 import { BreadthPanel } from "../../components/market/BreadthPanel";
 import { ClaudeSummaryCard } from "../../components/market/ClaudeSummaryCard";
 import { ScreenerGrid } from "../../components/market/ScreenerGrid";
@@ -18,6 +19,7 @@ export default async function MarketPage() {
         <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
           <WatchSignalsPanel signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />
           <ScreenerGrid screeners={m.screeners} session={m.session} hasUniverse={m.hasUniverse} />
+          <AlphaGrid alphas={m.alphas} session={m.session} hasUniverse={m.hasUniverse} />
           {m.hasUniverse && <StakeScreeners stakes={m.stakes} />}
         </div>
         <div className="min-w-0">

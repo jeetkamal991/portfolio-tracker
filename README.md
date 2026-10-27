@@ -136,6 +136,12 @@ The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and
 
 The panel depends on the Nifty 200 import (Stage 2 above). Until `NIFTY200.csv` has been imported it says "Market movers appear after the Nifty 200 list is imported."; with the list but no prices for the session date it says "No session data yet."
 
+### Alpha ranks
+
+Below the screeners, the Market tab shows an "Alpha rank" card and six alpha cards. Each alpha scores every Nifty 200 stock priced on the session from its last 30 sessions of open, high, low, close and volume, and the card lists the ten highest and ten lowest. The formulas are alphas #1, 2, 6, 12, 54 and 101 from Z. Kakushadze (2015), "101 Formulaic Alphas" (arXiv:1601.00991), written in `src/lib/calc/alpha/`. The "Alpha rank" card is each stock's mean rank across the alphas that scored it (0 to 100, only for stocks scored by at least three).
+
+These are short-horizon (about five-day) statistical ranks, not a buy or sell call. Two limits to know: alphas #1 and #54 take only a few distinct values, so many stocks tie and the lists show an alphabetical slice of the tied group; and a stock needs an alpha's minimum history (25 sessions for #1, 10 for #2 and #6) to be scored by it, so recently listed stocks drop out of those cards. The alphas are computed on each Market page load from stored candles, with no stored results and no new table.
+
 ### Stake-increase screeners
 
 Below the screeners, the Market tab shows "FII increased stake" and "DII increased stake": the ten Nifty 200 stocks whose holding rose most in percentage points versus the previous quarter (for example `48.1% -> 49.6%`, `+1.5 pts`). Only stocks with a row for both quarters count, and the sub-header shows how many of the 200 have reported for the latest quarter (`164 / 200 reported`), so a half-collected quarter is visible. The stock pop-up's indicator table also gets FII holding and DII holding rows with the change versus the previous quarter. Until the first collection the cards say "Shareholding data appears after the quarterly update runs."

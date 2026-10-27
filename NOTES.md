@@ -45,6 +45,13 @@ _Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (d
 - Stage 7 still unmerged; 6b sits on top of it, so merge stage 7 first.
 - Also committed 0007 + the 6b plan (3418666).
 
+## Session 2026-10-27 — Alpha ranks (Vibe-Trading sub-project 1 of 3)
+- Spec `docs/superpowers/specs/2026-10-27-factor-alpha-screeners-design.md`, plan `docs/superpowers/plans/2026-10-27-factor-alpha-screeners.md`; branch `feat/alpha-screeners`, stacked on `feat/stage6b-shareholding` (stage 6b is not on `main`).
+- Built: `src/lib/calc/alpha/` (operators, six alphas, runner), `Repo.getOhlcvRange`, `AlphaGrid` under the Screeners panel. No schema change.
+- Load time, real Supabase, median of 5: 5.4 s before, 5.9 s after. A first version that reused `getDaysRange` for 30 sessions took 13.5 s (about 8 s slower), so the alphas read only OHLCV columns in parallel chunks instead.
+- Seen: a static render (live data, headless Edge) at 1280 and 390 px, dark only (the app has no light theme). Not seen: the signed-in `/market` page itself.
+- Next sub-projects: 2) backtesting (reuse `calc/alpha`; Vibe-Trading's `india_equity.py` engine is the reference for NSE costs), 3) research agent as a scheduled Claude task.
+
 ## Branches
 - `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
 - `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).
