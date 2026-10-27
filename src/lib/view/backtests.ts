@@ -11,6 +11,13 @@ export function fmtFrac(v: number | null): string {
 
 export const fmtRatio = (v: number | null): string => (v === null ? "—" : `${v < 0 ? MINUS : ""}${Math.abs(v).toFixed(2)}`);
 
+/** A run id from the URL: a positive integer short enough for the database's bigint, else null. */
+export function parseRunId(s: string): number | null {
+  if (!/^\d{1,15}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 ? n : null;
+}
+
 /** Both lines scaled so the first point is 100. */
 export function rebase100(equity: [string, number, number][]): { time: string; strategy: number; benchmark: number }[] {
   if (equity.length === 0) return [];

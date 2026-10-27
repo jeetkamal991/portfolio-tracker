@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BacktestRun } from "@/lib/db/types";
-import { fmtFrac, fmtRatio, isDisplayable, rebase100 } from "@/lib/view/backtests";
+import { fmtFrac, fmtRatio, isDisplayable, parseRunId, rebase100 } from "@/lib/view/backtests";
 
 const M = {
   totalReturn: 0.5, cagr: 0.1, maxDrawdown: -0.2, volatility: 0.15, sharpe: 0.8, hitRate: 0.55, avgWinPct: 0.03,
@@ -53,5 +53,15 @@ describe("isDisplayable", () => {
     expect(isDisplayable({ ...run(), equity: "nope" } as unknown as BacktestRun)).toBe(false);
     expect(isDisplayable({ ...run(), equity: [] })).toBe(false);
     expect(isDisplayable({ ...run(), trades: null } as unknown as BacktestRun)).toBe(false);
+  });
+});
+
+describe("parseRunId", () => {
+  it("accepts a plain positive integer", () => {
+    expect(parseRunId("7")).toBe(7);
+    expect(parseRunId("007")).toBe(7);
+  });
+  it("rejects anything else, including ids too long for the database", () => {
+    for (const bad of ["", "abc", "-1", "1.5", "0", "99999999999999999999", " 3"]) expect(parseRunId(bad)).toBeNull();
   });
 });

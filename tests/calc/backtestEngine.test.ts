@@ -40,6 +40,20 @@ describe("runEngine entries and exits", () => {
     expect(r.tradedValue).toBe(98 * 102 + 98 * 105);
   });
 
+  it("keeps a stock the strategy still wants when its hold ends, instead of selling and re-buying it", () => {
+    // wanted again after the d4 close, so the d5 time exit is skipped and the hold restarts
+    const r = runEngine([rising("A")], dates, stub({ 1: ["A"], 4: ["A"] }), base);
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0]).toMatchObject({ entryDate: dates[2], entryPrice: 102, qty: 98, exitDate: dates[7], reason: "end" });
+    expect(r.tradedValue).toBe(98 * 102 + 98 * 107); // one buy, one sell: no round trip at d5
+  });
+
+  it("still sells a stock the strategy no longer wants when its hold ends", () => {
+    const r = runEngine([rising("A"), rising("B")], dates, stub({ 1: ["A"], 4: ["B"] }), base);
+    expect(r.trades[0]).toMatchObject({ key: "A", exitDate: dates[5], reason: "time" });
+    expect(r.trades[1]).toMatchObject({ key: "B", entryDate: dates[5] });
+  });
+
   it("fills the free slots in the strategy's priority order", () => {
     const r = runEngine([rising("A"), rising("B")], dates, stub({ 1: ["A", "B"] }), base);
     expect(r.trades.map((t) => t.key)).toEqual(["A"]);

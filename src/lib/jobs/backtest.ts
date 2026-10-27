@@ -27,6 +27,8 @@ export interface BacktestOptions {
   dryRun: boolean;
 }
 
+/** A saved run holds every trade as JSON and the page sends them all to the browser, so very large runs are refused. */
+export const MAX_SAVED_TRADES = 10_000;
 const FAR = "9999-12-31";
 const MIN_SESSIONS = 60;
 const HISTORY_BUFFER_DAYS = 60; // history before `from` so the first windows are full
@@ -145,24 +147,34 @@ export interface DataReport {
   scoreCoverage: number | null;
 }
 
+/** Every close-to-close move of 35% or more, in any stock. */
+function bigMovesOf(stocks: StockSeries<OhlcvDay>[]): DataReport["bigMoves"] {
+  const out: DataReport["bigMoves"] = [];
+  for (const s of stocks) {
+    s.days.forEach((d, i) => {
+      const prev = s.days[i - 1]?.close;
+      if (d.close != null && prev != null && prev > 0) {
+        const pct = d.close / prev - 1;
+        if (Math.abs(pct) >= BIG_MOVE) out.push({ key: s.key, date: d.date, pct });
+      }
+    });
+  }
+  return out;
+}
+
 export function dataReport(stocks: StockSeries<OhlcvDay & { score?: number | null }>[]): DataReport {
   let first: string | null = null;
   let last: string | null = null;
   let withScore = 0;
   let scored = 0;
   let counted = 0;
-  const bigMoves: DataReport["bigMoves"] = [];
+  const bigMoves = bigMovesOf(stocks);
   for (const s of stocks) {
     if (s.days.length > 0) counted++;
-    s.days.forEach((d, i) => {
+    s.days.forEach((d) => {
       if (first === null || d.date < first) first = d.date;
       if (last === null || d.date > last) last = d.date;
       if ("score" in d) { withScore++; if (d.score != null) scored++; }
-      const prev = s.days[i - 1]?.close;
-      if (d.close != null && prev != null && prev > 0) {
-        const pct = d.close / prev - 1;
-        if (Math.abs(pct) >= BIG_MOVE) bigMoves.push({ key: s.key, date: d.date, pct });
-      }
     });
   }
   bigMoves.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
@@ -203,6 +215,7 @@ export async function runBacktest(repo: Repo, opts: BacktestOptions): Promise<{ 
 
   let engine: EngineResult;
   let report: DataReport;
+  let moves: DataReport["bigMoves"];
   let strategy: Pick<Strategy, "id" | "label" | "params">;
   if (opts.spec.kind === "rule") {
     const hist = await loadHistory<StoredDay>(repo, ids, loadFrom, FAR, true);
@@ -210,13 +223,26 @@ export async function runBacktest(repo: Repo, opts: BacktestOptions): Promise<{ 
     strategy = ruleStrategy(opts.spec.rule);
     engine = runEngine(stocks, calendar, ruleStrategy(opts.spec.rule), settings);
     report = dataReport(stocks);
+    moves = bigMovesOf(stocks);
   } else {
     const hist = await loadHistory<OhlcvDay>(repo, ids, loadFrom, FAR, false);
     const stocks = universe.map((u) => ({ key: u.key, name: u.name, days: hist.get(u.id) ?? [] }));
     strategy = strategyOf(opts.spec);
     engine = runEngine(stocks, calendar, strategyOf(opts.spec), settings);
     report = dataReport(stocks);
+    moves = bigMovesOf(stocks);
   }
+
+  // a held stock that crosses a split Yahoo did not adjust books a fake crash: mark those trades
+  let suspects = 0;
+  for (const t of engine.trades) {
+    if (moves.some((m) => m.key === t.key && m.date > t.entryDate && m.date <= t.exitDate)) {
+      t.suspect = true;
+      suspects++;
+    }
+  }
+  const dataNote = moves.length === 0 ? "" :
+    ` ${moves.length} daily moves of 35% or more in the data (possible unadjusted splits or demergers); ${suspects} trades span one and are marked.`;
 
   // benchmark: Nifty 50 buy-and-hold, price only, scaled to the same starting capital
   const bench = priced.map((d) => (opts.capital * (d.close as number)) / (priced[0].close as number));
@@ -234,16 +260,21 @@ export async function runBacktest(repo: Repo, opts: BacktestOptions): Promise<{ 
     equity: engine.days.map((d, i) => [d.date, d.equity, bench[i]]),
     trades: engine.trades,
     dataThrough: calendar[calendar.length - 1],
-    universeNote: opts.spec.kind === "hold"
+    universeNote: (opts.spec.kind === "hold"
       ? `Single instrument ${opts.spec.key}.`
-      : "Today's Nifty 200 members only (survivorship bias).",
+      : "Today's Nifty 200 members only (survivorship bias).") + dataNote,
   };
   return { run, report, tradedValue: engine.tradedValue };
 }
 
-/** Runs, then saves unless it is a dry run. A run that fails saves nothing. */
-export async function backtestAndSave(repo: Repo, opts: BacktestOptions) {
+/** Runs, then saves unless it is a dry run. A run that fails, or has too many trades to store, saves nothing. */
+export async function backtestAndSave(repo: Repo, opts: BacktestOptions, maxTrades = MAX_SAVED_TRADES) {
   const r = await runBacktest(repo, opts);
+  if (!opts.dryRun && r.run.trades.length > maxTrades) {
+    throw new Error(
+      `Too many trades to save: ${r.run.trades.length} (limit ${maxTrades}). Use a longer --hold or fewer --max-positions, or add --dry-run to see the result without saving.`,
+    );
+  }
   const id = opts.dryRun ? null : await repo.saveBacktestRun(r.run);
   return { ...r, id };
 }

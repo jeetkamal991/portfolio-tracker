@@ -24,6 +24,8 @@ export interface Trade {
   pnlPct: number;
   costs: number;
   reason: "time" | "stop" | "end" | "delisted";
+  /** The trade spans a daily move of 35% or more: possibly an unadjusted split. Set by the run builder, not the engine. */
+  suspect?: boolean;
 }
 
 export interface DayPoint {
@@ -44,6 +46,8 @@ interface Position {
   name: string;
   qty: number;
   entryIdx: number;
+  /** Calendar index the hold counts from: the entry day, or the day a still-wanted stock was kept. */
+  clock: number;
   entryDate: string;
   entryPrice: number;
   entryCost: number;
@@ -99,10 +103,15 @@ export function runEngine<D extends OhlcvDay>(
       if (!bar(p.key) && rows[rows.length - 1].date < date) sell(p, p.lastClose, date, "delisted");
     }
 
-    // time exits at the open; a due position with no usable bar today waits for the next one
+    // time exits at the open; a due position with no usable bar today waits for the next one.
+    // A stock the strategy still wants is kept and its hold restarts, so it is not sold and bought back at the same open.
+    const wanted = new Set(pending);
     for (const p of [...positions.values()]) {
       const b = bar(p.key);
-      if (i - p.entryIdx >= s.holdSessions && usable(b?.open)) sell(p, b.open, date, "time");
+      if (i - p.clock >= s.holdSessions && usable(b?.open)) {
+        if (wanted.has(p.key)) p.clock = i;
+        else sell(p, b.open, date, "time");
+      }
     }
 
     // stops on positions held from an earlier day: a gap below fills at the open, otherwise at the stop price
@@ -132,7 +141,7 @@ export function runEngine<D extends OhlcvDay>(
       cash -= value + charges;
       tradedValue += value;
       const p: Position = {
-        key, name: byKey.get(key)!.name, qty, entryIdx: i, entryDate: date, entryPrice: fill, entryCost: charges,
+        key, name: byKey.get(key)!.name, qty, entryIdx: i, clock: i, entryDate: date, entryPrice: fill, entryCost: charges,
         stop: s.stopPct === null ? null : fill * (1 - s.stopPct / 100), lastClose: fill,
       };
       positions.set(key, p);

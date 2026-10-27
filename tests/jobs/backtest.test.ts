@@ -150,6 +150,33 @@ describe("runBacktest", () => {
   });
 });
 
+describe("suspected unadjusted splits", () => {
+  // S2 halves on day 40 (a split Yahoo did not adjust); S3 is smooth
+  async function withSplit() {
+    const repo = createMemoryRepo({ instruments: [inst(1, "NIFTY50", "index"), inst(2, "S2"), inst(3, "S3")] });
+    for (let id = 1; id <= 3; id++) {
+      await repo.upsertCandles(id, Array.from({ length: 80 }, (_, i) => {
+        const close = id === 1 ? 1000 + 2 * i : id === 2 ? (i < 40 ? 200 : 100) + 0.1 * i : 100 + 0.1 * i;
+        return { date: dayOf(i), open: close - 0.2, high: close + 1, low: close - 1, close, volume: 1000 };
+      }));
+    }
+    return repo;
+  }
+  const hold = (key: string) => parseBacktestArgs(["hold", "--key", key, "--max-positions", "1", "--hold", "100000", ...FROM]);
+
+  it("marks a trade that spans a daily move of 35% or more, and says so on the run", async () => {
+    const { run } = await runBacktest(await withSplit(), hold("S2"));
+    expect(run.trades).toHaveLength(1);
+    expect(run.trades[0].suspect).toBe(true);
+    expect(run.universeNote).toMatch(/35%/);
+  });
+  it("leaves a smooth trade unmarked and the note clean", async () => {
+    const { run } = await runBacktest(await withSplit(), hold("S3"));
+    expect(run.trades[0].suspect).toBeFalsy();
+    expect(run.universeNote).not.toMatch(/35%/);
+  });
+});
+
 describe("backtestAndSave", () => {
   it("saves a finished run and returns its id", async () => {
     const repo = await setup();
@@ -165,6 +192,15 @@ describe("backtestAndSave", () => {
     const r = await backtestAndSave(repo, parseBacktestArgs(["alpha", "--alpha", "a101", "--dry-run", ...FROM]));
     expect(r.id).toBeNull();
     expect(spy).not.toHaveBeenCalled();
+  });
+  it("refuses to save a run with more trades than the cap, but a dry run still prints it", async () => {
+    const repo = await setup();
+    const spy = vi.spyOn(repo, "saveBacktestRun");
+    const args = ["alpha", "--alpha", "a101", "--top", "3", "--hold", "3", "--max-positions", "3", ...FROM];
+    await expect(backtestAndSave(repo, parseBacktestArgs(args), 1)).rejects.toThrow(/too many trades/i);
+    expect(spy).not.toHaveBeenCalled();
+    const dry = await backtestAndSave(repo, parseBacktestArgs([...args, "--dry-run"]), 1);
+    expect(dry.id).toBeNull();
   });
   it("saves nothing when the run fails", async () => {
     const repo = await setup();

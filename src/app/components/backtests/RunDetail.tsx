@@ -69,8 +69,9 @@ function Trades({ trades }: { trades: BacktestRun["trades"] }) {
                 <td className={`${td} text-right`}>{fmtPrice(t.entryPrice)}</td>
                 <td className={`${td} text-right`}>{fmtPrice(t.exitPrice)}</td>
                 <td className={`${td} text-right`}><PctText value={t.pnlPct} /></td>
-                <td className="px-2 py-1.5">
+                <td className="flex gap-1 px-2 py-1.5">
                   <Chip tone={t.reason === "stop" ? "warn" : t.reason === "delisted" ? "down" : "neutral"}>{t.reason}</Chip>
+                  {t.suspect && <Chip tone="warn" title="This trade spans a daily move of 35% or more: possibly an unadjusted split">check data</Chip>}
                 </td>
               </tr>
             ))}
