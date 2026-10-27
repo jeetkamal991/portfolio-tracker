@@ -1,4 +1,6 @@
 import type { AlertCondition, HoldingLevel } from "@/lib/calc/alerts";
+import type { Trade } from "@/lib/calc/backtest/engine";
+import type { Metrics } from "@/lib/calc/backtest/metrics";
 import type { PatternHit } from "@/lib/calc/patterns";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
@@ -189,4 +191,33 @@ export interface ShareholdingRow {
   diiPct: number | null;
   promoterPct: number | null;
   sourceUrl: string | null;
+}
+
+/** One backtest run as the command builds it. `equity` rows are [date, strategy, benchmark], both starting at the capital. */
+export interface BacktestRunInput {
+  name: string;
+  strategy: { id: string; label: string; params: Record<string, string | number> };
+  settings: { capital: number; maxPositions: number; holdSessions: number; stopPct: number | null; from: string; to: string };
+  metrics: { strategy: Metrics; benchmark: Metrics };
+  equity: [string, number, number][];
+  trades: Trade[];
+  dataThrough: string;
+  universeNote: string;
+}
+
+/** The light columns, for the list. */
+export interface BacktestRunSummary {
+  id: number;
+  createdAt: string;
+  name: string;
+  strategy: BacktestRunInput["strategy"];
+  settings: BacktestRunInput["settings"];
+  metrics: BacktestRunInput["metrics"];
+  dataThrough: string;
+}
+
+export interface BacktestRun extends BacktestRunSummary {
+  equity: BacktestRunInput["equity"];
+  trades: Trade[];
+  universeNote: string;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
-import type { Instrument } from "@/lib/db/types";
+import type { BacktestRunInput, Instrument } from "@/lib/db/types";
 
 const inst = (id: number, key: string, name: string, type: Instrument["type"] = "stock"): Instrument => ({
   id, key, name, type, yahooTicker: `${key}.NS`, active: true,
@@ -329,5 +329,39 @@ describe("memoryRepo alerts", () => {
     expect(await r.latestShareholdingQuarter()).toBe("2026-09-30");
     expect((await r.listShareholding(["2026-09-30"])).map((x) => x.fiiPct)).toEqual([22]);
     expect(await r.listShareholding(["2026-06-30", "2026-09-30"])).toHaveLength(2);
+  });
+});
+
+describe("memoryRepo backtest runs", () => {
+  const M = {
+    totalReturn: 0.5, cagr: 0.1, maxDrawdown: -0.2, volatility: 0.15, sharpe: 0.8, hitRate: 0.55, avgWinPct: 0.03,
+    avgLossPct: -0.02, trades: 10, turnoverPerYear: 8, timeInvested: 0.7,
+  };
+  const runInput = (name: string): BacktestRunInput => ({
+    name,
+    strategy: { id: "alpha:a101", label: "Alpha #101", params: { alpha: "a101", top: 10 } },
+    settings: { capital: 1000000, maxPositions: 10, holdSessions: 5, stopPct: null, from: "2020-01-01", to: "2026-10-27" },
+    metrics: { strategy: M, benchmark: { ...M, trades: 0, hitRate: null, avgWinPct: null, avgLossPct: null, turnoverPerYear: null, timeInvested: null } },
+    equity: [["2020-01-01", 1000000, 1000000], ["2020-01-02", 1010000, 1005000]],
+    trades: [],
+    dataThrough: "2026-10-27",
+    universeNote: "Today's Nifty 200 members only",
+  });
+
+  it("saves with increasing ids and lists newest first without the heavy columns", async () => {
+    const r = createMemoryRepo();
+    expect(await r.saveBacktestRun(runInput("first"))).toBe(1);
+    expect(await r.saveBacktestRun(runInput("second"))).toBe(2);
+    const list = await r.listBacktestRuns();
+    expect(list.map((x) => x.name)).toEqual(["second", "first"]);
+    expect(Object.keys(list[0]).sort()).toEqual(["createdAt", "dataThrough", "id", "metrics", "name", "settings", "strategy"]);
+  });
+  it("returns the whole row by id, null for an unknown id", async () => {
+    const r = createMemoryRepo();
+    await r.saveBacktestRun(runInput("first"));
+    const id = await r.saveBacktestRun(runInput("second"));
+    const run = await r.getBacktestRun(id);
+    expect(run).toMatchObject({ id: 2, name: "second", equity: runInput("x").equity, trades: [], universeNote: "Today's Nifty 200 members only" });
+    expect(await r.getBacktestRun(99)).toBeNull();
   });
 });

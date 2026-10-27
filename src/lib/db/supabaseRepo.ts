@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, BacktestRun, BacktestRunSummary, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -43,6 +43,11 @@ const toDay = (r: Row): StoredDay => ({
   scoreLabel: (r.score_label as StoredDay["scoreLabel"] | null) ?? null,
   scoreConfidence: (r.score_confidence as StoredDay["scoreConfidence"] | null) ?? null,
   scoreSignal: (r.score_signal as string | null) ?? null,
+});
+const toBacktestSummary = (r: Row): BacktestRunSummary => ({
+  id: Number(r.id), createdAt: r.created_at as string, name: r.name as string,
+  strategy: r.strategy as BacktestRunSummary["strategy"], settings: r.settings as BacktestRunSummary["settings"],
+  metrics: r.metrics as BacktestRunSummary["metrics"], dataThrough: r.data_through as string,
 });
 const toBar = (r: Row): PriceBar => ({
   date: r.date as string, open: num(r.open), close: num(r.close), high: num(r.high), low: num(r.low), volume: num(r.volume),
@@ -550,6 +555,31 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         }))),
         "upsertShareholding",
       );
+    },
+    async saveBacktestRun(run) {
+      const r = check(
+        await db.from("backtest_runs").insert({
+          name: run.name, strategy: run.strategy, settings: run.settings, metrics: run.metrics, equity: run.equity,
+          trades: run.trades, data_through: run.dataThrough, universe_note: run.universeNote,
+        }).select("id").single(),
+        "saveBacktestRun",
+      ) as Row;
+      return Number(r.id);
+    },
+    async listBacktestRuns() {
+      const rows = check(
+        await db.from("backtest_runs").select("id,created_at,name,strategy,settings,metrics,data_through").order("id", { ascending: false }),
+        "listBacktestRuns",
+      ) as Row[];
+      return rows.map(toBacktestSummary);
+    },
+    async getBacktestRun(id) {
+      const r = check(await db.from("backtest_runs").select("*").eq("id", id).maybeSingle(), "getBacktestRun") as Row | null;
+      if (!r) return null;
+      return {
+        ...toBacktestSummary(r), equity: r.equity as BacktestRun["equity"], trades: r.trades as BacktestRun["trades"],
+        universeNote: r.universe_note as string,
+      };
     },
   };
 }
