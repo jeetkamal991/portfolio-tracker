@@ -1,5 +1,4 @@
 import type { Repo } from "@/lib/db/repo";
-import type { OhlcvDay } from "@/lib/db/types";
 import { ALPHA_WINDOW, runAlphas, type AlphaResult } from "@/lib/calc/alpha/run";
 import { runScreeners, type ScreenerResult } from "@/lib/calc/screeners";
 import { runWatchSignals, type WatchSignals } from "@/lib/calc/watchSignals";
@@ -76,7 +75,10 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
   const ids = [...new Set([...constituents.map((c) => c.id), ...watch.keys()])];
   const [range, ohlcv] = await Promise.all([
     repo.getDaysRange(ids, fromDate, session),
-    hasUniverse ? repo.getOhlcvRange(constituents.map((c) => c.id), alphaFrom, session) : Promise.resolve(new Map<number, OhlcvDay[]>()),
+    // a failed alpha fetch must not take the screeners, breadth and watch signals down with it
+    hasUniverse
+      ? repo.getOhlcvRange(constituents.map((c) => c.id), alphaFrom, session).catch((e) => { console.error("alpha fetch failed", e); return null; })
+      : Promise.resolve(null),
   ]);
   const stocks = constituents.map((c) => ({ key: c.key, name: c.name, days: range.get(c.id) ?? [] }));
   const watchStocks = [...watch].map(([id, w]) => ({ ...w, days: range.get(id) ?? [] }));
@@ -89,6 +91,6 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
     watchSignals: runWatchSignals(watchStocks, session),
     hasWatchStocks,
     stakes,
-    alphas: hasUniverse ? runAlphas(constituents.map((c) => ({ key: c.key, name: c.name, days: ohlcv.get(c.id) ?? [] })), session) : [],
+    alphas: ohlcv ? runAlphas(constituents.map((c) => ({ key: c.key, name: c.name, days: ohlcv.get(c.id) ?? [] })), session) : [],
   };
 }

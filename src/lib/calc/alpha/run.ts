@@ -23,6 +23,9 @@ export interface AlphaResult {
   count: number;
   top: AlphaHit[];
   bottom: AlphaHit[];
+  /** Stocks beyond the listed ones that share the score of the last listed stock, so a tied group reads as a slice. */
+  topTied: number;
+  bottomTied: number;
 }
 
 interface StockInput {
@@ -33,12 +36,19 @@ interface StockInput {
 
 const nanIfNull = (v: number | null): number => v ?? Number.NaN;
 
+function hiddenTies(shown: AlphaHit[], pool: AlphaHit[]): number {
+  if (shown.length === 0) return 0;
+  const edge = shown[shown.length - 1].score;
+  return pool.filter((h) => h.score === edge).length - shown.filter((h) => h.score === edge).length;
+}
+
 function result(id: AlphaResult["id"], title: string, hits: AlphaHit[], limit: number): AlphaResult {
   const sorted = [...hits].sort((a, b) => b.score - a.score || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   const top = sorted.slice(0, limit);
   // lowest first, and never a stock already in top
-  const bottom = sorted.slice(top.length).reverse().slice(0, limit);
-  return { id, title, status: "ok", count: hits.length, top, bottom };
+  const rest = sorted.slice(top.length);
+  const bottom = [...rest].reverse().slice(0, limit);
+  return { id, title, status: "ok", count: hits.length, top, bottom, topTied: hiddenTies(top, sorted), bottomTied: hiddenTies(bottom, rest) };
 }
 
 export function runAlphas(stocks: StockInput[], session: string, limit = 10): AlphaResult[] {
@@ -47,7 +57,8 @@ export function runAlphas(stocks: StockInput[], session: string, limit = 10): Al
     const last = s.days[s.days.length - 1];
     return last?.date === session && last.close != null;
   });
-  const dates = [...new Set(eligible.flatMap((s) => s.days.map((d) => d.date)))]
+  // only priced rows make a date: an importedPct-only row would add an all-NaN column and blank every rolling alpha
+  const dates = [...new Set(eligible.flatMap((s) => s.days.filter((d) => d.close != null).map((d) => d.date)))]
     .filter((d) => d <= session)
     .sort()
     .slice(-ALPHA_WINDOW);
@@ -78,7 +89,7 @@ export function runAlphas(stocks: StockInput[], session: string, limit = 10): Al
       values = a.compute(panel);
     } catch (e) {
       console.error(`alpha ${a.id} failed`, e);
-      return { id: a.id, title: a.title, status: "unavailable", count: 0, top: [], bottom: [] };
+      return { id: a.id, title: a.title, status: "unavailable", count: 0, top: [], bottom: [], topTied: 0, bottomTied: 0 };
     }
     values = values.map((v, i) => (bars[i] >= a.minBars ? v : Number.NaN));
     ranksByAlpha.push(csRank(values.map((v) => [v])).map((r) => r[0]));

@@ -8,7 +8,7 @@ import { COLLAPSED_ROWS, fmtAlphaScore } from "@/lib/view/market";
 import { StockLink } from "../popup/StockLink";
 import { Chip, Label, Panel, PctText } from "../ui";
 
-function HitList({ id, title, hits }: { id: AlphaResult["id"]; title: string; hits: AlphaHit[] }) {
+function HitList({ id, title, hits, tied }: { id: AlphaResult["id"]; title: string; hits: AlphaHit[]; tied: number }) {
   const [all, setAll] = useState(false);
   const rows = all ? hits : hits.slice(0, COLLAPSED_ROWS);
   if (hits.length === 0) return null;
@@ -26,6 +26,11 @@ function HitList({ id, title, hits }: { id: AlphaResult["id"]; title: string; hi
           </li>
         ))}
       </ul>
+      {tied > 0 && (
+        <p className="font-mono text-xs text-[var(--muted)]">
+          +{tied} more tied at {fmtAlphaScore(id, hits[hits.length - 1].score)}
+        </p>
+      )}
       {hits.length > COLLAPSED_ROWS && (
         <button
           type="button"
@@ -57,8 +62,8 @@ function AlphaCard({ r }: { r: AlphaResult }) {
         <p className="text-sm text-[var(--muted)]">Not enough history yet</p>
       ) : (
         <>
-          <HitList id={r.id} title={combined ? "Highest rank" : "Highest"} hits={r.top} />
-          <HitList id={r.id} title={combined ? "Lowest rank" : "Lowest"} hits={r.bottom} />
+          <HitList id={r.id} title={combined ? "Highest rank" : "Highest"} hits={r.top} tied={r.topTied} />
+          <HitList id={r.id} title={combined ? "Lowest rank" : "Lowest"} hits={r.bottom} tied={r.bottomTied} />
         </>
       )}
     </div>

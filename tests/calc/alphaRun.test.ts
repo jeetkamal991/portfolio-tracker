@@ -68,6 +68,27 @@ describe("runAlphas", () => {
     expect(keys("a101")).toEqual(["a", "b", "young"]); // needs 1
   });
 
+  it("ignores unpriced rows when it picks the date axis", () => {
+    // x has a null-close row on a day nobody else traded, inside the last-5 window; that must not become an all-NaN column
+    const x = steady(3).map((d) => (d.date === dateOf(27) ? { ...d, close: null } : d));
+    const skip = (k: number) => steady(k).filter((d) => d.date !== dateOf(27));
+    const res = runAlphas([stock("a", skip(1)), stock("b", skip(2)), stock("x", x)], SESSION30);
+    const a001 = res.find((r) => r.id === "a001")!;
+    expect([...a001.top, ...a001.bottom].map((h) => h.key).sort()).toEqual(["a", "b", "x"]);
+  });
+
+  it("says how many stocks tie beyond the ten listed", () => {
+    // 25 identical stocks: the same a101 score for all
+    const same = Array.from({ length: 25 }, (_, i) => stock(`s${String(i).padStart(2, "0")}`, rows(30, () => ({ open: 100, close: 101, high: 102, low: 99 }))));
+    const a101 = runAlphas(same, SESSION30).find((r) => r.id === "a101")!;
+    expect(a101.top).toHaveLength(10);
+    expect(a101.topTied).toBe(15); // 25 share the score, 10 are shown
+    expect(a101.bottom).toHaveLength(10);
+    expect(a101.bottomTied).toBe(5); // 15 left after the top, 10 are shown
+    const distinct = runAlphas([stock("a", steady(1)), stock("b", steady(2))], SESSION30).find((r) => r.id === "a101")!;
+    expect([distinct.topTied, distinct.bottomTied]).toEqual([0, 0]);
+  });
+
   it("never lists a stock in both top and bottom when few stocks qualify", () => {
     const stocks = [1, 2, 3, 4, 5, 6].map((k) => stock(`s${k}`, rows(30, (i) => ({ open: 100, close: 100 + k, high: 110, low: 90, volume: 100 + i }))));
     const a101 = runAlphas(stocks, SESSION30).find((r) => r.id === "a101")!;

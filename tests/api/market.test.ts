@@ -57,6 +57,16 @@ describe("loadMarket", () => {
     expect(narrow.mock.calls[0][1]).toBe(many[5]); // 30 sessions ending on many[34]
     expect(m.alphas.map((r) => r.id)).toEqual(["combined", "a001", "a002", "a006", "a012", "a054", "a101"]);
   });
+  it("a failing alpha fetch drops the alpha section, not the page", async () => {
+    const repo = await setup();
+    vi.spyOn(repo, "getOhlcvRange").mockRejectedValue(new Error("boom"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const m = await loadMarket(repo, "2026-01-09");
+    expect(m.alphas).toEqual([]);
+    expect(m.screeners).toHaveLength(10);
+    expect(m.breadth).not.toBeNull();
+    expect(console.error).toHaveBeenCalled();
+  });
   it("short history leaves the alphas that need more bars with no stocks, and the page data still loads", async () => {
     const m = await loadMarket(await setup(), "2026-01-09"); // 7 sessions: a001, a002 and a006 need more
     const count = (id: string) => m.alphas.find((r) => r.id === id)?.count;
