@@ -122,3 +122,52 @@ describe("runEngine costs", () => {
     expect(r.tradedValue).toBeCloseTo(buyValue + sellValue, 8);
   });
 });
+
+describe("runEngine stops, gaps and delisting", () => {
+  // entry on d2 at the 102 open, 98 shares, stop 5% below = 96.9
+  const stopped = { ...base, holdSessions: 100, stopPct: 5 };
+  const run = (over: Record<number, Partial<OhlcvDay>>) => runEngine([rising("A", [], over)], dates, stub({ 1: ["A"] }), stopped);
+
+  it("exits at the stop price when the day trades through it", () => {
+    const t = run({ 3: { open: 100, high: 101, low: 96, close: 100 } }).trades[0];
+    expect(t).toMatchObject({ exitDate: dates[3], reason: "stop" });
+    expect(t.exitPrice).toBeCloseTo(96.9, 9);
+    expect(t.pnl).toBeCloseTo(98 * (96.9 - 102), 6);
+  });
+
+  it("exits at the open, not the stop, when the day gaps below it", () => {
+    const t = run({ 3: { open: 90, high: 91, low: 89, close: 90 } }).trades[0];
+    expect(t).toMatchObject({ exitDate: dates[3], exitPrice: 90, reason: "stop" });
+    expect(t.pnl).toBeCloseTo(-1176, 9);
+  });
+
+  it("holds on while the low stays above the stop", () => {
+    const t = run({ 3: { open: 100, high: 101, low: 97, close: 100 } }).trades[0];
+    expect(t.reason).toBe("end");
+  });
+
+  it("stops out on the entry bar itself", () => {
+    const t = run({ 2: { low: 96 } }).trades[0];
+    expect(t).toMatchObject({ entryDate: dates[2], exitDate: dates[2], reason: "stop" });
+    expect(t.exitPrice).toBeCloseTo(96.9, 9);
+  });
+
+  it("does not stop on a day the stock has no bar", () => {
+    const r = runEngine([rising("A", [3])], dates, stub({ 1: ["A"] }), stopped);
+    expect(r.trades[0].reason).toBe("end");
+  });
+
+  it("sells at the next available open when the exit day has no bar", () => {
+    const t = runEngine([rising("A", [5])], dates, stub({ 1: ["A"] }), base).trades[0];
+    expect(t).toMatchObject({ exitDate: dates[6], exitPrice: 106, reason: "time" });
+  });
+
+  it("closes a held stock whose data ended at its last close, the next calendar day", () => {
+    const ended = series("A", [100, 101, 102, 103, 104]); // rows stop after d4
+    const r = runEngine([ended], dates, stub({ 1: ["A"] }), { ...base, holdSessions: 100 });
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0]).toMatchObject({ exitDate: dates[5], exitPrice: 104, reason: "delisted" });
+    expect(r.days[6].equity).toBe(r.days[5].equity);
+    expect(r.days[7].invested).toBe(0);
+  });
+});

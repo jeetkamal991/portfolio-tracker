@@ -47,6 +47,7 @@ interface Position {
   entryDate: string;
   entryPrice: number;
   entryCost: number;
+  stop: number | null;
   lastClose: number;
 }
 
@@ -92,10 +93,24 @@ export function runEngine<D extends OhlcvDay>(
   calendar.forEach((date, i) => {
     const bar = (key: string) => barOf.get(key)?.get(date);
 
+    // a stock whose data has ended is closed at its last close
+    for (const p of [...positions.values()]) {
+      const rows = byKey.get(p.key)!.days;
+      if (!bar(p.key) && rows[rows.length - 1].date < date) sell(p, p.lastClose, date, "delisted");
+    }
+
     // time exits at the open; a due position with no usable bar today waits for the next one
     for (const p of [...positions.values()]) {
       const b = bar(p.key);
       if (i - p.entryIdx >= s.holdSessions && usable(b?.open)) sell(p, b.open, date, "time");
+    }
+
+    // stops on positions held from an earlier day: a gap below fills at the open, otherwise at the stop price
+    for (const p of [...positions.values()]) {
+      const b = bar(p.key);
+      if (p.stop === null || !b || p.entryIdx === i) continue;
+      if (usable(b.open) && b.open <= p.stop) sell(p, b.open, date, "stop");
+      else if (b.low != null && b.low <= p.stop) sell(p, p.stop, date, "stop");
     }
 
     // entries chosen on the previous close, at today's open
@@ -116,9 +131,13 @@ export function runEngine<D extends OhlcvDay>(
       const charges = s.costs.charges("buy", value);
       cash -= value + charges;
       tradedValue += value;
-      positions.set(key, {
-        key, name: byKey.get(key)!.name, qty, entryIdx: i, entryDate: date, entryPrice: fill, entryCost: charges, lastClose: fill,
-      });
+      const p: Position = {
+        key, name: byKey.get(key)!.name, qty, entryIdx: i, entryDate: date, entryPrice: fill, entryCost: charges,
+        stop: s.stopPct === null ? null : fill * (1 - s.stopPct / 100), lastClose: fill,
+      };
+      positions.set(key, p);
+      // the entry bar can hit the stop too (the open was the entry, so there is no gap)
+      if (p.stop !== null && b.low != null && b.low <= p.stop) sell(p, p.stop, date, "stop");
     }
 
     // mark to the close; a missing close keeps the last good one
