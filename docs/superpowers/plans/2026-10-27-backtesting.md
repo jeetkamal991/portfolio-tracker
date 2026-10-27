@@ -79,6 +79,7 @@ Inputs the spec implies but its own tests would not otherwise cover. Each has a 
   - **duplicates and held stocks (Review Focus 1):** K 2, stub picks `["A", "A"]` on `d1` then `["A"]` on `d2`. Exactly one buy of A.
   - **too small to buy (Review Focus 2):** capital 50, A at 100: no trade, every `equity` is 50, cash never negative.
   - **no bar on the entry day:** A has no row on `d2`: no trade at all (the order is dropped, not carried).
+  - **bad prices:** an open of `0` or `null` on the entry day is skipped the same way, and a `null` close on a held day keeps the last good close in the equity mark (no NaN in `days`).
   - **no look-ahead:** a recording strategy with `lookback` 3 over 8 dates: on every call each window row has `date <= `the call date and each window has at most 3 rows.
   - **costs wired in:** the entry-and-exit scenario with `NSE_COSTS`: final cash equals `10000 − buyValue − charges("buy", buyValue) + sellValue − charges("sell", sellValue)` where values use `fill`; `tradedValue` equals `buyValue + sellValue`.
   - **end of test:** a position still open on the last date is closed at that close with reason `end`.
