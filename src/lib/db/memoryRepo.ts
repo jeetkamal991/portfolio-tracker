@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -27,6 +27,17 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
   const reports: ReportRow[] = [];
+  const daysRange = (ids: number[], fromDate: string, toDate: string): Map<number, StoredDay[]> => {
+    const out = new Map<number, StoredDay[]>();
+    for (const id of new Set(ids)) {
+      const rows = [...(days.get(id)?.values() ?? [])]
+        .filter((d) => d.date >= fromDate && d.date <= toDate)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((d) => ({ ...d }));
+      if (rows.length) out.set(id, rows);
+    }
+    return out;
+  };
   const summaries = new Map<string, DailySummary>();
   const constituents = new Map<string, Set<number>>();
   type StoredRule = Omit<AlertRule, "key" | "name" | "yahooTicker">;
@@ -134,14 +145,11 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       }
       return out;
     },
-    async getDaysRange(ids, fromDate, toDate) {
-      const out = new Map<number, StoredDay[]>();
-      for (const id of new Set(ids)) {
-        const rows = [...(days.get(id)?.values() ?? [])]
-          .filter((d) => d.date >= fromDate && d.date <= toDate)
-          .sort((a, b) => a.date.localeCompare(b.date))
-          .map((d) => ({ ...d }));
-        if (rows.length) out.set(id, rows);
+    getDaysRange: async (ids, fromDate, toDate) => daysRange(ids, fromDate, toDate),
+    async getOhlcvRange(ids, fromDate, toDate) {
+      const out = new Map<number, OhlcvDay[]>();
+      for (const [id, rows] of daysRange(ids, fromDate, toDate)) {
+        out.set(id, rows.map(({ date, open, high, low, close, volume, pctChange, importedPct }) => ({ date, open, high, low, close, volume, pctChange, importedPct })));
       }
       return out;
     },

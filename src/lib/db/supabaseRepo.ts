@@ -3,10 +3,12 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
+const OHLCV_CHUNK = 20;
+const OHLCV_COLUMNS = "instrument_id,date,open,high,low,close,volume,pct_change,imported_pct";
 
 // ---- All snake_case <-> camelCase mapping lives here ----
 type Row = Record<string, unknown>;
@@ -280,6 +282,29 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
           if (page.length < PAGE) break;
         }
       }
+      return out;
+    },
+    async getOhlcvRange(instrumentIds, fromDate, toDate) {
+      const out = new Map<number, OhlcvDay[]>();
+      // ~20 ids x ~30 sessions fits one page, so the chunks run in parallel instead of paging one after another
+      await Promise.all(chunks([...new Set(instrumentIds)], OHLCV_CHUNK).map(async (c) => {
+        for (let from = 0; ; from += PAGE) {
+          const page = check(
+            await db.from("daily_prices").select(OHLCV_COLUMNS).in("instrument_id", c)
+              .gte("date", fromDate).lte("date", toDate)
+              .order("instrument_id").order("date").range(from, from + PAGE - 1),
+            "getOhlcvRange",
+          ) as unknown as Row[];
+          for (const r of page) {
+            const id = Number(r.instrument_id);
+            const { date, open, high, low, close, volume, pctChange, importedPct } = toDay(r);
+            const day = { date, open, high, low, close, volume, pctChange, importedPct };
+            const list = out.get(id);
+            if (list) list.push(day); else out.set(id, [day]);
+          }
+          if (page.length < PAGE) break;
+        }
+      }));
       return out;
     },
     async getLatestDay(instrumentId) {

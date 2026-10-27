@@ -253,6 +253,19 @@ describe("memoryRepo.getDaysRange", () => {
   });
 });
 
+describe("memoryRepo.getOhlcvRange", () => {
+  it("returns only date, OHLCV and day % per instrument, ascending within the inclusive range", async () => {
+    const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa"), inst(2, "BBB", "Bbb")] });
+    await r.upsertCandles(1, ["2026-01-04", "2026-01-02", "2026-01-03", "2026-01-01"].map((d) => candle(d, 10)));
+    await r.upsertImportedPct([{ instrumentId: 1, date: "2026-01-03", importedPct: 0.02 }]);
+    const m = await r.getOhlcvRange([1, 2], "2026-01-02", "2026-01-03");
+    expect(m.get(1)!.map((d) => d.date)).toEqual(["2026-01-02", "2026-01-03"]);
+    expect(Object.keys(m.get(1)![0]).sort()).toEqual(["close", "date", "high", "importedPct", "low", "open", "pctChange", "volume"]);
+    expect(m.get(1)![1].importedPct).toBe(0.02);
+    expect(m.has(2)).toBe(false);
+  });
+});
+
 describe("memoryRepo alerts", () => {
   const base = { condition: "price_above" as const, value: 100, mode: "once" as const, source: "user" as const, lastState: false, lastLevel: null };
   const setup = () => createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa"), inst(2, "BBB", "Bbb")] });

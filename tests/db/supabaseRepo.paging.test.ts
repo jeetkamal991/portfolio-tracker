@@ -57,3 +57,46 @@ describe("getDaysRange paging", () => {
     expect(m.get(2)).toHaveLength(1050);
   });
 });
+
+describe("getOhlcvRange", () => {
+  // one row per requested id per page slot; records every select string and id list
+  function fake(rowsPerId: number) {
+    const selects: string[] = [];
+    const idLists: number[][] = [];
+    const ranges: [number, number][] = [];
+    const db = {
+      from: () => {
+        let ids: number[] = [];
+        const q: Record<string, unknown> = {};
+        q.select = (cols: string) => { selects.push(cols); return q; };
+        q.order = () => q; q.gte = () => q; q.lte = () => q;
+        q.in = (_c: string, list: number[]) => { ids = list; idLists.push(list); return q; };
+        q.range = (a: number, b: number) => {
+          ranges.push([a, b]);
+          const all = ids.flatMap((id) => Array.from({ length: rowsPerId }, (_, k) => ({ instrument_id: id, date: `d${k}`, open: 1, high: 2, low: 0.5, close: 1.5, volume: 10, pct_change: 0.01, imported_pct: null })));
+          return Promise.resolve({ data: all.slice(a, b + 1), error: null });
+        };
+        return q;
+      },
+    } as unknown as SupabaseClient;
+    return { db, selects, idLists, ranges };
+  }
+
+  it("reads only the OHLCV columns, in parallel chunks of 20 ids, grouped per instrument", async () => {
+    const { db, selects, idLists } = fake(1);
+    const ids = Array.from({ length: 45 }, (_, i) => i + 1);
+    const m = await createSupabaseRepo(db).getOhlcvRange(ids, "a", "b");
+    expect(idLists.map((l) => l.length)).toEqual([20, 20, 5]);
+    expect(new Set(selects).size).toBe(1);
+    expect(selects[0]).not.toContain("*");
+    expect(selects[0]).toContain("pct_change");
+    expect(m.size).toBe(45);
+    expect(m.get(7)).toEqual([{ date: "d0", open: 1, high: 2, low: 0.5, close: 1.5, volume: 10, pctChange: 0.01, importedPct: null }]);
+  });
+  it("keeps paging within a chunk that fills a page", async () => {
+    const { db, ranges } = fake(1005);
+    const m = await createSupabaseRepo(db).getOhlcvRange([1], "a", "b");
+    expect(ranges).toEqual([[0, 999], [1000, 1999]]);
+    expect(m.get(1)).toHaveLength(1005);
+  });
+});
