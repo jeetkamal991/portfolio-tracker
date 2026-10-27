@@ -64,10 +64,28 @@ describe("loadHistory", () => {
       const m = await loadHistory<OhlcvDay>(repo, ids, dayOf(0), dayOf(10), wide);
       expect(m.size).toBe(25);
       expect(m.get(7)!.map((d) => d.date)).toEqual([dayOf(1), dayOf(2), dayOf(3)]);
-      expect(spy).toHaveBeenCalledTimes(3);
-      expect(spy.mock.calls.every((c) => c[0].length <= 10)).toBe(true);
+      // narrow rows go 10 ids at a time; the wide `select *` rows are heavy, so 4
+      expect(spy).toHaveBeenCalledTimes(wide ? 7 : 3);
+      expect(spy.mock.calls.every((c) => c[0].length <= (wide ? 4 : 10))).toBe(true);
       spy.mockRestore();
     }
+  });
+
+  it("retries a chunk whose request failed and still returns every id", async () => {
+    const repo = createMemoryRepo({ instruments: Array.from({ length: 25 }, (_, k) => inst(k + 1, `K${k + 1}`)) });
+    for (let id = 1; id <= 25; id++) await repo.upsertCandles(id, [{ date: dayOf(1), open: 1, high: 2, low: 0, close: 1, volume: 1 }]);
+    const spy = vi.spyOn(repo, "getOhlcvRange");
+    spy.mockRejectedValueOnce(new Error("terminated"));
+    const m = await loadHistory<OhlcvDay>(repo, Array.from({ length: 25 }, (_, k) => k + 1), dayOf(0), dayOf(10), false, 0);
+    expect(m.size).toBe(25);
+    expect(spy).toHaveBeenCalledTimes(4); // 3 chunks, one of them twice
+  });
+
+  it("gives up after three attempts on a chunk and reports the error", async () => {
+    const repo = createMemoryRepo({ instruments: [inst(1, "K1")] });
+    const spy = vi.spyOn(repo, "getOhlcvRange").mockRejectedValue(new Error("terminated"));
+    await expect(loadHistory<OhlcvDay>(repo, [1], dayOf(0), dayOf(10), false, 0)).rejects.toThrow("terminated");
+    expect(spy).toHaveBeenCalledTimes(3);
   });
 });
 

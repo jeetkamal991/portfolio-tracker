@@ -31,6 +31,8 @@ const FAR = "9999-12-31";
 const MIN_SESSIONS = 60;
 const HISTORY_BUFFER_DAYS = 60; // history before `from` so the first windows are full
 const CHUNK = 10;
+const WIDE_CHUNK = 4; // `select *` rows are heavy: ten ids of them over seven years dropped the connection
+const ATTEMPTS = 3;
 const IN_FLIGHT = 5;
 const BIG_MOVE = 0.35; // a close-to-close move this large is a sign of an unadjusted split
 
@@ -101,16 +103,32 @@ export function parseBacktestArgs(argv: string[]): BacktestOptions {
   };
 }
 
-/** Rows for many instruments, fetched in parallel chunks: a long history is slow to read one page after another. */
+async function withRetry<T>(fn: () => Promise<T>, delayMs: number): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= ATTEMPTS) throw e;
+      await new Promise((r) => setTimeout(r, delayMs * attempt));
+    }
+  }
+}
+
+/**
+ * Rows for many instruments, fetched in parallel chunks: a long history is slow to read one page after another.
+ * A chunk whose request fails is tried again, up to three times.
+ */
 export async function loadHistory<D extends OhlcvDay>(
-  repo: Repo, ids: number[], from: string, to: string, wide: boolean,
+  repo: Repo, ids: number[], from: string, to: string, wide: boolean, retryDelayMs = 1000,
 ): Promise<Map<number, D[]>> {
+  const size = wide ? WIDE_CHUNK : CHUNK;
   const chunks: number[][] = [];
-  for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+  for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
   const out = new Map<number, D[]>();
   for (let i = 0; i < chunks.length; i += IN_FLIGHT) {
     const batch = await Promise.all(
-      chunks.slice(i, i + IN_FLIGHT).map((c) => (wide ? repo.getDaysRange(c, from, to) : repo.getOhlcvRange(c, from, to))),
+      chunks.slice(i, i + IN_FLIGHT).map((c) =>
+        withRetry(() => (wide ? repo.getDaysRange(c, from, to) : repo.getOhlcvRange(c, from, to)), retryDelayMs)),
     );
     for (const m of batch) for (const [id, rows] of m) out.set(id, rows as D[]);
   }
