@@ -55,6 +55,19 @@ describe("runAlphas", () => {
     expect(keys("a101")).toEqual(["a", "b", "gap"]); // one bar is enough
   });
 
+  it("scores a stock only once it has an alpha's minimum bars, whatever its returns were", () => {
+    // 12 rising bars: a001 would never need its stddev branch, but still wants 25 bars of history
+    const young = stock("young", steady(3).slice(-12));
+    const res = runAlphas([stock("a", steady(1)), stock("b", steady(2)), young], SESSION30);
+    const keys = (id: string) => {
+      const r = res.find((x) => x.id === id)!;
+      return [...r.top, ...r.bottom].map((h) => h.key).sort();
+    };
+    expect(keys("a001")).toEqual(["a", "b"]); // needs 25
+    expect(keys("a006")).toEqual(["a", "b", "young"]); // needs 10
+    expect(keys("a101")).toEqual(["a", "b", "young"]); // needs 1
+  });
+
   it("never lists a stock in both top and bottom when few stocks qualify", () => {
     const stocks = [1, 2, 3, 4, 5, 6].map((k) => stock(`s${k}`, rows(30, (i) => ({ open: 100, close: 100 + k, high: 110, low: 90, volume: 100 + i }))));
     const a101 = runAlphas(stocks, SESSION30).find((r) => r.id === "a101")!;

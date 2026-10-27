@@ -1,4 +1,4 @@
-import type { StoredDay } from "@/lib/db/types";
+import type { OhlcvDay } from "@/lib/db/types";
 import { ALPHAS, type AlphaId, type Panel } from "./alphas";
 import { csRank, type Matrix } from "./ops";
 
@@ -28,7 +28,7 @@ export interface AlphaResult {
 interface StockInput {
   key: string;
   name: string;
-  days: StoredDay[];
+  days: OhlcvDay[];
 }
 
 const nanIfNull = (v: number | null): number => v ?? Number.NaN;
@@ -53,12 +53,14 @@ export function runAlphas(stocks: StockInput[], session: string, limit = 10): Al
     .slice(-ALPHA_WINDOW);
 
   const byDate = eligible.map((s) => new Map(s.days.map((d) => [d.date, d])));
-  const col = (f: (d: StoredDay) => number | null): Matrix =>
+  const col = (f: (d: OhlcvDay) => number | null): Matrix =>
     byDate.map((m) => dates.map((date) => { const d = m.get(date); return d ? nanIfNull(f(d)) : Number.NaN; }));
   const panel: Panel = {
     open: col((d) => d.open), high: col((d) => d.high), low: col((d) => d.low),
     close: col((d) => d.close), volume: col((d) => d.volume),
   };
+  // bars each stock has in the window; an alpha needs its declared minimum even where a branch would not read them all
+  const bars = panel.close.map((row) => row.filter((v) => !Number.isNaN(v)).length);
   const sessionRows = eligible.map((s) => s.days[s.days.length - 1]);
   const hit = (i: number, score: number): AlphaHit => ({
     key: eligible[i].key,
@@ -78,6 +80,7 @@ export function runAlphas(stocks: StockInput[], session: string, limit = 10): Al
       console.error(`alpha ${a.id} failed`, e);
       return { id: a.id, title: a.title, status: "unavailable", count: 0, top: [], bottom: [] };
     }
+    values = values.map((v, i) => (bars[i] >= a.minBars ? v : Number.NaN));
     ranksByAlpha.push(csRank(values.map((v) => [v])).map((r) => r[0]));
     const hits: AlphaHit[] = [];
     values.forEach((v, i) => { if (Number.isFinite(v)) hits.push(hit(i, v)); });

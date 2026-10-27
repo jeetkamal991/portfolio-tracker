@@ -11,7 +11,7 @@ function panel(stocks: Bar[][]): Panel {
 }
 const run = (id: AlphaId, p: Panel) => ALPHAS.find((a) => a.id === id)!.compute(p);
 const flatBar = (c: number, v = 100): NonNullable<Bar> => ({ o: c, h: c, l: c, c, v });
-const series = (n: number, f: (t: number) => NonNullable<Bar>): Bar[] => Array.from({ length: n }, (_, t) => f(t));
+const series = (n: number, f: (t: number) => Bar): Bar[] => Array.from({ length: n }, (_, t) => f(t));
 
 describe("ALPHAS", () => {
   it("lists the six alphas in order with the paper numbers and warm-up bars", () => {
