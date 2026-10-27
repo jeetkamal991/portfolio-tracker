@@ -1,11 +1,12 @@
 import { test, expect } from "vitest";
 import { activeTab, marketPhase, istClock, TABS } from "@/lib/view/shell";
 
-test("tabs order", () => expect(TABS.map((t) => t.label)).toEqual(["Dashboard", "Portfolio", "Watchlist", "Sector Analysis", "Market", "Alerts"]));
+test("tabs order", () => expect(TABS.map((t) => t.label)).toEqual(["Dashboard", "Portfolio", "Watchlist", "Sector Analysis", "Market", "Backtests", "Alerts"]));
 test("activeTab", () => {
   expect(activeTab("/")).toBe("/");
   expect(activeTab("/sectors")).toBe("/sectors");
   expect(activeTab("/sectors/x")).toBe("/sectors");
+  expect(activeTab("/backtests/3")).toBe("/backtests");
   expect(activeTab("/nope")).toBe("/");
 });
 test("marketPhase boundaries (Fri 16 Oct 2026)", () => {
