@@ -52,6 +52,16 @@ _Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (d
 - Seen: a static render (live data, headless Edge) at 1280 and 390 px, dark only (the app has no light theme). Not seen: the signed-in `/market` page itself.
 - Next sub-projects: 2) backtesting (reuse `calc/alpha`; Vibe-Trading's `india_equity.py` engine is the reference for NSE costs), 3) research agent as a scheduled Claude task.
 
+## Session 2026-10-27 — Backtesting (Vibe-Trading sub-project 2 of 3)
+- Spec `docs/superpowers/specs/2026-10-27-backtesting-design.md`, plan `docs/superpowers/plans/2026-10-27-backtesting.md`; branch `feat/backtesting`, stacked on `feat/stage6b-shareholding` (stage 6b is not on `main`).
+- Built: `src/lib/calc/backtest/` (costs, engine, metrics, strategies, caveats), `src/lib/jobs/backtest.ts` (history loading, run builder), `scripts/backtest.ts` (`npm run backtest`), migration `0010_backtest_runs.sql`, three `Repo` methods, the Backtests tab.
+- **Migration 0010 is NOT applied to Tracker1.** Apply it before a run can be saved or the tab can list runs (until then the tab says so).
+- Checks on the real data (dry runs): control `hold NIFTY50` +84.9% vs benchmark +86.7%; `random` seeds 1/2/3 CAGR +4.1/-2.8/-0.6% vs benchmark +9.6% (about 50 round trips a year at ~0.4% cost is a large drag); alpha a101 top 10 +2.8%, a054 top 10 stop 8% -10.3%, golden cross hold 10 stop 8% +6.1%. Short-horizon strategies are dominated by costs.
+- Data: 13 daily moves of 35% or more; PATANJALI 2020-01-27, MOTILALOFS 2024-01-01 and VEDL 2026-04-30 look like unadjusted splits or demergers (Yes Bank 2020 is real). Worth fixing or excluding before trusting stock-level results. The stored score is on 0% of rows, so score rules are excluded.
+- A first wide read (10 ids per request) died with "TypeError: terminated"; wide rows now load 4 ids at a time with up to 3 attempts.
+- Seen: a real-browser render (live a054 run, headless Edge) at 1280 and 358 px, dark only. Not seen: the signed-in tab itself.
+- Next: sub-project 3, the research agent as a scheduled Claude task.
+
 ## Branches
 - `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
 - `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).

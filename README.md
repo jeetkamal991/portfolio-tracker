@@ -39,7 +39,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0007_report_functions.sql` - adds `complete_report` / `fail_report`, which the scheduled Claude report task calls with a plain `select` (the Supabase connector stops for approval before a direct `update`). Not callable from the site's API roles.
    - `supabase/migrations/0008_shareholding.sql` - adds the `shareholding` table (FII, DII and promoter percent per stock per quarter), RLS on with no policies. Apply it **before** deploying stage 6b code.
    - `supabase/migrations/0009_record_shareholding.sql` - adds `record_shareholding`, which the scheduled shareholding task calls with a plain `select`. Not callable from the site's API roles.
-   A new project applies all nine in order. The owner's Tracker1 project already has 0003 to 0009.
+   - `supabase/migrations/0010_backtest_runs.sql` - adds the `backtest_runs` table (one row per saved backtest), RLS on with no policies. Apply it **before** the first `npm run backtest` that saves, and before opening the Backtests tab.
+   A new project applies all ten in order. The owner's Tracker1 project already has 0003 to 0009; 0010 is not applied yet.
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts
@@ -78,7 +79,7 @@ The cron route's `maxDuration` is 300 seconds (the most Vercel Hobby allows). If
 
 ## Screens
 
-The app shell has six tabs, each a route; `/login` sits outside the shell.
+The app shell has seven tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
@@ -87,6 +88,7 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude |
+| `/backtests` | Backtests | Saved backtest runs (`/backtests/<id>` for one run), see Backtests below |
 | `/alerts` | Alerts | Coming soon |
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
@@ -161,6 +163,26 @@ Constituents come from the niftyindices import (Stage 2). Until then the preview
 ### Stock pop-up
 
 Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names, sector constituent names and a sector's View chart button. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
+
+## Backtests
+
+A backtest runs on your PC, not on the site. `npm run backtest -- <strategy> [options]` reads the stored history from Supabase once, simulates the strategy, and saves one row to `backtest_runs`; the Backtests tab only displays saved runs. It needs `.env.local` (like the other scripts) and migration `0010` applied.
+
+```
+npm run backtest -- alpha --alpha a101 --top 10 --hold 5 [--stop 7] [--from 2020-01-01] [--name "..."]
+npm run backtest -- rule  --rule golden --hold 10 --stop 8 [--max-positions 10]
+npm run backtest -- hold  --key NIFTY50 --max-positions 1 --hold 100000     # control: buy and hold
+npm run backtest -- random --seed 1                                         # control: seeded random picks
+npm run backtest -- ... --dry-run                                           # print the result, save nothing
+```
+
+- **Strategies.** `alpha` buys the top N stocks by one of the six alphas (a001, a002, a006, a012, a054, a101); `rule` buys the stocks a screener rule fires on (`vol_up`, `vol_down`, `breakout`, `breakdown`, `golden`, `death`, `rsi_high`, `rsi_low`); `hold` and `random` are controls. The Technical Score rules are left out: the stored score is on 0% of the history rows.
+- **Rules of the simulation.** A signal on the close of day t is bought at the open of day t+1, so a strategy never sees a later row. Defaults: 1,000,000 rupees, up to 10 positions (`--max-positions`), sold at the open 5 sessions later (`--hold`), optional stop loss `--stop` percent below entry checked against each day's low (a gap below fills at the open). Each position gets about 1/K of current equity. Costs on every fill are the NSE delivery charges (STT, exchange, SEBI, stamp duty, GST) plus 0.1% slippage; the rates are constants in `src/lib/calc/backtest/costs.ts` and should be checked against your broker's current schedule.
+- **Results.** CAGR, total return, max drawdown, volatility, Sharpe (risk-free rate 0), hit rate, average win and loss, trades, turnover and time invested, next to Nifty 50 buy-and-hold over the same dates (price only, no costs).
+- **Read with care.** Only today's Nifty 200 members are tested, so stocks that left the index or were delisted are missing (survivorship bias flatters results). Prices only, no dividends. No circuit limits and no liquidity cap. Alphas #1 and #54 take few distinct values, so a top-N pick among ties is arbitrary (stock-key order). Every run's page repeats these.
+- **Data check.** Each run prints a data report. It flags daily moves of 35% or more, a sign of splits or demergers Yahoo did not adjust: on the owner's data PATANJALI (2020-01-27), MOTILALOFS (2024-01-01) and VEDL (2026-04-30) look unadjusted, so a run that holds them can show a fake crash.
+- **Time.** About 45 s for an alpha or random run and about 90 s for a rule run, over roughly 1,700 sessions and 200 stocks.
+- **Controls to trust a result.** `hold --key NIFTY50` should land within about 2 points of the benchmark's total return, and `random` should not beat Nifty 50 by a wide margin; if either does, suspect a bug.
 
 ## Known data caveat
 
