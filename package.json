@@ -16,7 +16,9 @@
     "import-niftyindices": "tsx scripts/import-niftyindices.ts",
     "compare-import": "tsx scripts/compare-import.ts",
     "telegram-setup": "tsx scripts/telegram-setup.ts",
-    "backtest": "tsx scripts/backtest.ts"
+    "backtest": "tsx scripts/backtest.ts",
+    "tracker": "tsx scripts/tracker.ts",
+    "assistant-check": "tsx scripts/assistant-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
