@@ -85,3 +85,5 @@ export async function runAssistant(o: RunInput, onEvent: (e: AssistantEvent) => 
     busy = false;
   }
 }
+
+export const isBusy = (): boolean => busy;
