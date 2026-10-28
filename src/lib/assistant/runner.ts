@@ -55,7 +55,7 @@ export async function runAssistant(o: RunInput, onEvent: (e: AssistantEvent) => 
       let timedOut = false;
       const emit = (events: AssistantEvent[]) => events.forEach((e) => { if (e.type === "done") sawDone = true; onEvent(e); });
 
-      const child = spawn(o.bin ?? resolveClaudeBin(process.env), o.args, { cwd: o.cwd, shell: false, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+      const child = spawn(o.bin ?? resolveClaudeBin(process.env), o.args, { cwd: o.cwd, env: { ...process.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1" }, shell: false, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
       const finish = () => {
         if (settled) return;
         settled = true;

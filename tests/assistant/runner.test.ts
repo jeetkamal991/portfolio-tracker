@@ -54,6 +54,14 @@ describe("runAssistant", () => {
   });
 });
 
+describe("runAssistant environment", () => {
+  it("switches the CLI's auto-memory off", async () => {
+    const { events, p } = run("env");
+    await p;
+    expect(events[0]).toEqual({ type: "text", delta: "1" });
+  });
+});
+
 describe("resolveClaudeBin", () => {
   it("prefers CLAUDE_BIN, else claude", () => {
     expect(resolveClaudeBin({ CLAUDE_BIN: "X:/c.exe" })).toBe("X:/c.exe");
