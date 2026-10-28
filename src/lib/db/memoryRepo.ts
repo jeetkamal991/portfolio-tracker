@@ -307,7 +307,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async listAssistantSessions() {
       return [...chats.values()]
         .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : b.id - a.id))
-        .map(({ messages: _m, ...rest }) => rest);
+        .map(({ id, createdAt, updatedAt, title, cliSessionId }) => ({ id, createdAt, updatedAt, title, cliSessionId }));
     },
     async getAssistantSession(id) {
       return chats.get(id) ?? null;
