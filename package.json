@@ -26,6 +26,8 @@
     "next": "15.5.28",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "yahoo-finance2": "^4.0.4",
     "zod": "^4.6.7"
   },
