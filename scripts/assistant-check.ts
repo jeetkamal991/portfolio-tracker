@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { buildArgs } from "@/lib/assistant/args";
-import { resolveClaudeBin } from "@/lib/assistant/runner";
+import { cliEnv, resolveClaudeBin } from "@/lib/assistant/runner";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Proves the CLI guarantees the assistant relies on, against the real CLI on this PC. Costs a few cents. Run by hand.
@@ -16,7 +16,7 @@ const check = (name: string, ok: boolean, detail = "") => {
 
 function run(message: string, holdings = false) {
   const r = spawnSync(bin, buildArgs({ message, holdings, maxUsd: 0.5 }), {
-    cwd, encoding: "utf8", timeout: 240_000, env: { ...process.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1" },
+    cwd, encoding: "utf8", timeout: 240_000, env: cliEnv(process.env) as NodeJS.ProcessEnv,
   });
   const msgs = (r.stdout ?? "").split("\n").flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } });
   const init = msgs.find((m: any) => m.type === "system" && m.subtype === "init");
@@ -24,6 +24,9 @@ function run(message: string, holdings = false) {
   const results = msgs.flatMap((m: any) => (m.type === "user" ? m.message?.content ?? [] : [])).filter((b: any) => b.type === "tool_result");
   return { init, result, results, stderr: r.stderr ?? "", status: r.status };
 }
+
+const e = run("- Say the single word ok.");
+check("a message starting with a dash is read as the prompt", !!e.result && !e.result.is_error && /ok/i.test(String(e.result.result)), e.stderr.trim().slice(0, 200) || String(e.result?.result).slice(0, 100));
 
 const probe = join(cwd, "should-not-exist.txt");
 rmSync(probe, { force: true });

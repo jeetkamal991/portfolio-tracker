@@ -7,11 +7,16 @@ import type { AssistantEvent } from "@/lib/assistant/stream";
 type Run = AssistantDeps["run"];
 const doneEv = (cli = "cli-1", reports: number[] = []): AssistantEvent => ({ type: "done", inputTokens: 1, outputTokens: 2, costUsd: 0.1, turns: 1, durationMs: 1, denials: 0, reports, cliSessionId: cli });
 
+function lock() {
+  let held = false;
+  return () => (held ? null : ((held = true), () => { held = false; }));
+}
+
 function deps(run: Run, over: Partial<AssistantDeps> = {}) {
   const repo = createMemoryRepo();
   const calls: string[][] = [];
   const d: AssistantDeps = {
-    repo, env: {}, signal: new AbortController().signal, cwd: "/x", isBusy: () => false,
+    repo, env: {}, signal: new AbortController().signal, cwd: "/x", acquire: lock(),
     run: async (o, on) => { calls.push(o.args); await run(o, on); },
     ...over,
   };
@@ -44,7 +49,7 @@ describe("handleAssistantRun", () => {
   });
 
   it("409 when busy, 404 for an unknown session", async () => {
-    expect(await handleAssistantRun(deps(good, { isBusy: () => true }).d, { message: "hi" })).toMatchObject({ status: 409 });
+    expect(await handleAssistantRun(deps(good, { acquire: () => null }).d, { message: "hi" })).toMatchObject({ status: 409 });
     expect(await handleAssistantRun(deps(good).d, { message: "hi", sessionId: 99 })).toMatchObject({ status: 404 });
   });
 
@@ -112,6 +117,52 @@ describe("handleAssistantRun", () => {
     const { d, calls } = deps(good);
     const m = "x; rm -rf / $(y) \"q\" --tools Bash\nline2";
     await drain(await handleAssistantRun(d, { message: m }));
-    expect(calls[0][calls[0].indexOf("-p") + 1]).toBe(m);
+    expect(calls[0].at(-1)).toBe(m);
+  });
+
+  it("two requests at once: the second gets 409 before any await, and the lock frees afterwards", async () => {
+    const d = deps(good).d;
+    const p1 = handleAssistantRun(d, { message: "one" });
+    const p2 = handleAssistantRun(d, { message: "two" });
+    expect(await p2).toMatchObject({ status: 409 });
+    await drain(await p1);
+    expect(await handleAssistantRun(d, { message: "three" })).toHaveProperty("stream");
+  });
+
+  it("releases the lock after a 404", async () => {
+    const d = deps(good).d;
+    expect(await handleAssistantRun(d, { message: "x", sessionId: 42 })).toMatchObject({ status: 404 });
+    expect(await handleAssistantRun(d, { message: "x" })).toHaveProperty("stream");
+  });
+
+  it("a holdings turn is never resumed by a research turn (and the reverse)", async () => {
+    for (const [first, second] of [[true, false], [false, true]]) {
+      const { d, calls, repo } = deps(good);
+      const f = await drain(await handleAssistantRun(d, { message: "a", holdings: first }));
+      const id = f[0].data.id;
+      expect((await repo.getAssistantSession(id))!.cliSessionId).toBe("cli-1");
+      const frames = await drain(await handleAssistantRun(d, { message: "b", holdings: second, sessionId: id }));
+      expect(calls[1]).not.toContain("--resume");
+      expect(frames.find((x) => x.type === "text")!.data.delta).toMatch(/never share/);
+    }
+  });
+
+  it("same mode keeps resuming after a mode switch", async () => {
+    const { d, calls } = deps(good);
+    const id = (await drain(await handleAssistantRun(d, { message: "a", holdings: true })))[0].data.id;
+    await drain(await handleAssistantRun(d, { message: "b", sessionId: id }));
+    await drain(await handleAssistantRun(d, { message: "c", sessionId: id }));
+    expect(calls[2]).toContain("--resume");
+  });
+
+  it("a BusyError from the runner is not mistaken for a failed resume", async () => {
+    let n = 0;
+    const run: Run = async () => { n++; throw new BusyError(); };
+    const { d, repo } = deps(run);
+    const id = await repo.createAssistantSession("t");
+    await repo.updateAssistantSession(id, { cliSessionId: "old" });
+    const frames = await drain(await handleAssistantRun(d, { message: "more", sessionId: id }));
+    expect(n).toBe(1);
+    expect(frames.some((f) => f.type === "text")).toBe(false);
   });
 });

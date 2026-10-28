@@ -42,9 +42,17 @@ describe("buildArgs", () => {
   it("keeps the message as one argv entry after -p, never --bare", () => {
     const msg = "a; rm -rf / $(x) --tools";
     const a = buildArgs({ message: msg, holdings: false });
-    expect(a[a.indexOf("-p") + 1]).toBe(msg);
     expect(a.filter((x) => x === msg)).toHaveLength(1);
+    expect(a).toContain("-p");
     expect(a).not.toContain("--bare");
     expect(a).toEqual(expect.arrayContaining(["--permission-mode", "dontAsk", "--disable-slash-commands", "--setting-sources", "project"]));
+  });
+
+  it("puts the message last after `--`, so a leading dash is never read as an option", () => {
+    for (const msg of ["--version", "- compare TCS and INFY", "-5% fallers?"]) {
+      const a = buildArgs({ message: msg, holdings: false });
+      expect(a.at(-1)).toBe(msg);
+      expect(a.at(-2)).toBe("--");
+    }
   });
 });

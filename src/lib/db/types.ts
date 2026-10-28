@@ -223,7 +223,7 @@ export interface BacktestRun extends BacktestRunSummary {
 }
 
 export type AssistantMessage =
-  | { role: "user"; text: string }
+  | { role: "user"; text: string; holdings?: boolean }
   | {
       role: "assistant";
       steps: { id: string; name: string; summary: string; ok: boolean; output: string }[];

@@ -22,7 +22,7 @@ export function buildArgs(o: RunOptions): string[] {
   const tools = o.holdings ? "Bash" : "Bash,WebSearch,WebFetch";
   const allowed = o.holdings ? [...ALLOWED_BASH, HOLDINGS_BASH] : [...ALLOWED_BASH, "WebSearch", "WebFetch"];
   return [
-    "-p", o.message,
+    "-p",
     "--output-format", "stream-json", "--verbose", "--include-partial-messages",
     "--setting-sources", "project",
     "--permission-mode", "dontAsk",
@@ -32,5 +32,7 @@ export function buildArgs(o: RunOptions): string[] {
     "--allowedTools", allowed.join(","),
     ...(o.model ? ["--model", o.model] : []),
     ...(o.resume ? ["--resume", o.resume] : []),
+    // `--` so a message that starts with a dash is never read as an option
+    "--", o.message,
   ];
 }

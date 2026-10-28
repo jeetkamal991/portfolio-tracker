@@ -17,13 +17,15 @@ const body = z.object({
 export interface AssistantDeps {
   repo: Repo;
   run: (o: RunInput, onEvent: (e: AssistantEvent) => void) => Promise<void>;
-  isBusy: () => boolean;
+  /** Takes the single run slot synchronously (before any await) so two requests cannot both pass. */
+  acquire: () => (() => void) | null;
   env: Record<string, string | undefined>;
   signal: AbortSignal;
   /** The assistant's working folder. */
   cwd: string;
 }
 
+const MODE_NOTE = "(Holdings and web research never share a conversation, so this starts fresh.)\n\n";
 const RESUME_NOTE = "(I couldn't pick up the earlier conversation on this PC, so this starts fresh.)\n\n";
 
 /** Validates, runs the CLI and returns either an error result or a server-sent-event stream. The chat is saved however the run ends. */
@@ -33,11 +35,27 @@ export async function handleAssistantRun(deps: AssistantDeps, raw: unknown): Pro
   const parsed = body.safeParse(raw);
   if (!parsed.success) return { status: 400, body: { error: "invalid_body" } };
   const input = parsed.data;
-  if (deps.isBusy()) return { status: 409, body: { error: "busy" } };
+  const release = deps.acquire();
+  if (!release) return { status: 409, body: { error: "busy" } };
 
-  const existing = input.sessionId ? await repo.getAssistantSession(input.sessionId) : null;
-  if (input.sessionId && !existing) return { status: 404, body: { error: "not_found" } };
-  const sessionId = existing ? existing.id : await repo.createAssistantSession(input.message.slice(0, 60));
+  let existing: Awaited<ReturnType<Repo["getAssistantSession"]>> = null;
+  let sessionId: number;
+  try {
+    existing = input.sessionId ? await repo.getAssistantSession(input.sessionId) : null;
+    if (input.sessionId && !existing) {
+      release();
+      return { status: 404, body: { error: "not_found" } };
+    }
+    sessionId = existing ? existing.id : await repo.createAssistantSession(input.message.slice(0, 60));
+  } catch (e) {
+    release();
+    throw e;
+  }
+  // The CLI session carries the mode of the last turn (a switch starts a fresh one), so resuming across modes
+  // would put holdings from the transcript in front of the web tools, or the reverse.
+  const lastUser = [...(existing?.messages ?? [])].reverse().find((m) => m.role === "user");
+  const sameMode = !lastUser || !!(lastUser as { holdings?: boolean }).holdings === input.holdings;
+  const resumeId = existing?.cliSessionId && sameMode ? existing.cliSessionId : undefined;
 
   const ac = new AbortController();
   const onAbort = () => ac.abort();
@@ -60,7 +78,7 @@ export async function handleAssistantRun(deps: AssistantDeps, raw: unknown): Pro
         }
       };
       let turn = emptyTurn();
-      let cliSessionId = existing?.cliSessionId ?? null;
+      let cliSessionId = resumeId ?? null;
       const emit = (e: AssistantEvent) => {
         turn = applyEvent(turn, e);
         if (e.type === "done" && e.cliSessionId) cliSessionId = e.cliSessionId;
@@ -68,14 +86,17 @@ export async function handleAssistantRun(deps: AssistantDeps, raw: unknown): Pro
       };
 
       send("session", { id: sessionId });
+      if (existing?.cliSessionId && !sameMode) emit({ type: "text", delta: MODE_NOTE });
       const maxUsd = Number(env.ASSISTANT_MAX_USD);
       const timeoutMs = Number(env.ASSISTANT_TIMEOUT_MS) || 600_000;
       const attempt = async (resume?: string) => {
         let progress = false;
+        let thrown = false;
         const held: AssistantEvent[] = [];
         try {
           await deps.run(
             {
+              locked: true,
               args: buildArgs({ message: input.message, holdings: input.holdings, model: input.model ?? env.ASSISTANT_MODEL, resume, maxUsd: maxUsd > 0 ? maxUsd : undefined }),
               cwd: deps.cwd, signal: ac.signal, timeoutMs,
             },
@@ -85,13 +106,14 @@ export async function handleAssistantRun(deps: AssistantDeps, raw: unknown): Pro
             },
           );
         } catch (e) {
+          thrown = true;
           held.push({ type: "error", message: e instanceof BusyError ? "The assistant is busy with another request." : e instanceof Error ? e.message : "The run failed." });
         }
-        return { progress, held };
+        return { progress, held, thrown };
       };
 
-      let r = await attempt(existing?.cliSessionId ?? undefined);
-      if (existing?.cliSessionId && !r.progress && r.held.length && !ac.signal.aborted) {
+      let r = await attempt(resumeId);
+      if (resumeId && !r.progress && r.held.length && !r.thrown && !ac.signal.aborted) {
         emit({ type: "text", delta: RESUME_NOTE });
         r = await attempt();
       }
@@ -101,13 +123,14 @@ export async function handleAssistantRun(deps: AssistantDeps, raw: unknown): Pro
       try {
         await repo.updateAssistantSession(sessionId, {
           cliSessionId,
-          messages: [...(existing?.messages ?? []), { role: "user", text: input.message }, turn],
+          messages: [...(existing?.messages ?? []), { role: "user", text: input.message, ...(input.holdings ? { holdings: true } : {}) }, turn],
         });
       } catch (e) {
         console.error("saving the assistant chat failed", e);
         send("error", { type: "error", message: "The chat couldn't be saved." });
       }
       deps.signal.removeEventListener("abort", onAbort);
+      release();
       if (open) controller.close();
     },
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
-import { BusyError, resolveClaudeBin, runAssistant } from "@/lib/assistant/runner";
+import { BusyError, cliEnv, resolveClaudeBin, runAssistant } from "@/lib/assistant/runner";
 import type { AssistantEvent } from "@/lib/assistant/stream";
 
 const fake = fileURLToPath(new URL("./fakeCli.mjs", import.meta.url));
@@ -59,6 +59,32 @@ describe("runAssistant environment", () => {
     const { events, p } = run("env");
     await p;
     expect(events[0]).toEqual({ type: "text", delta: "1" });
+  });
+});
+
+describe("runAssistant output and secrets", () => {
+  it("keeps a multi-byte character that is split across pipe chunks", async () => {
+    const { events, p } = run("split");
+    await p;
+    expect(events[0]).toEqual({ type: "text", delta: "₹100" });
+  });
+
+  it("does not hand server secrets to the CLI", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "secret";
+    try {
+      const { events, p } = run("secrets");
+      await p;
+      expect(events[0]).toEqual({ type: "text", delta: "clean" });
+    } finally {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    }
+  });
+
+  it("cliEnv keeps login/system variables and drops the rest", () => {
+    const e = cliEnv({ PATH: "p", APPDATA: "a", USERPROFILE: "u", CLAUDE_BIN: "c", SUPABASE_SERVICE_ROLE_KEY: "s", TELEGRAM_BOT_TOKEN: "t" });
+    expect(e).toMatchObject({ PATH: "p", APPDATA: "a", USERPROFILE: "u", CLAUDE_BIN: "c", CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1" });
+    expect(e).not.toHaveProperty("SUPABASE_SERVICE_ROLE_KEY");
+    expect(e).not.toHaveProperty("TELEGRAM_BOT_TOKEN");
   });
 });
 

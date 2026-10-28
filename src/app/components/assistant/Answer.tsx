@@ -1,14 +1,14 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { SAFE_MARKDOWN } from "@/lib/view/markdown";
 
 /** The assistant's reply as formatted text; tables scroll sideways instead of widening the page. */
 export function Answer({ text }: { text: string }) {
   return (
     <div className="text-sm leading-relaxed text-[var(--text)] [&_a]:text-[var(--up)] [&_a]:underline [&_code]:rounded [&_code]:bg-[var(--panel-2)] [&_code]:px-1 [&_code]:font-mono [&_code]:text-xs [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_p]:my-2 [&_ul]:list-disc">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        {...SAFE_MARKDOWN}
         components={{
           table: ({ children }) => (
             <div className="my-2 overflow-x-auto">
