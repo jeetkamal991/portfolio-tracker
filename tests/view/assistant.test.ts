@@ -21,3 +21,52 @@ describe("applyEvent", () => {
     expect(applyEvent(t0, { type: "error", message: "x" }).error).toBe("x");
   });
 });
+
+import { STARTERS, fmtCost, stepLabel } from "@/lib/view/assistant";
+import { TABS, activeTab } from "@/lib/view/shell";
+
+describe("stepLabel", () => {
+  it("describes each tool in plain words", () => {
+    expect(stepLabel("Bash", "npm run tracker -- stock RELIANCE")).toBe("Pulled RELIANCE indicators");
+    expect(stepLabel("Bash", "npm run tracker -- find reliance")).toBe("Looked up “reliance”");
+    expect(stepLabel("Bash", "npm run tracker -- screeners")).toBe("Read today's screeners");
+    expect(stepLabel("Bash", "npm run tracker -- alphas --alpha a101")).toBe("Read the alpha rankings");
+    expect(stepLabel("Bash", "npm run tracker -- market")).toBe("Read the market overview");
+    expect(stepLabel("Bash", "npm run tracker -- portfolio")).toBe("Read your holdings");
+    expect(stepLabel("Bash", "npm run backtest -- alpha --alpha a101")).toBe("Ran a backtest");
+    expect(stepLabel("WebSearch", "reliance news")).toBe("Searched the web: reliance news");
+    expect(stepLabel("WebFetch", "https://x.test/a")).toBe("Fetched https://x.test/a");
+    expect(stepLabel("Other", "zzz")).toBe("Other");
+  });
+});
+
+describe("helpers", () => {
+  it("fmtCost", () => {
+    expect(fmtCost(0)).toBe("$0.00");
+    expect(fmtCost(0.0049)).toBe("<$0.01");
+    expect(fmtCost(0.456)).toBe("$0.46");
+  });
+  it("starters: only the holdings one switches holdings on", () => {
+    expect(STARTERS.map((s) => [s.label, s.holdings])).toEqual([["Research a stock", false], ["Test a strategy", false], ["Review my holdings", true]]);
+  });
+  it("tabs carry the assistant and the renamed reports", () => {
+    expect(TABS.map((t) => t.label)).toEqual(["Dashboard", "Portfolio", "Watchlist", "Sector Analysis", "Market", "Research assistant", "Backtest reports", "Alerts"]);
+    expect(activeTab("/assistant")).toBe("/assistant");
+  });
+});
+
+import { splitSse } from "@/lib/view/assistant";
+
+describe("splitSse", () => {
+  it("returns whole frames and keeps the partial tail", () => {
+    const a = splitSse('event: text\ndata: {"type":"text","delta":"a"}\n\nevent: do');
+    expect(a.events).toEqual([{ type: "text", data: { type: "text", delta: "a" } }]);
+    expect(a.rest).toBe("event: do");
+    const b = splitSse(a.rest + 'ne\ndata: {"x":1}\n\n');
+    expect(b.events).toEqual([{ type: "done", data: { x: 1 } }]);
+    expect(b.rest).toBe("");
+  });
+  it("skips frames that are not valid JSON", () => {
+    expect(splitSse("event: text\ndata: {oops\n\n").events).toEqual([]);
+  });
+});

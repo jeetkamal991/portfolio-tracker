@@ -9,7 +9,7 @@ const TD = "whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums";
 export function RunList({ runs }: { runs: BacktestRunSummary[] }) {
   if (runs.length === 0) {
     return (
-      <Panel title="BACKTESTS">
+      <Panel title="BACKTEST REPORTS">
         <p className="text-sm text-[var(--muted)]">
           No runs yet. Run <code className="font-mono">npm run backtest</code> on your PC, for example{" "}
           <code className="font-mono">npm run backtest -- alpha --alpha a101 --top 10</code>.
@@ -18,7 +18,7 @@ export function RunList({ runs }: { runs: BacktestRunSummary[] }) {
     );
   }
   return (
-    <Panel title="BACKTESTS">
+    <Panel title="BACKTEST REPORTS">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse sm:min-w-[720px]">
           <thead>

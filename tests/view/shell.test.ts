@@ -1,7 +1,7 @@
 import { test, expect } from "vitest";
 import { activeTab, marketPhase, istClock, TABS } from "@/lib/view/shell";
 
-test("tabs order", () => expect(TABS.map((t) => t.label)).toEqual(["Dashboard", "Portfolio", "Watchlist", "Sector Analysis", "Market", "Backtests", "Alerts"]));
+test("tabs order", () => expect(TABS.map((t) => t.label)).toEqual(["Dashboard", "Portfolio", "Watchlist", "Sector Analysis", "Market", "Research assistant", "Backtest reports", "Alerts"]));
 test("activeTab", () => {
   expect(activeTab("/")).toBe("/");
   expect(activeTab("/sectors")).toBe("/sectors");
