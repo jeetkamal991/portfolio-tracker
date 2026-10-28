@@ -12,7 +12,7 @@ export class BusyError extends Error {
 let busy = false;
 
 /** `CLAUDE_BIN`, else the native binary found on PATH (spawned directly: no shell, no quoting), else `claude`. */
-export function resolveClaudeBin(env: NodeJS.ProcessEnv): string {
+export function resolveClaudeBin(env: Record<string, string | undefined>): string {
   if (env.CLAUDE_BIN) return env.CLAUDE_BIN;
   for (const dir of (env.PATH ?? env.Path ?? "").split(delimiter).filter(Boolean)) {
     for (const rel of [join("node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe"), "claude.exe"]) {
