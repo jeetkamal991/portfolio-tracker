@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, BacktestRun, BacktestRunSummary, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, BacktestRun, BacktestRunSummary, AssistantMessage, AssistantSessionSummary, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -48,6 +48,10 @@ const toBacktestSummary = (r: Row): BacktestRunSummary => ({
   id: Number(r.id), createdAt: r.created_at as string, name: r.name as string,
   strategy: r.strategy as BacktestRunSummary["strategy"], settings: r.settings as BacktestRunSummary["settings"],
   metrics: r.metrics as BacktestRunSummary["metrics"], dataThrough: r.data_through as string,
+});
+const toChatSummary = (r: Row): AssistantSessionSummary => ({
+  id: Number(r.id), createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+  title: r.title as string, cliSessionId: (r.cli_session_id as string | null) ?? null,
 });
 const toBar = (r: Row): PriceBar => ({
   date: r.date as string, open: num(r.open), close: num(r.close), high: num(r.high), low: num(r.low), volume: num(r.volume),
@@ -580,6 +584,30 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         ...toBacktestSummary(r), equity: r.equity as BacktestRun["equity"], trades: r.trades as BacktestRun["trades"],
         universeNote: r.universe_note as string,
       };
+    },
+    async createAssistantSession(title) {
+      const r = check(await db.from("assistant_sessions").insert({ title, messages: [] }).select("id").single(), "createAssistantSession") as Row;
+      return Number(r.id);
+    },
+    async updateAssistantSession(id, patch) {
+      const row: Row = { updated_at: new Date().toISOString() };
+      if (patch.cliSessionId !== undefined) row.cli_session_id = patch.cliSessionId;
+      if (patch.messages !== undefined) row.messages = patch.messages;
+      check(await db.from("assistant_sessions").update(row).eq("id", id), "updateAssistantSession");
+    },
+    async listAssistantSessions() {
+      const rows = check(
+        await db.from("assistant_sessions").select("id,created_at,updated_at,title,cli_session_id").order("updated_at", { ascending: false }),
+        "listAssistantSessions",
+      ) as Row[];
+      return rows.map(toChatSummary);
+    },
+    async getAssistantSession(id) {
+      const r = check(await db.from("assistant_sessions").select("*").eq("id", id).maybeSingle(), "getAssistantSession") as Row | null;
+      return r ? { ...toChatSummary(r), messages: (r.messages as AssistantMessage[] | null) ?? [] } : null;
+    },
+    async deleteAssistantSession(id) {
+      check(await db.from("assistant_sessions").delete().eq("id", id), "deleteAssistantSession");
     },
   };
 }

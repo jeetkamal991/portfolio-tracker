@@ -221,3 +221,26 @@ export interface BacktestRun extends BacktestRunSummary {
   trades: Trade[];
   universeNote: string;
 }
+
+export type AssistantMessage =
+  | { role: "user"; text: string }
+  | {
+      role: "assistant";
+      steps: { id: string; name: string; summary: string; ok: boolean; output: string }[];
+      text: string;
+      usage: { inputTokens: number; outputTokens: number; costUsd: number } | null;
+      reports: number[];
+      error?: string;
+    };
+
+export interface AssistantSessionSummary {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  cliSessionId: string | null;
+}
+
+export interface AssistantSession extends AssistantSessionSummary {
+  messages: AssistantMessage[];
+}

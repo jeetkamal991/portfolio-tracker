@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, BacktestRun, BacktestRunInput, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, BacktestRun, BacktestRunInput, AssistantSession, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -47,6 +47,8 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const events: StoredEvent[] = [];
   const shareholding = new Map<string, ShareholdingRow>();
   const backtests: BacktestRun[] = [];
+  const chats = new Map<number, AssistantSession>();
+  let nextChatId = 1;
 
   const dayFor = (id: number, date: string): StoredDay => {
     let m = days.get(id);
@@ -290,6 +292,28 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     },
     async getBacktestRun(id) {
       return backtests.find((r) => r.id === id) ?? null;
+    },
+    async createAssistantSession(title) {
+      const id = nextChatId++;
+      const now = new Date().toISOString();
+      chats.set(id, { id, createdAt: now, updatedAt: now, title, cliSessionId: null, messages: [] });
+      return id;
+    },
+    async updateAssistantSession(id, patch) {
+      const s = chats.get(id);
+      if (!s) return;
+      chats.set(id, { ...s, ...patch, updatedAt: new Date().toISOString() });
+    },
+    async listAssistantSessions() {
+      return [...chats.values()]
+        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : b.id - a.id))
+        .map(({ messages: _m, ...rest }) => rest);
+    },
+    async getAssistantSession(id) {
+      return chats.get(id) ?? null;
+    },
+    async deleteAssistantSession(id) {
+      chats.delete(id);
     },
   };
 }

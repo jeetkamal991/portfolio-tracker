@@ -1,7 +1,7 @@
 import type { Candle } from "@/lib/provider/types";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { AlertCondition } from "@/lib/calc/alerts";
-import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, BacktestRun, BacktestRunInput, BacktestRunSummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, OhlcvDay, PriceBar, ReportRow, ScoreRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, BacktestRun, BacktestRunInput, BacktestRunSummary, AssistantMessage, AssistantSession, AssistantSessionSummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, OhlcvDay, PriceBar, ReportRow, ScoreRow, ShareholdingRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -85,4 +85,12 @@ export interface Repo {
   /** Newest first, without the equity curve, trades and note. */
   listBacktestRuns(): Promise<BacktestRunSummary[]>;
   getBacktestRun(id: number): Promise<BacktestRun | null>;
+  /** Starts an empty research-assistant chat and returns its id. */
+  createAssistantSession(title: string): Promise<number>;
+  /** Sets only the fields given and bumps updatedAt. */
+  updateAssistantSession(id: number, patch: { cliSessionId?: string | null; messages?: AssistantMessage[] }): Promise<void>;
+  /** Newest-updated first, without messages. */
+  listAssistantSessions(): Promise<AssistantSessionSummary[]>;
+  getAssistantSession(id: number): Promise<AssistantSession | null>;
+  deleteAssistantSession(id: number): Promise<void>;
 }
