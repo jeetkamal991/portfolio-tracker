@@ -52,7 +52,9 @@ export function Chat({ initialId, initialMessages, canRun }: { initialId: number
       if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
     } catch {}
   }, []);
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [messages, turn]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [messages, turn]);
 
   function pickModel(id: string) {
     setModel(id);
