@@ -1,23 +1,22 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (daily summary + report queue). Waiting on your Telegram/Vercel steps, the rest of the signed-in checks, a commit, then merge. Resume with: "continue from NOTES.md"_
+_Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting, research assistant) are built on `feat/research-assistant`. Nothing since stage 7 is merged or pushed. Waiting on your signed-in checks and your go-ahead to merge. Resume with: "continue from NOTES.md"_
 
-## Status at a glance (2026-10-19, night)
+## Status at a glance (2026-10-30)
 **Done**
-- Stages 1–6 merged to `main` and pushed.
-- Stage 7 (Alerts + Telegram) built on `feat/redesign-stage7-alerts`: alert rules, holding SL/target alerts, end-of-day and live checks, Telegram sender and `npm run telegram-setup`, Alerts tab, bell, "Set alert" in the pop-up, README. 551 tests; typecheck, lint, build clean.
-- Migration 0006 applied to Tracker1; the alert storage was tested live there (test rows removed). Your holdings have their alert rules (ACE SL + T1, RELIANCE T1).
-- Tonight: Claude tasks scheduled as cloud routines, migration 0007 applied, 19 Oct summary and two Deep Dive reports written (see "Session 2026-10-19 evening" below).
+- Stages 1-7 (including Alerts + Telegram) are on `main` and pushed to `origin`. `main` and `origin/main` are both at `150a082`.
+- Built on top, unmerged, in one stack on `feat/research-assistant` (46 commits ahead of `main`): stage 6b (FII/DII stake screeners), alpha ranks, backtesting, research assistant.
+- Research assistant (2026-10-28 to 30): Research assistant tab, Backtests tab renamed "Backtest reports", `npm run tracker` read-only data tools, `npm run assistant-check`. Migration **0011 applied** to Tracker1.
+- 747 tests; typecheck, lint and build clean on the branch.
 
 **What I'm doing now**
-- Nothing running; paused for the night by the owner (continue 2026-10-20). Dev server stopped — start it with `npm run dev`.
+- Nothing running. The dev server is stopped - start it with `npm run dev`.
 
 **Needs to be done**
-- Me, when you say so: **commit** the uncommitted work (list below), delete the two TEST alert events, then merge `feat/redesign-stage7-alerts` into `main` and push.
-- You: Telegram bot setup and the two Vercel settings, then redeploy (steps under To do 1).
-- You: finish the signed-in Alerts checks (bell count, mark read, create/pause/delete a rule).
-- Watch: tomorrow (20 Oct) 18:07 IST — the first scheduled daily summary run. If it stalls on a Supabase approval prompt, switch it to a function like 0007.
-- Older items: To do 4–8 below.
+- You: the signed-in checks for everything since stage 7 (Alerts, alpha cards, Backtest reports, Research assistant). I cannot sign in; the Claude in Chrome extension is still not connected, so every look so far is a static render.
+- You: apply migration **0010** (`backtest_runs`) - until then the Backtest reports tab and the assistant's report cards show the "apply the migration" note.
+- Me, when you say so: merge the stack into `main` (a fast-forward) and push. Those 46 commits exist only on this machine - that is the one real risk right now.
+- Older items: To do 1 and 3-8 below.
 
 ## Session 2026-10-19 evening
 - **TODAY BY CLAUDE was empty** because the daily-summary task had never been scheduled (`daily_summaries` had no rows). I wrote the 19 Oct row by hand following `docs/claude-tasks/daily-summary.md` (Nifty −1.11%, PSU Bank the only green sector, 3 market events, no news for your stocks).
@@ -63,9 +62,17 @@ _Updated 2026-10-19 (night) — Stage 7 built; Claude cloud routines now live (d
 - Seen: a real-browser render (live a054 run, headless Edge) at 1280 and 358 px, dark only. Not seen: the signed-in tab itself.
 - Next: sub-project 3, the research agent as a scheduled Claude task.
 
+## Session 2026-10-28 to 30 - Research assistant (Vibe-Trading sub-project 3 of 3)
+- Spec `docs/superpowers/specs/2026-10-27-research-assistant-design.md`, plan `docs/superpowers/plans/2026-10-28-research-assistant.md`; branch `feat/research-assistant`, stacked on the backtesting work.
+- Built: `/api/assistant` spawns your local `claude.exe` with a locked-down argument set and relays its `stream-json` output as server-sent events; `src/lib/assistant/` (args, stream parser, runner, six read-only tools); `npm run tracker -- find|stock|screeners|alphas|market|portfolio`; `assistant_sessions` storage (migration **0011, applied**); the Research assistant tab (chat, steps, markdown answers, report cards, chat list); Backtests renamed "Backtest reports"; `npm run assistant-check` against the real CLI.
+- Security split: research mode gets Bash (allow-listed `npm run tracker`/`backtest` only) plus WebSearch and WebFetch; holdings mode gets Bash only and never the web, decided from the `holdings` boolean alone. The CLI is spawned with no shell and a minimal environment, so the Supabase keys never reach it. The route answers 501 on Vercel - the assistant only runs on your PC.
+- Checked by me: 747 tests, typecheck, lint, `npm run build`; `/assistant` redirects to the login page and `POST /api/assistant` answers 401 when signed out.
+- Seen: static render (esbuild bundle + Tailwind + headless Edge) at 1280 and a true 390 px viewport, dark - empty state, a finished answer with steps, table, report card and cost line, and a stopped run. Edge will not open a window under ~500 px, so the phone width is rendered inside a 390 px iframe. Two fixes came out of it (`2ee4453`): the open chat was highlighted in a colour identical to the page background, and the error banner stretched the full width. **Not seen: the signed-in page, and no real end-to-end run through the browser.**
+
 ## Branches
-- `feat/redesign-stage7-alerts` (**checked out**) — stage 7, complete. On `origin` only up to `8cf377c`; every commit after that is local, not pushed.
-- `main` — stages 1–6 plus the start of stage 7 (`9294ee6`, `009d808` with partial Task 2, `8cf377c` .gitignore), **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker).
+- `feat/research-assistant` (**checked out**) — stage 6b + alpha ranks + backtesting + research assistant, stacked in one line on top of stage 7. 46 commits ahead of `main`, none of them pushed.
+- `feat/redesign-stage7-alerts`, `feat/stage6b-shareholding` — older labels left behind on the same stacked line; the stage 7 work itself is on `main`.
+- `main` — stages 1–7 complete, at `150a082`, **pushed** to `origin` (github.com/jeetkamal991/portfolio-tracker) and equal to `origin/main`.
 - Merged and can be deleted: `feat/redesign-stage6-market`, `feat/redesign-stage5-finish`. Older local branches: `feat/foundation-dashboard` → `feat/redesign-stage2` → `feat/daily-sector-log`.
 
 ## Done
