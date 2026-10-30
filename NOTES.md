@@ -1,11 +1,11 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting, research assistant) are built on `feat/research-assistant`. Nothing since stage 7 is merged or pushed. Waiting on your signed-in checks and your go-ahead to merge. Resume with: "continue from NOTES.md"_
+_Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting, research assistant) are built on `feat/research-assistant`. The whole stack was merged into `main` and pushed on 30 Oct (`be05340`). Waiting on your signed-in checks. Resume with: "continue from NOTES.md"_
 
 ## Status at a glance (2026-10-30)
 **Done**
-- Stages 1-7 (including Alerts + Telegram) are on `main` and pushed to `origin`. `main` and `origin/main` are both at `150a082`.
-- Built on top, unmerged, in one stack on `feat/research-assistant` (46 commits ahead of `main`): stage 6b (FII/DII stake screeners), alpha ranks, backtesting, research assistant.
+- Everything through the research assistant is on `main` and pushed to `origin`. `main` and `origin/main` are both at `be05340` (fast-forwarded from `150a082` on 30 Oct, 49 commits).
+- Merged in that fast-forward: stage 6b (FII/DII stake screeners), alpha ranks, backtesting, research assistant. `feat/research-assistant` now points at the same commit as `main`.
 - Research assistant (2026-10-28 to 30): Research assistant tab, Backtests tab renamed "Backtest reports", `npm run tracker` read-only data tools, `npm run assistant-check`. Migration **0011 applied** to Tracker1.
 - 747 tests; typecheck, lint and build clean on the branch.
 
@@ -15,7 +15,7 @@ _Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting,
 **Needs to be done**
 - You: the signed-in checks for everything since stage 7 (Alerts, alpha cards, Backtest reports, Research assistant). I cannot sign in; the Claude in Chrome extension is still not connected, so every look so far is a static render.
 - ~~You: apply migration 0010~~ - checked on Tracker1 2026-10-30: every migration 0001-0011 is applied. `backtest_runs` holds the 27 Oct sample run (#1, alpha a101 top 10, hold 5), so the Backtest reports tab and the assistant's report cards have something to show.
-- Me, when you say so: merge the stack into `main` (a fast-forward) and push. Those 46 commits exist only on this machine - that is the one real risk right now.
+- ~~Me: merge the stack into `main` and push~~ - done 2026-10-30, fast-forward to `be05340`, pushed to `origin`. The code is no longer only on this machine. **Nothing since stage 7 is deployed, though - Vercel still runs the old `main`.**
 - Older items: To do 1 and 3-8 below.
 
 ## Session 2026-10-19 evening
@@ -111,7 +111,7 @@ Plan: `docs/superpowers/plans/2026-10-18-redesign-stage7-alerts-telegram.md`. Le
 1. **You — stage 7:**
    - Telegram: @BotFather `/newbot` → token into `.env.local` as `TELEGRAM_BOT_TOKEN` → message your bot → `npm run telegram-setup` → put the printed id in `TELEGRAM_CHAT_ID` → run it again (test message arrives). Then add both to Vercel and redeploy.
    - Signed in (`npm run dev`): create "Price goes above" just below a stock's price (should say "already true"); pause/resume/delete it; check "From your portfolio" rules follow an SL edit; bell count and dropdown; mark read / mark all read; 390 px.
-   - Then: merge `feat/redesign-stage7-alerts` into `main` and push (ask me).
+   - ~~Then: merge `feat/redesign-stage7-alerts` into `main` and push~~ - that code is on `main` already; the branch label is just an older marker on the same line.
 2. ~~Supabase stage 6 sample cleanup~~ — done 2026-10-19 (the 16 Oct sample summary and report 6 deleted from Tracker1).
 3. **Stage 6 Task 6 — Claude tasks scheduled 2026-10-19** (details under "Session 2026-10-19 evening"). Still open: the README Market section.
 4. **You — stage 5 check:** add a few real holdings and compare P/L for one stock with your broker app. Also look at the Dashboard snapshot and the pop-up's "Add to Portfolio" button signed in (I only checked them as a static render).
