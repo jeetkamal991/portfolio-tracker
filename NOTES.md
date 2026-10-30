@@ -14,7 +14,7 @@ _Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting,
 
 **Needs to be done**
 - You: the signed-in checks for everything since stage 7 (Alerts, alpha cards, Backtest reports, Research assistant). I cannot sign in; the Claude in Chrome extension is still not connected, so every look so far is a static render.
-- You: apply migration **0010** (`backtest_runs`) - until then the Backtest reports tab and the assistant's report cards show the "apply the migration" note.
+- ~~You: apply migration 0010~~ - checked on Tracker1 2026-10-30: every migration 0001-0011 is applied. `backtest_runs` holds the 27 Oct sample run (#1, alpha a101 top 10, hold 5), so the Backtest reports tab and the assistant's report cards have something to show.
 - Me, when you say so: merge the stack into `main` (a fast-forward) and push. Those 46 commits exist only on this machine - that is the one real risk right now.
 - Older items: To do 1 and 3-8 below.
 
@@ -54,7 +54,7 @@ _Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting,
 ## Session 2026-10-27 — Backtesting (Vibe-Trading sub-project 2 of 3)
 - Spec `docs/superpowers/specs/2026-10-27-backtesting-design.md`, plan `docs/superpowers/plans/2026-10-27-backtesting.md`; branch `feat/backtesting`, stacked on `feat/stage6b-shareholding` (stage 6b is not on `main`).
 - Built: `src/lib/calc/backtest/` (costs, engine, metrics, strategies, caveats), `src/lib/jobs/backtest.ts` (history loading, run builder), `scripts/backtest.ts` (`npm run backtest`), migration `0010_backtest_runs.sql`, three `Repo` methods, the Backtests tab.
-- **Migration 0010 is NOT applied to Tracker1.** Apply it before a run can be saved or the tab can list runs (until then the tab says so).
+- Migration **0010 is applied** to Tracker1 (it was applied on 27 Oct when the sample run was saved; the note here and in the README saying otherwise was wrong, corrected 30 Oct).
 - Checks on the real data (dry runs, after the review fixes): control `hold NIFTY50` +84.9% vs benchmark +86.7%; `random` seeds 1/2/3 CAGR +5.0/-1.5/+0.6% vs benchmark +9.6%; alpha a101 top 10 +4.1% (3,180 trades, turnover 92x a year); a054 top 10 stop 8% -10.3% and golden cross hold 10 stop 8% +6.1% (both measured before the re-buy fix). About 90 round trips a year at ~0.4% each is a large drag: a 5-session hold is dominated by costs.
 - Data: 13 daily moves of 35% or more; PATANJALI 2020-01-27, MOTILALOFS 2024-01-01 and VEDL 2026-04-30 look like unadjusted splits or demergers (Yes Bank 2020 is real). Worth fixing or excluding before trusting stock-level results. The stored score is on 0% of rows, so score rules are excluded.
 - Review fixes: a stock still wanted when its hold ends is kept and its hold restarts (it used to be sold and bought back at the same open, ~0.5% of cost for nothing); a trade that spans a daily move of 35% or more is marked `suspect` ("check data" chip) and the run's note says how many; a run with more than 10,000 trades is refused for saving (use `--dry-run` or a longer `--hold`); the detail page tolerates a missing table and an oversized id.
