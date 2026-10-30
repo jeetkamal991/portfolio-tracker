@@ -18,7 +18,7 @@ function Turn({ turn, running }: { turn: AssistantTurn; running: boolean }) {
       <Steps steps={turn.steps} running={running} />
       {turn.text ? <Answer text={turn.text} /> : running && turn.steps.length === 0 && <p className="animate-pulse text-sm text-[var(--muted)]">Thinking…</p>}
       {turn.error && (
-        <p role="alert" className="mt-2 rounded-md border border-[var(--warn)] px-3 py-2 text-sm text-[var(--warn)]">
+        <p role="alert" className="mt-2 w-fit max-w-full rounded-md border border-[var(--warn)] px-3 py-2 text-sm text-[var(--warn)]">
           {turn.error}
         </p>
       )}

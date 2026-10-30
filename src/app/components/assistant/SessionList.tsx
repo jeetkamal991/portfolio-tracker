@@ -21,8 +21,12 @@ export function SessionList({ sessions, activeId, canRun }: { sessions: Assistan
       )}
       {sessions.length === 0 && <p className="px-1 text-xs text-[var(--muted)]">No chats yet.</p>}
       {sessions.map((s) => (
-        <div key={s.id} className={`group flex items-center gap-1 rounded-md ${s.id === activeId ? "bg-[var(--panel-2)]" : ""}`}>
-          <Link href={`/assistant?s=${s.id}`} className="min-w-0 flex-1 truncate px-3 py-2 text-sm hover:text-[var(--up)]">
+        <div key={s.id} className={`group flex items-center gap-1 rounded-md ${s.id === activeId ? "bg-slate-800" : ""}`}>
+          <Link
+            href={`/assistant?s=${s.id}`}
+            aria-current={s.id === activeId ? "page" : undefined}
+            className={`min-w-0 flex-1 truncate px-3 py-2 text-sm hover:text-[var(--up)] ${s.id === activeId ? "text-[var(--up)]" : ""}`}
+          >
             {s.title}
           </Link>
           {canRun && (
