@@ -41,8 +41,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0009_record_shareholding.sql` - adds `record_shareholding`, which the scheduled shareholding task calls with a plain `select`. Not callable from the site's API roles.
    - `supabase/migrations/0010_backtest_runs.sql` - adds the `backtest_runs` table (one row per saved backtest), RLS on with no policies. Apply it **before** the first `npm run backtest` that saves, and before opening the Backtests tab.
    - `supabase/migrations/0011_assistant_sessions.sql` - adds the `assistant_sessions` table (saved Research assistant chats), RLS on with no policies. Apply it **before** opening the Research assistant tab.
-   - `supabase/migrations/0012_report_ready_events.sql` - adds a trigger on `reports`: every report that reaches `done` writes an unread `alert_events` row ("📄 TCS report is ready to read"), so the bell tells the owner a requested report can be read. Apply it to start getting those.
-   A new project applies all twelve in order. The owner's Tracker1 project has 0003 to 0011 applied (checked against Tracker1 on 2026-10-30); **0012 is not applied yet**.
+   - `supabase/migrations/0012_report_ready_events.sql` - adds a trigger on `reports`: every report that reaches `done` writes an unread `alert_events` row ("📄 TCS report is ready to read"), so the bell tells the owner a requested report can be read.
+   A new project applies all twelve in order. The owner's Tracker1 project has 0003 to 0012 applied (0012 on 2026-11-02).
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
 
 ## Data scripts

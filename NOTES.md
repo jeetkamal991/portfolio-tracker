@@ -16,7 +16,7 @@ _Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting,
 - You: the signed-in checks for everything since stage 7 (Alerts, alpha cards, Backtest reports, Research assistant). I cannot sign in; the Claude in Chrome extension is still not connected, so every look so far is a static render.
 - ~~You: apply migration 0010~~ - checked on Tracker1 2026-10-30: every migration 0001-0011 is applied. `backtest_runs` holds the 27 Oct sample run (#1, alpha a101 top 10, hold 5), so the Backtest reports tab and the assistant's report cards have something to show.
 - ~~Me: merge the stack into `main` and push~~ - done 2026-10-30, fast-forward to `be05340`, pushed to `origin`. The code is no longer only on this machine. **Nothing since stage 7 is deployed, though - Vercel still runs the old `main`.**
-- You: apply **migration 0012** (`supabase/migrations/0012_report_ready_events.sql`) to Tracker1 - a trigger on `reports` so a finished stock report shows up on the bell. I wrote it but could not apply it; the permission check blocked the migration tool. Paste it into the Supabase SQL editor, or let me run it.
+- ~~You: apply migration 0012~~ - applied to Tracker1 2026-11-02; trigger `reports_ready_notify` is enabled.
 - Older items: To do 1 and 3-8 below.
 
 ## Session 2026-10-19 evening
