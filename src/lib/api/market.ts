@@ -44,7 +44,9 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
     repo.listHoldings(),
   ]);
   const hasUniverse = constituents.length > 0;
-  const stakes = hasUniverse ? await loadStakes(repo, constituents) : null;
+  // started now, awaited at the end, so its two round trips overlap the session lookups below
+  const stakesP = hasUniverse ? loadStakes(repo, constituents) : Promise.resolve(null);
+  stakesP.catch(() => {}); // an early return below must not leave it rejected unhandled
   // watchlist first, then holdings not already on it
   const watch = new Map<number, { key: string; name: string }>();
   for (const w of watchlist) watch.set(w.id, { key: w.key, name: w.name });
@@ -53,6 +55,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
 
   const latest = nifty ? await repo.getLatestDay(nifty.id) : null;
   if (!nifty || !latest) {
+    const stakes = await stakesP;
     return { session: null, summary: null, screeners: [], breadth: null, hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes, alphas: [] };
   }
 
@@ -64,6 +67,7 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
   ]);
   const summary = summaryRow ? parseDailySummary(summaryRow) : null;
   if (!hasUniverse && !hasWatchStocks) {
+    const stakes = await stakesP;
     return { session, summary, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes, alphas: [] };
   }
 
@@ -73,12 +77,13 @@ export async function loadMarket(repo: Repo, today: string): Promise<MarketData>
   const fromDate = priced.slice(-6)[0]?.date ?? session;
   const alphaFrom = priced.slice(-ALPHA_WINDOW)[0]?.date ?? session;
   const ids = [...new Set([...constituents.map((c) => c.id), ...watch.keys()])];
-  const [range, ohlcv] = await Promise.all([
+  const [range, ohlcv, stakes] = await Promise.all([
     repo.getDaysRange(ids, fromDate, session),
     // a failed alpha fetch must not take the screeners, breadth and watch signals down with it
     hasUniverse
       ? repo.getOhlcvRange(constituents.map((c) => c.id), alphaFrom, session).catch((e) => { console.error("alpha fetch failed", e); return null; })
       : Promise.resolve(null),
+    stakesP,
   ]);
   const stocks = constituents.map((c) => ({ key: c.key, name: c.name, days: range.get(c.id) ?? [] }));
   const watchStocks = [...watch].map(([id, w]) => ({ ...w, days: range.get(id) ?? [] }));

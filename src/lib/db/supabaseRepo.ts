@@ -143,18 +143,27 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     }
   };
   const now = () => new Date().toISOString();
-  /** Newest `limit` rows of `columns`, ascending. Pages newest-first with .range() because PostgREST caps responses at 1000 rows. */
+  /**
+   * Newest `limit` rows of `columns`, ascending. Pages newest-first with .range() because PostgREST caps responses at 1000 rows.
+   * All pages are requested at once: each round trip to the database is ~300 ms, so sequential pages added up to seconds.
+   */
   const readDays = async (instrumentId: number, limit: number, columns: string, what: string): Promise<Row[]> => {
-    const out: Row[] = [];
-    while (out.length < limit) {
-      const size = Math.min(PAGE, limit - out.length);
+    const starts: number[] = [];
+    for (let from = 0; from < limit; from += PAGE) starts.push(from);
+    const pages = await Promise.all(starts.map(async (from) => {
+      const size = Math.min(PAGE, limit - from);
       const page = check(
         await db.from("daily_prices").select(columns).eq("instrument_id", instrumentId)
-          .order("date", { ascending: false }).range(out.length, out.length + size - 1),
+          .order("date", { ascending: false }).range(from, from + size - 1),
         what,
       ) as unknown as Row[];
+      return { page, full: page.length === size };
+    }));
+    const out: Row[] = [];
+    // a short page is the end of the history; later pages are empty
+    for (const { page, full } of pages) {
       out.push(...page);
-      if (page.length < size) break;
+      if (!full) break;
     }
     return out.reverse();
   };

@@ -13,12 +13,13 @@ export async function handleMovers(
   cache: { get(tickers: string[]): Promise<Quote[]> },
   now: Date,
 ): Promise<MoversResponse> {
-  const universe = await repo.listConstituents("NIFTY200");
-  if (universe.length === 0) return { state: "no_universe" };
-
   // Session date comes from NIFTY50 so weekends and holidays show the newest stored session.
-  const nifty = await repo.getInstrumentByKey("NIFTY50");
-  const date = nifty ? (await repo.getLatestDay(nifty.id))?.date ?? null : null;
+  // Looked up alongside the universe: each database round trip is ~300 ms.
+  const [universe, date] = await Promise.all([
+    repo.listConstituents("NIFTY200"),
+    repo.getInstrumentByKey("NIFTY50").then(async (n) => (n ? (await repo.getLatestDay(n.id))?.date ?? null : null)),
+  ]);
+  if (universe.length === 0) return { state: "no_universe" };
   if (!date) return { state: "no_data", date: null };
 
   const stored = await repo.getDaysOn(universe.map((i) => i.id), date);
