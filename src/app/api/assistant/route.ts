@@ -5,7 +5,8 @@ import { getRepo } from "@/lib/api/server";
 import { acquireRun, runAssistant } from "@/lib/assistant/runner";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 800;
+// Hobby plan max; Vercel only answers 501 here, and `next dev` on the PC does not enforce it.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
