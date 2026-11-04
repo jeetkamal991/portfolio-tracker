@@ -72,7 +72,7 @@ export function ScreenerGrid({
       ) : screeners.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No session data yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {screeners.map((s) => (
             <ScreenerCard key={s.id} s={s} />
           ))}

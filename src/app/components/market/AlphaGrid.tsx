@@ -85,7 +85,7 @@ export function AlphaGrid({
       title="ALPHA RANKS · NIFTY 200"
       action={session ? <Label>as of {fmtDate(session).slice(0, 6)}</Label> : undefined}
     >
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {alphas.map((r) => (
           <AlphaCard key={r.id} r={r} />
         ))}

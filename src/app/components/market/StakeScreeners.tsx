@@ -4,9 +4,9 @@ import { useState } from "react";
 import type { StakeScreener } from "@/lib/calc/shareholding";
 import { COLLAPSED_ROWS } from "@/lib/view/market";
 import { StockLink } from "../popup/StockLink";
-import { Chip, Panel } from "../ui";
+import { Chip } from "../ui";
 
-function StakeCard({ s }: { s: StakeScreener }) {
+export function StakeCard({ s }: { s: StakeScreener }) {
   const [all, setAll] = useState(true);
   const rows = all ? s.hits : s.hits.slice(0, COLLAPSED_ROWS);
   return (
@@ -39,20 +39,5 @@ function StakeCard({ s }: { s: StakeScreener }) {
         </button>
       )}
     </div>
-  );
-}
-
-export function StakeScreeners({ stakes }: { stakes: { fii: StakeScreener; dii: StakeScreener } | null }) {
-  return (
-    <Panel title="STAKE CHANGES · NIFTY 200 · QUARTERLY">
-      {!stakes ? (
-        <p className="text-sm text-[var(--muted)]">Shareholding data appears after the quarterly update runs.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <StakeCard s={stakes.fii} />
-          <StakeCard s={stakes.dii} />
-        </div>
-      )}
-    </Panel>
   );
 }

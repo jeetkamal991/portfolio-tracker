@@ -2,17 +2,23 @@ import { loadMarket } from "@/lib/api/market";
 import { cached, getRepo } from "@/lib/api/server";
 import { buildDelivery } from "@/lib/calc/delivery";
 import { addDays, istDate } from "@/lib/time/ist";
+import { parseView } from "@/lib/view/marketViews";
+import { TodayByClaudeCompact } from "../../components/dashboard/TodayByClaudeCompact";
 import { AlphaGrid } from "../../components/market/AlphaGrid";
 import { BreadthPanel } from "../../components/market/BreadthPanel";
-import { DeliveryPanel } from "../../components/market/DeliveryPanel";
 import { ClaudeSummaryCard } from "../../components/market/ClaudeSummaryCard";
+import { RepeatDeliveryCard, TodayDeliveryCard } from "../../components/market/DeliveryCards";
+import { MarketBoard, ViewLink } from "../../components/market/MarketBoard";
 import { ScreenerGrid } from "../../components/market/ScreenerGrid";
-import { StakeScreeners } from "../../components/market/StakeScreeners";
+import { SignalsSummary } from "../../components/market/SignalsSummary";
+import { StakeCard } from "../../components/market/StakeScreeners";
 import { WatchSignalsPanel } from "../../components/market/WatchSignalsPanel";
+import { Panel } from "../../components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function MarketPage() {
+export default async function MarketPage({ searchParams }: { searchParams: Promise<{ v?: string }> }) {
+  const { v } = await searchParams;
   const repo = getRepo();
   const today = istDate(new Date());
   const [m, deliveryRows, stockNames] = await Promise.all([
@@ -27,21 +33,45 @@ export default async function MarketPage() {
     const n = stockNames.get(sym);
     if (n) names[sym] = n;
   }
+
+  const signalCount = m.watchSignals.crosses.length + m.watchSignals.formations.length;
+  const flows = (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <TodayDeliveryCard view={delivery} names={names} />
+      <RepeatDeliveryCard view={delivery} names={names} />
+      {m.hasUniverse && m.stakes ? (
+        <>
+          <StakeCard s={m.stakes.fii} />
+          <StakeCard s={m.stakes.dii} />
+        </>
+      ) : (
+        <Panel title="STAKE CHANGES · NIFTY 200 · QUARTERLY" className="md:col-span-2">
+          <p className="text-sm text-[var(--muted)]">Shareholding data appears after the quarterly update runs.</p>
+        </Panel>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-6">
-      <ClaudeSummaryCard summary={m.summary} session={m.session} />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
-          <WatchSignalsPanel signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />
-          <ScreenerGrid screeners={m.screeners} session={m.session} hasUniverse={m.hasUniverse} />
-          <AlphaGrid alphas={m.alphas} session={m.session} hasUniverse={m.hasUniverse} />
-          <DeliveryPanel view={delivery} names={names} />
-          {m.hasUniverse && <StakeScreeners stakes={m.stakes} />}
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <div className="lg:col-span-2">
+          <TodayByClaudeCompact summary={m.summary} session={m.session} details={<ViewLink view="today">Full details →</ViewLink>} />
         </div>
-        <div className="min-w-0">
-          <BreadthPanel breadth={m.breadth} hasUniverse={m.hasUniverse} />
-        </div>
+        <BreadthPanel breadth={m.breadth} hasUniverse={m.hasUniverse} />
+        <SignalsSummary signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />
       </div>
+      <MarketBoard
+        initial={parseView(v)}
+        counts={{ screeners: m.screeners.length, alphas: m.alphas.length, you: signalCount }}
+        views={{
+          today: <ClaudeSummaryCard summary={m.summary} session={m.session} />,
+          screeners: <ScreenerGrid screeners={m.screeners} session={m.session} hasUniverse={m.hasUniverse} />,
+          alphas: <AlphaGrid alphas={m.alphas} session={m.session} hasUniverse={m.hasUniverse} />,
+          flows,
+          you: <WatchSignalsPanel signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />,
+        }}
+      />
     </div>
   );
 }
