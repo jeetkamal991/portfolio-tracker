@@ -52,7 +52,7 @@ export function MoversPanel({ initial }: { initial: MoversResponse }) {
         <p className="text-sm text-[var(--muted)]">No session data yet.</p>
       ) : (
         <div className="flex flex-col gap-5">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="flex flex-col gap-5">
             <MoverList title="TOP GAINERS" rows={data.movers.gainers} tone="up" />
             <MoverList title="TOP LOSERS" rows={data.movers.losers} tone="down" />
           </div>

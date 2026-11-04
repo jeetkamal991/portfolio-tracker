@@ -83,7 +83,7 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
-| `/` | Dashboard | Chart cockpit: the Nifty chart (EMA 20/50/200, ranges 1D-ALL) with your alert events pinned on it as coloured dots (red stop hit, amber near stop, green target, cyan report ready), a side column with the Nifty figures and the latest events, then sector strip, Nifty 200 market movers, YOUR PORTFOLIO snapshot and the top repeat high-delivery names |
+| `/` | Dashboard | Top row: the Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend) and the latest alert events. Second row: the Nifty chart (EMA 20/50/200, ranges 1D-ALL, your alert events pinned as coloured dots: red stop hit, amber near stop, green target, cyan report ready) beside the Nifty 200 market movers (top gainers above top losers, then breadth). Bottom row of three: sector strip, YOUR PORTFOLIO snapshot, top repeat high-delivery names |
 | `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Market-mood hero (Nifty close, RISK-ON / MIXED / RISK-OFF from how many sectors are green), sector tiles (the two biggest movers get large tiles) with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
