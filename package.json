@@ -15,10 +15,7 @@
     "import-history": "tsx scripts/import-history.ts",
     "import-niftyindices": "tsx scripts/import-niftyindices.ts",
     "compare-import": "tsx scripts/compare-import.ts",
-    "telegram-setup": "tsx scripts/telegram-setup.ts",
-    "backtest": "tsx scripts/backtest.ts",
-    "tracker": "tsx scripts/tracker.ts",
-    "assistant-check": "tsx scripts/assistant-check.ts"
+    "telegram-setup": "tsx scripts/telegram-setup.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -28,8 +25,6 @@
     "next": "15.5.28",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
     "yahoo-finance2": "^4.0.4",
     "zod": "^4.6.7"
   },

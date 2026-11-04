@@ -28,7 +28,7 @@ export function rankStakeIncreases(
   members: { id: number; key: string; name: string }[],
   rows: ShareholdingRow[],
   latest: string,
-  limit = 10,
+  limit = 25,
 ): StakeScreener {
   const prev = previousQuarterEnd(latest);
   const pick = (r: ShareholdingRow) => (holder === "FII" ? r.fiiPct : r.diiPct);

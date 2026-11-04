@@ -52,12 +52,12 @@ describe("rankStakeIncreases", () => {
     expect(s.reported).toBe(1);
   });
   it("caps at the limit and breaks ties by key", () => {
-    const m = members(12);
+    const m = members(30);
     const rows = m.flatMap((x) => [row(x.id, P, 10), row(x.id, L, 11)]);
     const s = rankStakeIncreases("FII", m, rows, L);
-    expect(s.hits).toHaveLength(10);
-    expect(s.hits.map((h) => h.key)).toEqual(m.slice(0, 10).map((x) => x.key));
-    expect(s.total).toBe(12);
+    expect(s.hits).toHaveLength(25);
+    expect(s.hits.map((h) => h.key)).toEqual(m.slice(0, 25).map((x) => x.key));
+    expect(s.total).toBe(30);
   });
 });
 

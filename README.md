@@ -40,7 +40,6 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    - `supabase/migrations/0008_shareholding.sql` - adds the `shareholding` table (FII, DII and promoter percent per stock per quarter), RLS on with no policies. Apply it **before** deploying stage 6b code.
    - `supabase/migrations/0009_record_shareholding.sql` - adds `record_shareholding`, which the scheduled shareholding task calls with a plain `select`. Not callable from the site's API roles.
    - `supabase/migrations/0010_backtest_runs.sql` - adds the `backtest_runs` table (one row per saved backtest), RLS on with no policies. Apply it **before** the first `npm run backtest` that saves, and before opening the Backtests tab.
-   - `supabase/migrations/0011_assistant_sessions.sql` - adds the `assistant_sessions` table (saved Research assistant chats), RLS on with no policies. Apply it **before** opening the Research assistant tab.
    - `supabase/migrations/0012_report_ready_events.sql` - adds a trigger on `reports`: every report that reaches `done` writes an unread `alert_events` row ("📄 TCS report is ready to read"), so the bell tells the owner a requested report can be read.
    A new project applies all twelve in order. The owner's Tracker1 project has 0003 to 0012 applied (0012 on 2026-11-02).
 2. In Supabase Auth, add the owner user, then turn off "Allow new users to sign up".
@@ -90,8 +89,6 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude |
-| `/backtests` | Backtests | Saved backtest runs (`/backtests/<id>` for one run), see Backtests below |
-| `/assistant` | Research assistant | Chat that researches a stock, tests a strategy or reviews your holdings, shows each step; runs only on your PC, see Research assistant below |
 | `/alerts` | Alerts | Coming soon |
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
@@ -186,14 +183,6 @@ npm run backtest -- ... --dry-run                                           # pr
 - **Data check.** Each run prints a data report. It flags daily moves of 35% or more, a sign of splits or demergers Yahoo did not adjust: on the owner's data PATANJALI (2020-01-27), MOTILALOFS (2024-01-01) and VEDL (2026-04-30) look unadjusted, so a run that holds them can show a fake crash.
 - **Time.** About 45 s for an alpha or random run and about 90 s for a rule run, over roughly 1,700 sessions and 200 stocks.
 - **Controls to trust a result.** `hold --key NIFTY50` should land within about 2 points of the benchmark's total return, and `random` should not beat Nifty 50 by a wide margin; if either does, suspect a bug.
-
-## Research assistant
-
-The `/assistant` tab is a chat that drives your local Claude Code CLI (so it uses your `claude login`, not an API key). It can only call read-only data tools (`npm run tracker -- find|stock|screeners|alphas|market|portfolio`), `npm run backtest` (saved runs appear under Backtests), and, unless "Include my holdings" is on, web search and fetch. A holdings run has no web tools. It runs only on your PC: the deployed site answers 501 and shows past chats read-only. Needs migration `0011`.
-
-- **Settings (`.env.local`, all optional).** `CLAUDE_BIN` (path to the CLI), `ASSISTANT_MODEL`, `ASSISTANT_MAX_USD` (per-run spend cap, default 1), `ASSISTANT_TIMEOUT_MS` (default 600000).
-- **Check.** `npm run assistant-check` runs the real CLI and prints PASS/FAIL for the tool limits, refused file writes, no skills and no stray `CLAUDE.md`. Re-run it after a Claude Code update.
-- **Instructions.** `assistant/CLAUDE.md` is the only instruction file the assistant reads.
 
 ## Known data caveat
 

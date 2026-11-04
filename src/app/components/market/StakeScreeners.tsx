@@ -7,7 +7,7 @@ import { StockLink } from "../popup/StockLink";
 import { Chip, Panel } from "../ui";
 
 function StakeCard({ s }: { s: StakeScreener }) {
-  const [all, setAll] = useState(false);
+  const [all, setAll] = useState(true);
   const rows = all ? s.hits : s.hits.slice(0, COLLAPSED_ROWS);
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">

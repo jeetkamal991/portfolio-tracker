@@ -6,8 +6,6 @@ export const TABS: { href: string; label: string }[] = [
   { href: "/watchlist", label: "Watchlist" },
   { href: "/sectors", label: "Sector Analysis" },
   { href: "/market", label: "Market" },
-  { href: "/assistant", label: "Research assistant" },
-  { href: "/backtests", label: "Backtest reports" },
   { href: "/alerts", label: "Alerts" },
 ];
 
