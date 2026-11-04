@@ -3,11 +3,12 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRef } from "react";
 import type { Holding, StoredDay } from "@/lib/db/types";
-import { buildPortfolioView } from "@/lib/view/portfolio";
+import type { PortfolioSide } from "@/lib/api/portfolioSide";
+import { buildLadder, buildPortfolioView } from "@/lib/view/portfolio";
 import { useQuotes } from "../QuotesProvider";
 import { HoldingForm } from "./HoldingForm";
 import { HoldingsTable } from "./HoldingsTable";
-import { SummaryCards } from "./SummaryCards";
+import { PortfolioHero } from "./PortfolioHero";
 import { WarningsBar } from "./WarningsBar";
 
 /*
@@ -27,10 +28,12 @@ export function PortfolioView({
   holdings,
   latest,
   today,
+  side,
 }: {
   holdings: Holding[];
   latest: [number, StoredDay | null][];
   today: string;
+  side: PortfolioSide;
 }) {
   const { quotes, open } = useQuotes();
   const pathname = usePathname() ?? "/portfolio";
@@ -68,7 +71,7 @@ export function PortfolioView({
 
   return (
     <div className="flex flex-col gap-4">
-      <SummaryCards totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} />
+      <PortfolioHero totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} ladder={buildLadder(view.rows)} rows={view.rows} side={side} />
       <WarningsBar warnings={view.warnings} />
       <HoldingsTable rows={view.rows} onAdd={openAdd} onEdit={openEdit} />
       {formKey && (

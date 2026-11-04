@@ -86,10 +86,10 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 | `/` | Dashboard | Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), interactive Nifty chart, Nifty 200 market movers, YOUR PORTFOLIO snapshot, sector strip |
 | `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
-| `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
+| `/sectors` | Sector Analysis | Market-mood hero (Nifty close, RISK-ON / MIXED / RISK-OFF from how many sectors are green), sector tiles (the two biggest movers get large tiles) with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude, signals on your stocks, ten screeners, six alpha ranks, FII/DII stake increases, breadth and India VIX |
 | `/deepdive` | AI Deep Dive | Every saved Claude report as a tile, newest first, with status and date. Click a tile to open the stock pop-up on its AI Deep Dive tab; Delete removes that report immediately (no confirm) |
-| `/alerts` | Alerts | Alert rules, fired-alert feed and report-ready notices |
+| `/alerts` | Alerts | A briefing: how many alerts need you (stop hits first), a ranked action queue with one-click Open stock / Raise stop / Read it / Dismiss, earlier alerts, then the rules and the new-alert form |
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
@@ -97,7 +97,7 @@ The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview
 
 ### Portfolio
 
-The Portfolio tab tracks the owner's holdings, one position per stock.
+The Portfolio tab tracks the owner's holdings, one position per stock. The top of the tab is a money-first hero: portfolio value, today's P/L, overall P/L, and status chips (at stop, near stop, at target). Under it a risk ladder draws each holding as a bar from its stop loss (left) to Target 1 (right) with a pin at the current price, most urgent first; a holding without a stop or Target 1 links to its edit form instead. A side column shows the Nifty close, the newest unread alerts and the best and worst sectors.
 
 - **Adding.** "Add holding" opens a form with a stock search. Picking a stock fills in the current price, score, and suggested stop loss and targets from recent swing lows and highs ("Use suggested levels"). Quantity must be a whole number above 0, the buy date can't be in the future, and stop loss / targets are optional. The form warns, without blocking, when the stop loss is at or above the buy price, Target 1 is already below the current price, or Target 2 is not above Target 1. Adding a stock you already hold merges into one position: the quantities add, the average price is the weighted average, the earlier buy date is kept, and any new stop loss or target replaces the old one.
 - **New stocks.** A stock with no stored prices gets its history fetched when it is added. From then on, holdings are priced and scored by the nightly EOD job and included in the live quotes during market hours.

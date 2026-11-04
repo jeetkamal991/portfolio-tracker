@@ -91,3 +91,38 @@ describe("money formatters", () => {
     expect(fmtSignedInr(null)).toBe("—");
   });
 });
+
+import { buildLadder, ladderPos, type PortfolioRow } from "@/lib/view/portfolio";
+
+describe("ladderPos", () => {
+  it("is 0 at the stop, 1 at the target, clamped outside, null without levels", () => {
+    expect(ladderPos(100, 100, 200)).toBe(0);
+    expect(ladderPos(200, 100, 200)).toBe(1);
+    expect(ladderPos(150, 100, 200)).toBe(0.5);
+    expect(ladderPos(80, 100, 200)).toBe(0);
+    expect(ladderPos(250, 100, 200)).toBe(1);
+    expect(ladderPos(150, null, 200)).toBeNull();
+    expect(ladderPos(150, 100, null)).toBeNull();
+    expect(ladderPos(null, 100, 200)).toBeNull();
+    expect(ladderPos(150, 200, 100)).toBeNull();
+  });
+});
+
+describe("buildLadder", () => {
+  const row = (key: string, cmp: number | null, stopLoss: number | null, target1: number | null, status: PortfolioRow["status"]) =>
+    ({ key, name: key, cmp, stopLoss, target1, status }) as unknown as PortfolioRow;
+  it("orders by urgency then closeness to stop, with plain labels", () => {
+    const l = buildLadder([
+      row("MID", 150, 100, 200, "OK"),
+      row("TGT", 205, 100, 200, "TARGET_HIT"),
+      row("SL", 99, 100, 200, "SL_HIT"),
+      row("NEAR", 101, 100, 200, "NEAR_SL"),
+      row("BARE", 50, null, null, "OK"),
+    ]);
+    expect(l.map((x) => x.key)).toEqual(["SL", "NEAR", "TGT", "MID", "BARE"]);
+    expect(l.map((x) => x.label)).toEqual(["at stop", "1.0% above stop", "at target", "33.3% to target", "set stop / target"]);
+  });
+  it("labels an unpriced holding", () => {
+    expect(buildLadder([row("X", null, 1, 2, null)])[0]).toMatchObject({ label: "no price", pos: null });
+  });
+});
