@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -27,6 +27,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
   const reports: ReportRow[] = [];
+  const delivery = new Map<string, DeliveryRow>();
   const daysRange = (ids: number[], fromDate: string, toDate: string): Map<number, StoredDay[]> => {
     const out = new Map<number, StoredDay[]>();
     for (const id of new Set(ids)) {
@@ -221,6 +222,12 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async deleteReport(id) {
       const i = reports.findIndex((r) => r.id === id);
       if (i >= 0) reports.splice(i, 1);
+    },
+    async upsertDelivery(rows) {
+      for (const r of rows) delivery.set(`${r.symbol}|${r.date}`, { ...r });
+    },
+    async listDelivery(sinceDate) {
+      return [...delivery.values()].filter((r) => r.date >= sinceDate).map((r) => ({ ...r }));
     },
     async getDailySummary(date) {
       const s = summaries.get(date);

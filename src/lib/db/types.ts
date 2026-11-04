@@ -96,6 +96,19 @@ export interface ReportWithStock extends ReportRow {
   name: string;
 }
 
+/** One stock's NSE delivery figures for one session; delivPer is a percent (63.4 = 63.4%). */
+export interface DeliveryRow {
+  symbol: string;
+  date: string;
+  turnoverLacs: number;
+  tradedQty: number | null;
+  delivQty: number | null;
+  delivPer: number;
+  close: number | null;
+  /** 1 = most traded by value that session. */
+  turnoverRank: number;
+}
+
 export interface Levels {
   autoSupport: number | null;
   autoResistance: number | null;

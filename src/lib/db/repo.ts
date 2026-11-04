@@ -1,7 +1,7 @@
 import type { Candle } from "@/lib/provider/types";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { AlertCondition } from "@/lib/calc/alerts";
-import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ScoreRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, DeliveryRow, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ScoreRow, ShareholdingRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -63,6 +63,9 @@ export interface Repo {
   /** Every report of every stock, newest first. */
   listAllReports(): Promise<ReportWithStock[]>;
   deleteReport(id: number): Promise<void>;
+  upsertDelivery(rows: DeliveryRow[]): Promise<void>;
+  /** All stored delivery rows dated on or after `sinceDate`. */
+  listDelivery(sinceDate: string): Promise<DeliveryRow[]>;
   getDailySummary(date: string): Promise<DailySummary | null>;
   /** Ordered by id. */
   listAlertRules(f?: { activeOnly?: boolean; conditions?: AlertCondition[] }): Promise<AlertRule[]>;

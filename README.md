@@ -139,6 +139,7 @@ The Market tab is the whole-market view, built on the Nifty 200. Everything exce
 - **Today by Claude.** The newest `daily_summaries` row, written by the "Nifty daily market summary" routine (`docs/claude-tasks/daily-summary.md`, Mon-Fri 18:07 IST). It shows the day's read of the market, events and news on your stocks. With no row for the session it says "No summary for today" (Claude writes it on trading days around 6 PM IST).
 - **Your stocks - signals.** Over the last 5 sessions, for the watchlist plus portfolio stocks only: *Crosses* (golden/death cross EMA 50/200, EMA 20 vs 50, close vs EMA 200, MACD vs signal) and *Formations* (candle patterns such as engulfing and morning star). Each line shows the date and a bullish/bearish chip. With no watchlist or holdings it asks you to add some.
 - **Screeners.** Ten cards, each listing the top matches in the Nifty 200 with a count and "Show all": volume shockers up/down, 52-week breakout/breakdown zone, golden/death cross, RSI overbought/oversold, and top/bottom Technical Scores. Click a stock to open its pop-up.
+- **High delivery.** From NSE's daily file (`sec_bhavdata_full`, EQ series, all stocks), kept for the 100 most traded stocks by value per day in `delivery_daily` (migration 0014). *Today*: stocks at 60%+ delivery, highest first. *Repeat names*: stocks in the top 30 by traded value with 60%+ delivery on at least 5 of the last 10 sessions, or 8 of the last 20 (the 10D/20D toggle), with days, average delivery % and an arrow for whether the latest session is above that average. The constants are at the top of `src/lib/calc/delivery.ts`. The file is published in the evening, so it has its own cron (`/api/cron/delivery`, 14:30 UTC / 8 PM IST) that also fills any missed weekday of the last 7. To back-fill: `npm run backfill-delivery -- --days 35`. Stocks not tracked in this app show their NSE symbol without a pop-up.
 - **Alpha ranks** and **stake-increase screeners** are described in their own sections below.
 - **Breadth** (right column). Advances, declines and unchanged with the A/D ratio, the share of stocks above their EMA 200 (with how many had enough history to have one), and India VIX with its day % and a 21-session sparkline.
 
@@ -204,7 +205,7 @@ npm run build
    ```powershell
    curl.exe -i https://<app>.vercel.app/api/cron/eod
    ```
-6. In Vercel, Settings > Cron Jobs should list `/api/cron/eod` at `0 11 * * 1-5` (11:00 UTC, 4:30 PM IST, Mon-Fri). On the Hobby plan the job can fire at any time within that hour.
+6. In Vercel, Settings > Cron Jobs should list `/api/cron/eod` at `0 11 * * 1-5` (11:00 UTC, 4:30 PM IST, Mon-Fri). On the Hobby plan the jobs can fire at any time within that hour.
 
 ## First-week check
 

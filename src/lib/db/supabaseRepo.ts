@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -463,6 +463,33 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async deleteReport(id) {
       check(await db.from("reports").delete().eq("id", id), "deleteReport");
+    },
+    async upsertDelivery(rows) {
+      for (const c of chunks(rows)) {
+        check(
+          await db.from("delivery_daily").upsert(c.map((r) => ({
+            symbol: r.symbol, date: r.date, turnover_lacs: r.turnoverLacs, traded_qty: r.tradedQty, deliv_qty: r.delivQty,
+            deliv_per: r.delivPer, close: r.close, turnover_rank: r.turnoverRank,
+          }))),
+          "upsertDelivery",
+        );
+      }
+    },
+    async listDelivery(sinceDate) {
+      const out: DeliveryRow[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const page = check(
+          await db.from("delivery_daily").select("*").gte("date", sinceDate).order("date").order("turnover_rank").range(from, from + PAGE - 1),
+          "listDelivery",
+        ) as Row[];
+        for (const r of page) {
+          out.push({
+            symbol: r.symbol as string, date: r.date as string, turnoverLacs: Number(r.turnover_lacs), tradedQty: num(r.traded_qty),
+            delivQty: num(r.deliv_qty), delivPer: Number(r.deliv_per), close: num(r.close), turnoverRank: Number(r.turnover_rank),
+          });
+        }
+        if (page.length < PAGE) return out;
+      }
     },
     async getDailySummary(date) {
       const r = check(await db.from("daily_summaries").select("*").eq("date", date).maybeSingle(), "getDailySummary");
