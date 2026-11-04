@@ -3,9 +3,11 @@ import { loadHoldingsLatest } from "@/lib/api/portfolio";
 import { cached, getRepo, quoteCache } from "@/lib/api/server";
 import { buildDelivery, WINDOWS } from "@/lib/calc/delivery";
 import { addDays, istDate } from "@/lib/time/ist";
+import { parseDailySummary } from "@/lib/content/claude";
 import { eventMarkers, KIND_COLOR } from "@/lib/view/alerts";
 import { buildSectorRows } from "@/lib/view/dashboard";
 import { PriceChart, type ChartMarker } from "../components/chart/PriceChart";
+import { ClaudeSummaryCard } from "../components/market/ClaudeSummaryCard";
 import { DashboardTimeline } from "../components/dashboard/DashboardTimeline";
 import { DeliveryMini } from "../components/dashboard/DeliveryMini";
 import { MoversPanel } from "../components/dashboard/MoversPanel";
@@ -45,6 +47,11 @@ export default async function Dashboard() {
   const { niftyDays, sectors } = history;
   const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
 
+  // Claude's note for the newest session; a failed read just hides the text, not the page.
+  const session = niftyDates.at(-1) ?? null;
+  const summaryRow = session ? await repo.getDailySummary(session).catch(() => null) : null;
+  const summary = summaryRow ? parseDailySummary(summaryRow) : null;
+
   // Your alert events, pinned on the chart at the session they fired.
   const markers: ChartMarker[] = eventMarkers(events, niftyDates).map((m) => ({ time: m.time, text: m.key, color: KIND_COLOR[m.kind] }));
 
@@ -64,7 +71,8 @@ export default async function Dashboard() {
         <PriceChart days={niftyDays} title="NIFTY 50" height={520} markers={markers} />
         <MoversPanel initial={movers} />
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <ClaudeSummaryCard summary={summary} session={session} />
         <SectorStrip rows={buildSectorRows(sectors, niftyDates.slice(-70))} />
         <PortfolioSnapshot holdings={portfolio.holdings} latest={portfolio.latest} today={today} />
         <DeliveryMini hits={hits} days={longest.days} names={names} />

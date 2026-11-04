@@ -12,7 +12,7 @@ export function SectorStrip({ rows }: { rows: SectorRow[] }) {
         </Link>
       }
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {rows.map((r) => {
           const tone =
             r.d1 === null || r.d1 === 0
@@ -25,10 +25,10 @@ export function SectorStrip({ rows }: { rows: SectorRow[] }) {
             <Link
               key={r.key}
               href={`/sectors?s=${encodeURIComponent(r.key)}`}
-              className={`flex flex-col gap-1 rounded-lg border p-3 transition-colors hover:brightness-125 ${tone}`}
+              className={`flex flex-col gap-1.5 rounded-lg border p-3.5 transition-colors hover:brightness-125 ${tone}`}
             >
-              <span className="truncate text-sm font-semibold text-[var(--text)]">{r.name.replace(/^Nifty /, "")}</span>
-              <span className="font-mono text-sm font-semibold tabular-nums">
+              <span className="text-sm font-semibold leading-snug text-[var(--text)]">{r.name.replace(/^Nifty /, "")}</span>
+              <span className="font-mono text-lg font-semibold tabular-nums">
                 {arrow}
                 {fmtPct(r.d1)}
               </span>
