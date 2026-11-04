@@ -79,7 +79,7 @@ The cron route's `maxDuration` is 300 seconds (the most Vercel Hobby allows). If
 
 ## Screens
 
-The app shell has six tabs, each a route; `/login` sits outside the shell.
+The app shell has seven tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
@@ -88,6 +88,7 @@ The app shell has six tabs, each a route; `/login` sits outside the shell.
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude, signals on your stocks, ten screeners, six alpha ranks, FII/DII stake increases, breadth and India VIX |
+| `/deepdive` | AI Deep Dive | Every saved Claude report as a tile, newest first, with status and date. Click a tile to open the stock pop-up on its AI Deep Dive tab; Delete removes that report immediately (no confirm) |
 | `/alerts` | Alerts | Alert rules, fired-alert feed and report-ready notices |
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
