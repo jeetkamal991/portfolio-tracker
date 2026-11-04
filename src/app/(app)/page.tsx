@@ -7,7 +7,7 @@ import { eventMarkers, KIND_COLOR } from "@/lib/view/alerts";
 import { buildDailyLog } from "@/lib/view/dailyLog";
 import { buildSectorRows } from "@/lib/view/dashboard";
 import { PriceChart, type ChartMarker } from "../components/chart/PriceChart";
-import { ClaudeSummaryCard } from "../components/market/ClaudeSummaryCard";
+import { TodayByClaudeCompact } from "../components/dashboard/TodayByClaudeCompact";
 import { DashboardTimeline } from "../components/dashboard/DashboardTimeline";
 import { DailyLogTotals } from "../components/dashboard/DailyLogTotals";
 import { MoversPanel } from "../components/dashboard/MoversPanel";
@@ -66,7 +66,7 @@ export default async function Dashboard() {
         <MoversPanel initial={movers} />
       </div>
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <ClaudeSummaryCard summary={summary} session={session} />
+        <TodayByClaudeCompact summary={summary} session={session} />
         <SectorStrip rows={buildSectorRows(sectors, niftyDates.slice(-70))} />
         <PortfolioSnapshot holdings={portfolio.holdings} latest={portfolio.latest} today={today} />
         <DailyLogTotals month={logMonth} />

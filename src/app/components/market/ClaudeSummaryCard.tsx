@@ -2,6 +2,7 @@ import type { MarketEvent, ParsedSummary, WatchNews } from "@/lib/content/claude
 import { fmtDate } from "@/lib/view/dashboard";
 import { fmtShortDate } from "@/lib/view/market";
 import { StockLink } from "../popup/StockLink";
+import { SummaryBullets } from "./SummaryBullets";
 import { Chip, Label, Panel } from "../ui";
 
 function SourceChip({ url }: { url: string | null }) {
@@ -77,9 +78,9 @@ export function ClaudeSummaryCard({ summary, session }: { summary: ParsedSummary
       ) : (
         <div className="flex flex-col gap-5" aria-label="Claude's daily summary">
           {summary.summary && (
-            <p className="max-w-[75ch] whitespace-pre-line border-l-2 border-[var(--accent)] pl-4 text-[15px] leading-relaxed">
-              {summary.summary}
-            </p>
+            <div className="max-w-[75ch] border-l-2 border-[var(--accent)] pl-4">
+              <SummaryBullets text={summary.summary} max={8} />
+            </div>
           )}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
             <div className="flex min-w-0 flex-col gap-2 lg:col-span-3">

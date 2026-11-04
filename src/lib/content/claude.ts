@@ -162,3 +162,33 @@ export function parseReportContent(raw: unknown): { ok: true; value: ReportConte
     value.risks.length > 0 || value.sources.length > 0;
   return renderable ? { ok: true, value } : { ok: false, raw };
 }
+
+/**
+ * A summary as short points. Uses "- " bullet lines when Claude wrote them, otherwise splits the paragraph
+ * into sentences (a new sentence starts after . ! or ? and a capital letter, digit or bracket).
+ */
+export function summaryBullets(text: string, max = 5): string[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const bulleted = lines.filter((l) => /^[-•*]\s+/.test(l)).map((l) => l.replace(/^[-•*]\s+/, ""));
+  const parts = bulleted.length >= 2 ? bulleted : text.split(/(?<=[.!?])\s+(?=[A-Z0-9(])/).map((s) => s.trim()).filter(Boolean);
+  return parts.slice(0, max);
+}
+
+export type HighlightTone = "up" | "down" | "plain" | null;
+
+const FIGURE = /[+\-−]?\d[\d,]*\.\d+%?|[+\-−]?\d[\d,]*%/g;
+
+/** Splits a sentence so its figures (index levels, % moves, amounts with decimals) can be picked out; signed ones get a direction. */
+export function highlightParts(text: string): { text: string; tone: HighlightTone }[] {
+  const out: { text: string; tone: HighlightTone }[] = [];
+  let last = 0;
+  for (const m of text.matchAll(FIGURE)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push({ text: text.slice(last, at), tone: null });
+    const t = m[0];
+    out.push({ text: t, tone: t.startsWith("+") ? "up" : t.startsWith("-") || t.startsWith("−") ? "down" : "plain" });
+    last = at + t.length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), tone: null });
+  return out;
+}

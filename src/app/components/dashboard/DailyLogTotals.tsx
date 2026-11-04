@@ -7,7 +7,7 @@ import { Label, Panel } from "../ui";
 export function DailyLogTotals({ month }: { month: LogMonth | null }) {
   return (
     <Panel
-      title="DAILY SECTOR LOG"
+      title="MONTHLY SECTOR LOG"
       action={
         <Link href={month ? `/sectors?m=${month.id}` : "/sectors"} className="font-mono text-xs text-[var(--up)] hover:underline">
           Full log →

@@ -99,11 +99,13 @@ order by i.key;
    - **Upcoming** (announced, with a date): results date, ex-dividend or record date, split or bonus, board meeting.
    - Skip quiet stocks: no item for a stock with nothing material. A normal up or down day is not news.
 
+Check news properly before concluding there is none: run at least three different searches (market wrap for the date, FII/DII flows for the date, and the top gainer or loser by name) and open at least two of the results. Prefer a closing-bell article from a financial site. Say "no verified driver" in the summary only after those searches found nothing, and still try to fill `market_events` with up to 3 items (flows, crude, global cues, policy) that you did open.
+
 Only use sources you actually opened. Every item needs a real `http` or `https` URL.
 
 ## 5. Compose the content
 
-- `summary`: plain text, 3 to 4 sentences. Index moves, VIX, sector breadth, the main driver.
+- `summary`: plain text written as **4 to 5 short lines, each starting with `- `** (a hyphen and a space), one fact per line, about 25 words at most per line, so the dashboard can show them as points. Order: (1) Nifty 50 and Bank Nifty close and day %, (2) India VIX, (3) sector breadth with the best and worst sectors, (4) the main driver of the day, and (5) the notable gainers and losers. Put the figures in the line (index levels with decimals, signed percentages such as +1.50% or -0.80%). No other markdown.
 - `market_events`: JSON array, at most 3 items, each `{ "title": string, "explanation": string, "source_url": string }`.
 - `watchlist_news`: JSON array, at most 5 items, most important first, each `{ "key": string, "kind": "today" | "upcoming", "date": "YYYY-MM-DD", "note": string, "source_url": string }`.
   - `key` must be a key returned by input (e) (watchlist or holdings stock).
