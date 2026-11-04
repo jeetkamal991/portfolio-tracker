@@ -1,15 +1,15 @@
 import { handleMovers, type MoversResponse } from "@/lib/api/movers";
 import { loadHoldingsLatest } from "@/lib/api/portfolio";
 import { cached, getRepo, quoteCache } from "@/lib/api/server";
-import { buildDelivery, WINDOWS } from "@/lib/calc/delivery";
-import { addDays, istDate } from "@/lib/time/ist";
+import { istDate } from "@/lib/time/ist";
 import { parseDailySummary } from "@/lib/content/claude";
 import { eventMarkers, KIND_COLOR } from "@/lib/view/alerts";
+import { buildDailyLog } from "@/lib/view/dailyLog";
 import { buildSectorRows } from "@/lib/view/dashboard";
 import { PriceChart, type ChartMarker } from "../components/chart/PriceChart";
 import { ClaudeSummaryCard } from "../components/market/ClaudeSummaryCard";
 import { DashboardTimeline } from "../components/dashboard/DashboardTimeline";
-import { DeliveryMini } from "../components/dashboard/DeliveryMini";
+import { DailyLogTotals } from "../components/dashboard/DailyLogTotals";
 import { MoversPanel } from "../components/dashboard/MoversPanel";
 import { NiftyCard } from "../components/dashboard/NiftyCard";
 import { SectorStrip } from "../components/dashboard/SectorStrip";
@@ -20,8 +20,8 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard() {
   const repo = getRepo();
   const today = istDate(new Date());
-  // History only changes at end of day, so it is memoised; movers, holdings, alerts and delivery stay live.
-  const [history, [movers, portfolio], events, deliveryRows, stockNames] = await Promise.all([
+  // History only changes at end of day, so it is memoised; movers, holdings and alerts stay live.
+  const [history, [movers, portfolio], events] = await Promise.all([
     cached("dashboard-history", async () => {
       const instruments = await repo.listInstruments({ types: ["index", "sector"] });
       const nifty = instruments.find((i) => i.key === "NIFTY50");
@@ -41,8 +41,6 @@ export default async function Dashboard() {
       loadHoldingsLatest(repo),
     ]),
     repo.listAlertEvents(50).catch(() => []),
-    repo.listDelivery(addDays(today, -45)).catch(() => []),
-    cached("stock-names", async () => new Map((await repo.listInstruments({ types: ["stock"] })).map((i) => [i.key, i.name])), 600_000),
   ]);
   const { niftyDays, sectors } = history;
   const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
@@ -55,13 +53,9 @@ export default async function Dashboard() {
   // Your alert events, pinned on the chart at the session they fired.
   const markers: ChartMarker[] = eventMarkers(events, niftyDates).map((m) => ({ time: m.time, text: m.key, color: KIND_COLOR[m.kind] }));
 
-  const longest = WINDOWS[WINDOWS.length - 1]!;
-  const hits = buildDelivery(deliveryRows).shortlists.find((s) => s.days === longest.days)?.hits.slice(0, 3) ?? [];
-  const names: Record<string, string> = {};
-  for (const h of hits) {
-    const n = stockNames.get(h.symbol);
-    if (n) names[h.symbol] = n;
-  }
+  // The Daily Sector Log's Total row: this month, or last month while this one has no sessions yet.
+  const log = buildDailyLog({ NIFTY50: niftyDays, ...Object.fromEntries(sectors.map((x) => [x.key, x.days])) }, niftyDates, new Date(), 2);
+  const logMonth = log[0]?.rows.length ? log[0] : (log[1] ?? null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -75,7 +69,7 @@ export default async function Dashboard() {
         <ClaudeSummaryCard summary={summary} session={session} />
         <SectorStrip rows={buildSectorRows(sectors, niftyDates.slice(-70))} />
         <PortfolioSnapshot holdings={portfolio.holdings} latest={portfolio.latest} today={today} />
-        <DeliveryMini hits={hits} days={longest.days} names={names} />
+        <DailyLogTotals month={logMonth} />
       </div>
     </div>
   );
