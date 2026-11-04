@@ -20,3 +20,21 @@ export function telegramIcon(status: string | null): { icon: string; title: stri
   if (status?.startsWith("failed")) return { icon: "⚠", title: `Telegram ${status}`, tone: "warn" };
   return { icon: "—", title: "Telegram not connected", tone: "neutral" };
 }
+
+export type EventKind = "stop_hit" | "near_stop" | "target_hit" | "near_target" | "report" | "other";
+
+/** Reads an event's kind from the wording alertMessage and migration 0012 write; anything else is "other". */
+export function eventKind(message: string): EventKind {
+  const m = message.toLowerCase();
+  if (m.startsWith("📄") || m.includes("report is ready")) return "report";
+  if (m.includes("stop loss hit")) return "stop_hit";
+  if (m.includes("near stop loss")) return "near_stop";
+  if (m.includes("target hit")) return "target_hit";
+  if (m.includes("near target")) return "near_target";
+  return "other";
+}
+
+const URGENCY: EventKind[] = ["stop_hit", "near_stop", "target_hit", "near_target", "report", "other"];
+
+/** 0 = most urgent. */
+export const urgencyOf = (k: EventKind): number => URGENCY.indexOf(k);

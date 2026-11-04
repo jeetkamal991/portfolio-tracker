@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlertEvent } from "@/lib/db/types";
-import { ALERTS_CHANGED } from "./EventFeed";
+import { ALERTS_CHANGED } from "./AlertBriefing";
 
 const POLL_MS = 60_000;
 
