@@ -3,6 +3,8 @@ import type { Instrument, StoredDay } from "@/lib/db/types";
 import type { PatternHit } from "@/lib/calc/patterns";
 import { scoreInstrument, type InstrumentKind, type ScoreLabel } from "@/lib/calc/score";
 import { effectiveLevel } from "@/lib/calc/levels";
+import { previousQuarterEnd } from "@/lib/calc/shareholding";
+import { addDays, istDate } from "@/lib/time/ist";
 import { primarySector } from "@/lib/universe/sectors";
 import { pool } from "./pool";
 import { listUniverseStocks } from "@/lib/universe/stocks";
@@ -40,6 +42,26 @@ interface Ctx {
   rsVsSector: number | null;
   support: number | null;
   resistance: number | null;
+  fiiDelta?: number | null;
+  diiDelta?: number | null;
+  deliveryPer?: number | null;
+}
+
+/** Stake changes (percentage points, latest quarter vs the one before) by instrument, for the Flows part. */
+async function loadStakeDeltas(repo: Repo): Promise<Map<number, { fii: number | null; dii: number | null }>> {
+  const out = new Map<number, { fii: number | null; dii: number | null }>();
+  const latest = await repo.latestShareholdingQuarter();
+  if (!latest) return out;
+  const prevQ = previousQuarterEnd(latest);
+  const rows = await repo.listShareholding([latest, prevQ]);
+  const by = new Map<string, (typeof rows)[number]>(rows.map((r) => [`${r.instrumentId}|${r.quarterEnd}`, r]));
+  const delta = (a: number | null | undefined, b: number | null | undefined) => (a == null || b == null ? null : Math.round((a - b) * 100) / 100);
+  for (const r of rows) {
+    if (r.quarterEnd !== latest) continue;
+    const before = by.get(`${r.instrumentId}|${prevQ}`);
+    out.set(r.instrumentId, { fii: delta(r.fiiPct, before?.fiiPct), dii: delta(r.diiPct, before?.diiPct) });
+  }
+  return out;
 }
 
 export interface ScorePassResult {
@@ -102,6 +124,9 @@ export async function scorePass(
       rs20: latest.rsVsNifty,
       support: ctx.support,
       resistance: ctx.resistance,
+      fiiDelta: ctx.fiiDelta,
+      diiDelta: ctx.diiDelta,
+      deliveryPer: ctx.deliveryPer,
     });
     if (!only || only.has(inst.id)) {
       await repo.upsertScore(inst.id, {
@@ -145,6 +170,12 @@ export async function scorePass(
 
   // 3. Stocks: the universe (Nifty 200, sector constituents, watchlist).
   const todo = (await listUniverseStocks(repo)).filter((s) => !only || only.has(s.id));
+  // Flows inputs, read once for the whole pass. A failed read leaves them empty (neutral points), not a failed pass.
+  const [stakes, deliveryRows] = await Promise.all([
+    loadStakeDeltas(repo).catch(() => new Map<number, { fii: number | null; dii: number | null }>()),
+    repo.listDelivery(addDays(istDate(new Date()), -10)).catch(() => []),
+  ]);
+  const deliveryOn = new Map(deliveryRows.map((r) => [`${r.symbol}|${r.date}`, r.delivPer]));
   await pool(todo, CONCURRENCY, async (s) => {
     try {
       const [data, lv] = await Promise.all([load(repo, s.id), repo.getLevels(s.id)]);
@@ -157,6 +188,9 @@ export async function scorePass(
         rsVsSector: data.ret20 !== null && sectorRet !== null ? data.ret20 - sectorRet : null,
         support: effectiveLevel(lv.autoSupport, lv.manualSupport),
         resistance: effectiveLevel(lv.autoResistance, lv.manualResistance),
+        fiiDelta: stakes.get(s.id)?.fii ?? null,
+        diiDelta: stakes.get(s.id)?.dii ?? null,
+        deliveryPer: deliveryOn.get(`${s.key}|${data.priced[data.priced.length - 1]?.date}`) ?? null,
       });
     } catch (e) {
       fail(s.key, e);

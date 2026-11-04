@@ -105,7 +105,7 @@ describe("buildPopupData", () => {
   });
 
   it("exposes the score block", () => {
-    const comps = { trend: 1, momentum: 2, volume: 3, pattern: 4, market: 5, risk: 6, partial: true };
+    const comps = { trend: 1, momentum: 2, volume: 3, pattern: 4, market: 5, risk: 6, flows: 10, partial: true };
     const p = buildPopupData({
       ...base,
       days: [day(d(1), { score: 61, scoreComponents: comps, scoreLabel: "Bullish", scoreConfidence: "High", scoreSignal: "x" })],

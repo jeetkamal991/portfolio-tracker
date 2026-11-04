@@ -166,7 +166,7 @@ describe("memoryRepo ema20", () => {
     expect((await r.getDays(1, 10))[0].ema20).toBe(5);
   });
 
-  const comps = { trend: 1, momentum: 2, volume: 3, pattern: 4, market: 5, risk: 6, partial: false };
+  const comps = { trend: 1, momentum: 2, volume: 3, pattern: 4, market: 5, risk: 6, flows: 10, partial: false };
   const scoreRow = (date: string) => ({
     date, rsVsSector: 0.02, score: 55, scoreComponents: comps,
     scoreLabel: "Bullish" as const, scoreConfidence: "High" as const, scoreSignal: "sig",

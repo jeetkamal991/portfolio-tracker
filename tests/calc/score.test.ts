@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   confidenceFor,
+  COMPONENT_MAX,
   labelFor,
+  rawParts,
   scoreInstrument,
   signalLine,
   type ScoreComponents,
@@ -31,7 +33,8 @@ const base: ScoreInput = {
   resistance: null,
 };
 const make = (o: Partial<ScoreInput>): ScoreInput => ({ ...base, ...o });
-const comp = (o: Partial<ScoreInput>) => scoreInstrument(make(o)).components;
+/** The six price-and-market rules on their original scale; the scaling and Flows are tested separately below. */
+const comp = (o: Partial<ScoreInput>) => rawParts(make(o)).components;
 
 describe("Trend", () => {
   const rows: [string, Partial<ScoreInput>, number, boolean][] = [
@@ -41,7 +44,7 @@ describe("Trend", () => {
     ["ema200 null: stack 4, above-200 2", { ema20: 90, ema50: 80, ema200: null }, 14, true],
   ];
   it.each(rows)("%s", (_n, o, trend, partial) => {
-    const r = scoreInstrument(make(o));
+    const r = rawParts(make(o));
     expect(r.components.trend).toBe(trend);
     expect(r.partial).toBe(partial);
   });
@@ -79,12 +82,12 @@ describe("Volume", () => {
     ["unchanged", { close: 100, volume: 200 }, 7],
   ];
   it.each(rows)("%s -> %s", (_n, o, pts) => {
-    const r = scoreInstrument(make(o));
+    const r = rawParts(make(o));
     expect(r.components.volume).toBe(pts);
     expect(r.partial).toBe(false);
   });
   it("index with volume 0 -> 7.5, not partial", () => {
-    const r = scoreInstrument(make({ kind: "index", volume: 0, niftyLabel: "Neutral" }));
+    const r = rawParts(make({ kind: "index", volume: 0, niftyLabel: "Neutral" }));
     expect(r.components.volume).toBe(7.5);
     expect(r.partial).toBe(false);
   });
@@ -147,9 +150,8 @@ describe("labelFor", () => {
 describe("confidenceFor", () => {
   const hi = (n: number): ScoreComponents => {
     // n bearish components (share 0), the rest bullish (share 1)
-    const keys = ["trend", "momentum", "volume", "pattern", "market", "risk"] as const;
-    const max = { trend: 20, momentum: 20, volume: 15, pattern: 15, market: 20, risk: 10 };
-    const c = { ...max };
+    const keys = ["trend", "momentum", "volume", "pattern", "market", "risk", "flows"] as const;
+    const c = { ...COMPONENT_MAX };
     keys.slice(0, n).forEach((k) => (c[k] = 0));
     return c;
   };
@@ -206,12 +208,71 @@ describe("signal for neutral and missing data", () => {
   });
 
   it("near-neutral shares -> mixed signals", () => {
-    const c: ScoreComponents = { trend: 11, momentum: 9, volume: 7.5, pattern: 7.5, market: 11, risk: 5 };
+    const c: ScoreComponents = { trend: 8.8, momentum: 7.2, volume: 6, pattern: 6, market: 8.8, risk: 4, flows: 10 };
     expect(signalLine(c, "Neutral")).toBe("Range-bound · mixed signals");
   });
 
   it("a clearly leaning component still names it", () => {
-    const c: ScoreComponents = { trend: 16, momentum: 9, volume: 7.5, pattern: 7.5, market: 8, risk: 5 };
+    const c: ScoreComponents = { trend: 12.8, momentum: 7.2, volume: 6, pattern: 6, market: 6.4, risk: 4, flows: 10 };
     expect(signalLine(c, "Neutral")).toBe("Range-bound · price above key EMAs");
+  });
+});
+
+describe("scaling", () => {
+  it("scales the six price-and-market parts to 80 points", () => {
+    const r = scoreInstrument(make({ ema20: 90, ema50: 80, ema200: 70 }));
+    expect(r.components.trend).toBe(16); // raw 20 x 0.8
+    expect(Object.values(COMPONENT_MAX).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+  it("a perfect stock reaches 100", () => {
+    const r = scoreInstrument(
+      make({
+        close: 101, prevClose: 100, ema20: 99, ema50: 98, ema200: 97, rsi14: 60, macd: 1, macdSignal: 0.5, macdHist: 0.5, prevMacdHist: 0.3,
+        volume: 200, volAvg20: 100, recentPatterns: [{ name: "hammer", bias: "bullish" }, { name: "x", bias: "bullish" }],
+        niftyLabel: "Strong Bullish", sectorLabel: "Strong Bullish", rs20: 0.1, support: 100, resistance: 110,
+        fiiDelta: 1.5, diiDelta: 1.5, deliveryPer: 75,
+      }),
+    );
+    expect(r.score).toBe(100);
+    expect(r.partial).toBe(false);
+  });
+});
+
+describe("Flows", () => {
+  const flows = (o: Partial<ScoreInput>) => scoreInstrument(make({ fiiDelta: 0, diiDelta: 0, ...o }));
+  it("is a neutral 10 and never partial for anything but a stock", () => {
+    for (const kind of ["nifty", "index", "sector"] as const) {
+      const r = scoreInstrument(make({ kind }));
+      expect(r.components.flows).toBe(10);
+    }
+    expect(scoreInstrument(make({ kind: "sector", niftyLabel: "Neutral" })).partial).toBe(false);
+  });
+  it("FII stake bands (8 points)", () => {
+    const rows: [number, number][] = [[1.2, 8], [1, 8], [0.25, 6], [0.1, 4], [-0.25, 4], [-0.26, 2], [-0.99, 2], [-1, 0], [-3, 0]];
+    for (const [d, fii] of rows) expect(flows({ fiiDelta: d }).components.flows).toBe(fii + 3 + 3);
+  });
+  it("DII stake bands (6 points)", () => {
+    const rows: [number, number][] = [[1, 6], [0.3, 4.5], [0, 3], [-0.5, 1.5], [-2, 0]];
+    for (const [d, dii] of rows) expect(flows({ diiDelta: d }).components.flows).toBe(4 + dii + 3);
+  });
+  it("delivery counts only at 60%+ and follows the price direction", () => {
+    const up = { close: 101, prevClose: 100 };
+    const down = { close: 99, prevClose: 100 };
+    expect(flows({ ...up, deliveryPer: 65 }).components.flows).toBe(4 + 3 + 6);
+    expect(flows({ ...down, deliveryPer: 65 }).components.flows).toBe(4 + 3 + 0);
+    expect(flows({ close: 100, prevClose: 100, deliveryPer: 65 }).components.flows).toBe(4 + 3 + 3);
+    expect(flows({ ...up, deliveryPer: 59.9 }).components.flows).toBe(4 + 3 + 3);
+  });
+  it("missing stake data is half points and partial; a missing delivery row is neutral and not partial", () => {
+    const noStake = scoreInstrument(make({ fiiDelta: null, diiDelta: null }));
+    expect(noStake.components.flows).toBe(4 + 3 + 3);
+    expect(noStake.partial).toBe(true);
+    const noDelivery = scoreInstrument(make({ fiiDelta: 0, diiDelta: 0, deliveryPer: null }));
+    expect(noDelivery.components.flows).toBe(10);
+    expect(noDelivery.partial).toBe(false);
+  });
+  it("names institutions in the signal when flows are the clearest part", () => {
+    const c: ScoreComponents = { trend: 8, momentum: 8, volume: 6, pattern: 6, market: 8, risk: 4, flows: 20 };
+    expect(signalLine(c, "Neutral")).toBe("Range-bound · institutions adding");
   });
 });

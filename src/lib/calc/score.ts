@@ -23,6 +23,11 @@ export interface ScoreInput {
   rs20: number | null; // rsVsNifty of the latest row
   support: number | null;
   resistance: number | null; // effective levels (null for non-stocks)
+  /** Percentage-point change in FII holding vs the previous quarter; null/absent = no data. Stocks only. */
+  fiiDelta?: number | null;
+  diiDelta?: number | null;
+  /** Latest session's delivery % when the stock is in the stored top-100-by-value list; null/absent = not listed. */
+  deliveryPer?: number | null;
 }
 
 export interface ScoreComponents {
@@ -32,6 +37,7 @@ export interface ScoreComponents {
   pattern: number;
   market: number;
   risk: number;
+  flows: number;
 }
 
 export interface ScoreResult {
@@ -43,9 +49,11 @@ export interface ScoreResult {
   signal: string;
 }
 
-export const COMPONENT_MAX: ScoreComponents = { trend: 20, momentum: 20, volume: 15, pattern: 15, market: 20, risk: 10 };
+/** The six price-and-market parts are scaled to 80 points, Flows (institutional stake and delivery) adds 20. */
+export const COMPONENT_MAX: ScoreComponents = { trend: 16, momentum: 16, volume: 12, pattern: 12, market: 16, risk: 8, flows: 20 };
+const SCALE = 0.8;
 
-const KEYS = ["trend", "momentum", "volume", "pattern", "market", "risk"] as const;
+const KEYS = ["trend", "momentum", "volume", "pattern", "market", "risk", "flows"] as const;
 // Brief says one decimal but also pins 3.75 / 11.25; every sub-rule is a multiple of 0.25, so
 // two decimals is exact and only strips float noise.
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -147,6 +155,27 @@ function risk(i: ScoreInput): number {
   return ratio >= 3 ? 10 : ratio >= 2 ? 8 : ratio >= 1 ? 6 : ratio >= 0.5 ? 3 : 0;
 }
 
+/** FII / DII stake change in percentage points -> points out of `max`: +1 or more all, +0.25 three quarters, within -0.25 half, down to -1 a quarter, below that none. */
+function stakePoints(delta: number, max: number): number {
+  const d = Math.round(delta * 100) / 100;
+  return d >= 1 ? max : d >= 0.25 ? max * 0.75 : d >= -0.25 ? max * 0.5 : d > -1 ? max * 0.25 : 0;
+}
+
+/**
+ * Institutional flows, 20 points, stocks only (everything else is a neutral 10). FII stake 8, DII stake 6 (half
+ * points and partial when there is no data), delivery 6: 60%+ on a rising day scores 6, on a falling day 0,
+ * otherwise (including no delivery row, which only means "not among the busiest") a neutral 3.
+ */
+function flows(i: ScoreInput, t: Tally): number {
+  if (i.kind !== "stock") return 10;
+  const fii = t.guard(i.fiiDelta != null, 8, () => stakePoints(i.fiiDelta as number, 8));
+  const dii = t.guard(i.diiDelta != null, 6, () => stakePoints(i.diiDelta as number, 6));
+  const per = i.deliveryPer ?? null;
+  let delivery = 3;
+  if (per !== null && per >= 60 && i.prevClose !== null) delivery = i.close > i.prevClose ? 6 : i.close < i.prevClose ? 0 : 3;
+  return fii + dii + delivery;
+}
+
 export function labelFor(score: number): ScoreLabel {
   if (score >= 75) return "Strong Bullish";
   if (score >= 60) return "Bullish";
@@ -162,7 +191,7 @@ export function confidenceFor(components: ScoreComponents, label: ScoreLabel): "
   const shares = KEYS.map((k) => share(components, k));
   const bull = shares.filter((s) => s >= 0.6).length;
   const bear = shares.filter((s) => s <= 0.4).length;
-  if (label === "Neutral") return bull >= 4 || bear >= 4 ? "Medium" : "Low";
+  if (label === "Neutral") return bull >= 5 || bear >= 5 ? "Medium" : "Low";
   const opposing = label.endsWith("Bullish") ? bear : bull;
   return opposing <= 1 ? "High" : opposing === 2 ? "Medium" : "Low";
 }
@@ -182,6 +211,7 @@ const PHRASES: Record<keyof ScoreComponents, [high: string, low: string]> = {
   pattern: ["bullish reversal pattern", "bearish reversal pattern"],
   market: ["market & sector tailwinds", "market & sector headwinds"],
   risk: ["near support with room to run", "pressing against resistance"],
+  flows: ["institutions adding", "institutions reducing"],
 };
 
 /** Below this distance from 0.5 no component leans enough to explain a Neutral label. */
@@ -208,9 +238,10 @@ export function signalLine(components: ScoreComponents, label: ScoreLabel, parti
   return `${LABEL_WORDS[label]} · ${share(components, key) >= 0.5 ? high : low}`;
 }
 
-export function scoreInstrument(input: ScoreInput): ScoreResult {
+/** The six price-and-market parts on their original scale (max 20/20/15/15/20/10); `partial` covers only these. */
+export function rawParts(input: ScoreInput): { components: Omit<ScoreComponents, "flows">; partial: boolean } {
   const t = new Tally();
-  const components: ScoreComponents = {
+  const components = {
     trend: round2(trend(input, t)),
     momentum: round2(momentum(input, t)),
     volume: round2(volume(input, t)),
@@ -218,14 +249,30 @@ export function scoreInstrument(input: ScoreInput): ScoreResult {
     market: round2(market(input, t)),
     risk: round2(risk(input)),
   };
+  return { components, partial: t.partial };
+}
+
+export function scoreInstrument(input: ScoreInput): ScoreResult {
+  const { components: raw, partial: rawPartial } = rawParts(input);
+  const ft = new Tally();
+  const components: ScoreComponents = {
+    trend: round2(raw.trend * SCALE),
+    momentum: round2(raw.momentum * SCALE),
+    volume: round2(raw.volume * SCALE),
+    pattern: round2(raw.pattern * SCALE),
+    market: round2(raw.market * SCALE),
+    risk: round2(raw.risk * SCALE),
+    flows: round2(flows(input, ft)),
+  };
+  const partial = rawPartial || ft.partial;
   const score = Math.round(KEYS.reduce((s, k) => s + components[k], 0));
   const label = labelFor(score);
   return {
     score,
     components,
-    partial: t.partial,
+    partial,
     label,
     confidence: confidenceFor(components, label),
-    signal: signalLine(components, label, t.partial),
+    signal: signalLine(components, label, partial),
   };
 }

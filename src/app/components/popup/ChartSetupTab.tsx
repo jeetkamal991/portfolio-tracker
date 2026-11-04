@@ -15,6 +15,7 @@ const COMPONENTS: { id: keyof ScoreComponents; label: string }[] = [
   { id: "pattern", label: "Pattern" },
   { id: "market", label: "Market" },
   { id: "risk", label: "Risk" },
+  { id: "flows", label: "Flows" },
 ];
 const CONFIDENCE: Record<string, Tone> = { High: "up", Medium: "warn", Low: "neutral" };
 
@@ -40,7 +41,9 @@ function PrimarySignal({ score }: { score: PopupData["score"] }) {
             <Chip tone={CONFIDENCE[score.confidence] ?? "neutral"}>{score.confidence} confidence</Chip>
           </div>
           {COMPONENTS.map((c) => {
-            const v = score.components[c.id];
+            // Scores stored before Flows existed have no value for it; the nightly job rewrites them.
+            const v = score.components[c.id] as number | undefined;
+            if (v === undefined) return null;
             const ratio = v / COMPONENT_MAX[c.id];
             return (
               <Row key={c.id} label={c.label}>

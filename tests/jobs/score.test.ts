@@ -66,7 +66,7 @@ describe("scorePass", () => {
       expect(d.score).not.toBeNull();
       expect(d.date).toBe("2026-10-16");
     }
-    expect(n.scoreComponents!.market).toBe(10);
+    expect(n.scoreComponents!.market).toBe(8); // the Nifty fixed 10, scaled to 80 points
     expect(tcs.rsVsSector).not.toBeNull();
     expect(n.rsVsSector).toBeNull();
 
@@ -84,6 +84,35 @@ describe("scorePass", () => {
     });
     expect(tcs.scoreComponents).toEqual({ ...re.components, partial: re.partial });
     expect(tcs.score).toBe(re.score);
+  });
+
+  it("feeds stake changes and the latest delivery into the Flows part", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T10:00:00Z"));
+    try {
+      const repo = await setup();
+      await repo.upsertShareholding([
+        { instrumentId: 3, quarterEnd: "2026-06-30", fiiPct: 19, diiPct: 10, promoterPct: 50, sourceUrl: null },
+        { instrumentId: 3, quarterEnd: "2026-09-30", fiiPct: 20.2, diiPct: 10.1, promoterPct: 50, sourceUrl: null },
+      ]);
+      await repo.upsertDelivery([{ symbol: "TCS", date: "2026-10-16", turnoverLacs: 1000, tradedQty: 1, delivQty: 1, delivPer: 70, close: 1, turnoverRank: 1 }]);
+      await scorePass(repo);
+      const days = (await repo.getDays(3, 30)).filter((d) => d.close !== null);
+      const [p, l] = [days[days.length - 2]!, days[days.length - 1]!];
+      const delivery = l.close! > p.close! ? 6 : l.close! < p.close! ? 0 : 3;
+      // FII +1.2 points -> 8, DII +0.1 -> 3, delivery 70% scored by the price direction
+      expect((await latest(repo, 3)).scoreComponents!.flows).toBe(8 + 3 + delivery);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a stock with no stake or delivery data gets neutral Flows and a partial score", async () => {
+    const repo = await setup();
+    await scorePass(repo);
+    const tcs = await latest(repo, 3);
+    expect(tcs.scoreComponents!.flows).toBe(10);
+    expect(tcs.scoreComponents!.partial).toBe(true);
   });
 
   it("scores in dependency order: NIFTY50 first, stocks last", async () => {

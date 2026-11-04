@@ -67,7 +67,11 @@ Then, from the repo root:
 3. `npm run backfill -- --from 2015-01-01` - indices and sectors. It now also computes the new indicators and the Technical Score.
 4. `npm run backfill -- --universe` - candles for the Nifty 200, the sector constituents and the watchlist stocks, from 2019-01-01 (`--from <date>` overrides). Expect roughly 15-30 minutes. It prints one line per instrument and lists any that failed; re-run to retry.
 
-**Technical Score.** Each instrument gets a score from 0 to 100 and one of five labels: Strong Bullish (75 and up), Bullish (60-74), Neutral (45-59), Bearish (30-44), Strong Bearish (below 30). It is computed on each nightly EOD run for the latest session only, so history builds up one row per day. The components and weights are in section 5 of `docs/superpowers/specs/2026-10-17-nifty-dashboard-redesign-design.md`.
+**Technical Score.** Each instrument gets a score from 0 to 100 and one of five labels: Strong Bullish (75 and up), Bullish (60-74), Neutral (45-59), Bearish (30-44), Strong Bearish (below 30). It is computed on each nightly EOD run for the latest session only, so history builds up one row per day. Seven parts add up to 100: Trend 16, Momentum 16, Volume 12, Pattern 12, Market 16 and Risk 8 (the original six rules in section 5 of `docs/superpowers/specs/2026-10-17-nifty-dashboard-redesign-design.md`, scaled by 0.8) plus **Flows 20**, for stocks only (the Nifty, indices and sectors get a neutral 10). Flows is FII stake 8, DII stake 6 and delivery 6:
+- **FII / DII stake** is the change in percentage points between the latest shareholding quarter and the one before. FII: +1.0 or more scores 8, +0.25 or more 6, within ±0.25 4, down to -1.0 2, below that 0. DII uses the same bands out of 6 (6, 4.5, 3, 1.5, 0). A stock with no stake data for both quarters gets half points and the score is marked partial.
+- **Delivery** uses the latest session's NSE delivery % (stored for the 100 most traded stocks by value): 60% or more on a day the price rose scores 6, on a day it fell 0, otherwise 3. A stock that is not in that list gets a neutral 3 and is not marked partial.
+
+The score job reads both inputs once per run. Rows stored before Flows existed have no Flows value until the next run rewrites them.
 
 **EOD duration (to check).** The EOD run has not been timed over the full Nifty 200 universe, because the constituents were not imported yet. After the first full import, with the dev server running, time one run:
 

@@ -71,7 +71,7 @@ describe("buildWatchRow", () => {
   });
 
   it("copies score fields from the latest day", () => {
-    const comps = { trend: 20, momentum: 15, volume: 9, pattern: 7.5, market: 13.5, risk: 7, partial: true };
+    const comps = { trend: 20, momentum: 15, volume: 9, pattern: 7.5, market: 13.5, risk: 7, flows: 10, partial: true };
     const r = buildWatchRow(input([day(0, { score: 72, scoreLabel: "Bullish", scoreComponents: comps })]))!;
     expect(r.score).toBe(72);
     expect(r.scoreLabel).toBe("Bullish");
