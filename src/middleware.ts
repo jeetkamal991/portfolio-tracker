@@ -22,9 +22,9 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims verifies the JWT locally (asymmetric keys) and still refreshes expired sessions; getUser() was a network call on every click.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   if (!user && !isPublicPath(pathname)) {
     if (isApiPath(pathname)) {

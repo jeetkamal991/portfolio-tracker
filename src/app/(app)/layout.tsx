@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { getRepo } from "@/lib/api/server";
+import { cached, getRepo } from "@/lib/api/server";
 import { STRIP_KEYS } from "@/lib/instruments";
 import { isMarketOpen } from "@/lib/time/ist";
 import { buildAsOf, buildTodaySummary, latestPctDate } from "@/lib/view/dashboard";
@@ -13,11 +13,14 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const repo = getRepo();
   const now = new Date();
-  const [insts, lastRun] = await Promise.all([
-    Promise.all(STRIP_KEYS.map((k) => repo.getInstrumentByKey(k))),
-    repo.lastJobRun("eod"),
-  ]);
-  const stripDays = await Promise.all(insts.map((i) => (i ? repo.getDays(i.id, 10) : Promise.resolve([]))));
+  const { insts, lastRun, stripDays } = await cached("layout-strip", async () => {
+    const [insts, lastRun] = await Promise.all([
+      Promise.all(STRIP_KEYS.map((k) => repo.getInstrumentByKey(k))),
+      repo.lastJobRun("eod"),
+    ]);
+    const stripDays = await Promise.all(insts.map((i) => (i ? repo.getDays(i.id, 10) : Promise.resolve([]))));
+    return { insts, lastRun, stripDays };
+  });
 
   const items: StripItem[] = STRIP_KEYS.map((k, n) => {
     const days = stripDays[n];
