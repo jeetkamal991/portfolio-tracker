@@ -9,6 +9,8 @@ import { buildConstituentRows, buildSectorTiles, type ConstituentRow, type Secto
 export interface SectorAnalysis {
   sessionDate: string | null;
   tiles: SectorTile[];
+  /** Latest priced Nifty 50 session, for the mood hero. */
+  nifty: { close: number | null; dayPct: number | null };
   /** By sector key. */
   constituents: Record<string, ConstituentRow[]>;
   rotation: RotationRow[];
@@ -55,8 +57,10 @@ export async function loadSectorAnalysis(repo: Repo): Promise<SectorAnalysis> {
   const latest = new Map(series.map((s) => [s.key, [...s.days].reverse().find((d) => d.close !== null) ?? null]));
   const rows = buildSectorRows(series, niftyDates).filter((r) => sectors.some((s) => s.key === r.key));
 
+  const niftyLast = [...niftyDays].reverse().find((d) => d.close !== null) ?? null;
   return {
     sessionDate,
+    nifty: { close: niftyLast?.close ?? null, dayPct: niftyLast ? (niftyLast.pctChange ?? niftyLast.importedPct ?? null) : null },
     tiles: buildSectorTiles(rows, latest, new Map(Object.entries(constituents))),
     constituents,
     rotation: buildRotation(series, niftyDates),

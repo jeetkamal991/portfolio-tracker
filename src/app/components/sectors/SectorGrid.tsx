@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { fmtPct, heatColor, pctTone } from "@/lib/view/dashboard";
-import type { ConstituentRow, SectorTile } from "@/lib/view/sectors";
+import { bigTileKeys, type ConstituentRow, type SectorTile } from "@/lib/view/sectors";
 import { Label } from "../ui";
 import { IMPORT_MESSAGE } from "./ConstituentTable";
 import { SectorScore } from "./SectorScore";
@@ -17,6 +17,7 @@ const PREVIEW_W = 256; // px, matches w-64
 export function SectorGrid({ tiles, selected }: { tiles: SectorTile[]; selected: string | null }) {
   const [canHover, setCanHover] = useState(false);
   const [preview, setPreview] = useState<{ key: string; alignRight: boolean } | null>(null);
+  const bigKeys = bigTileKeys(tiles);
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover)");
@@ -35,12 +36,13 @@ export function SectorGrid({ tiles, selected }: { tiles: SectorTile[]; selected:
   const hide = (key: string) => setPreview((p) => (p?.key === key ? null : p));
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <div className="grid auto-rows-[112px] grid-flow-dense grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-6">
       {tiles.map((t) => {
+        const big = bigKeys.has(t.key);
         const arrow = t.d1 === null || t.d1 === 0 ? "" : t.d1 > 0 ? "▲ " : "▼ ";
         const open = preview?.key === t.key;
         return (
-          <div key={t.key} className="relative" onMouseEnter={(e) => show(t.key, e.currentTarget)} onMouseLeave={() => hide(t.key)}>
+          <div key={t.key} className={`relative ${big ? "col-span-2 row-span-2" : ""}`} onMouseEnter={(e) => show(t.key, e.currentTarget)} onMouseLeave={() => hide(t.key)}>
             <Link
               href={`/sectors?s=${encodeURIComponent(t.key)}`}
               scroll={false}
@@ -53,7 +55,7 @@ export function SectorGrid({ tiles, selected }: { tiles: SectorTile[]; selected:
               style={{ backgroundColor: heatColor(t.d1, "d1") }}
             >
               <span className="truncate text-sm font-semibold text-[var(--text)]">{t.name.replace(/^Nifty /, "")}</span>
-              <span className={`font-mono text-xl font-semibold tabular-nums ${pctTone(t.d1)}`}>
+              <span className={`font-mono font-semibold tabular-nums ${big ? "text-4xl" : "text-xl"} ${pctTone(t.d1)}`}>
                 {arrow}
                 {fmtPct(t.d1)}
               </span>

@@ -83,3 +83,38 @@ export function buildSectorTiles(
     };
   });
 }
+
+export type Mood = "RISK_ON" | "MIXED" | "RISK_OFF";
+
+export interface SectorMoodSummary {
+  /** null when no sector has a day move. */
+  mood: Mood | null;
+  up: number;
+  total: number;
+  best: { name: string; d1: number } | null;
+  worst: { name: string; d1: number } | null;
+}
+
+const short = (name: string) => name.replace(/^Nifty /, "");
+
+/** RISK_ON at two thirds of sectors green or more, RISK_OFF at one third or fewer, otherwise MIXED. */
+export function sectorMood(tiles: Pick<SectorTile, "name" | "d1">[]): SectorMoodSummary {
+  const moved = tiles.filter((t): t is { name: string; d1: number } => t.d1 !== null);
+  const up = moved.filter((t) => t.d1 > 0).length;
+  const total = moved.length;
+  const sorted = [...moved].sort((a, b) => b.d1 - a.d1);
+  const pick = (t: { name: string; d1: number } | undefined) => (t ? { name: short(t.name), d1: t.d1 } : null);
+  const mood: Mood | null = total === 0 ? null : up / total >= 2 / 3 ? "RISK_ON" : up / total <= 1 / 3 ? "RISK_OFF" : "MIXED";
+  return { mood, up, total, best: pick(sorted[0]), worst: total > 1 ? pick(sorted[sorted.length - 1]) : null };
+}
+
+/** Keys of the `count` sectors with the biggest absolute day move; they get the large tiles. Zero and missing moves never qualify. */
+export function bigTileKeys(tiles: Pick<SectorTile, "key" | "d1">[], count = 2): Set<string> {
+  return new Set(
+    tiles
+      .filter((t) => t.d1 !== null && t.d1 !== 0)
+      .sort((a, b) => Math.abs(b.d1 as number) - Math.abs(a.d1 as number) || a.key.localeCompare(b.key))
+      .slice(0, count)
+      .map((t) => t.key),
+  );
+}

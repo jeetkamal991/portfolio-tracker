@@ -86,3 +86,28 @@ describe("buildSectorTiles", () => {
     expect(tiles.map((t) => t.key)).toEqual(["NIFTY_BANK", "NIFTY_IT", "NIFTY_AUTO"]);
   });
 });
+
+import { bigTileKeys, sectorMood } from "@/lib/view/sectors";
+
+describe("sectorMood", () => {
+  const t = (name: string, d1: number | null) => ({ name, d1 });
+  it("RISK_ON at two thirds green, RISK_OFF at one third, else MIXED", () => {
+    expect(sectorMood([t("Nifty IT", 1), t("Nifty Bank", 1), t("Nifty Auto", -1)]).mood).toBe("RISK_ON");
+    expect(sectorMood([t("A", 1), t("B", -1), t("C", -1)]).mood).toBe("RISK_OFF");
+    expect(sectorMood([t("A", 1), t("B", 1), t("C", -1), t("D", -1)]).mood).toBe("MIXED");
+  });
+  it("names best and worst without the Nifty prefix, and ignores sectors with no move", () => {
+    const s = sectorMood([t("Nifty IT", 1.4), t("Nifty PSU Bank", -1.1), t("Nifty Media", null)]);
+    expect(s).toMatchObject({ up: 1, total: 2, best: { name: "IT", d1: 1.4 }, worst: { name: "PSU Bank", d1: -1.1 } });
+  });
+  it("is empty with no data", () => {
+    expect(sectorMood([t("A", null)])).toEqual({ mood: null, up: 0, total: 0, best: null, worst: null });
+  });
+});
+
+describe("bigTileKeys", () => {
+  it("picks the two biggest absolute movers, skipping zero and null", () => {
+    const tiles = [{ key: "A", d1: 0.5 }, { key: "B", d1: -2 }, { key: "C", d1: 1.2 }, { key: "D", d1: 0 }, { key: "E", d1: null }];
+    expect([...bigTileKeys(tiles)].sort()).toEqual(["B", "C"]);
+  });
+});
