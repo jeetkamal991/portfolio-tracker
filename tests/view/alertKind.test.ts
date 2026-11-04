@@ -19,3 +19,29 @@ describe("urgencyOf", () => {
     expect(order.map(urgencyOf)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 });
+
+import { eventMarkers } from "@/lib/view/alerts";
+
+describe("eventMarkers", () => {
+  const dates = ["2026-10-29", "2026-10-30", "2026-11-02", "2026-11-03"];
+  it("pins to the same day, or to the session before a weekend", () => {
+    const m = eventMarkers(
+      [
+        { key: "ACE", firedAt: "2026-10-30T11:42:21Z", message: "🛑 ACE stop loss hit" },
+        { key: "BEL", firedAt: "2026-11-01T06:00:00Z", message: "⚠️ BEL near stop loss" }, // Sunday
+      ],
+      dates,
+    );
+    expect(m).toEqual([
+      { time: "2026-10-30", key: "ACE", kind: "stop_hit" },
+      { time: "2026-10-30", key: "BEL", kind: "near_stop" },
+    ]);
+  });
+  it("drops events before the first candle and keeps IST dates (late UTC evening is next day)", () => {
+    expect(eventMarkers([{ key: "X", firedAt: "2026-10-01T10:00:00Z", message: "🔔 x" }], dates)).toEqual([]);
+    // 20:00 UTC on 2 Nov is 01:30 IST on 3 Nov
+    expect(eventMarkers([{ key: "Y", firedAt: "2026-11-02T20:00:00Z", message: "📄 Y report is ready to read" }], dates)).toEqual([
+      { time: "2026-11-03", key: "Y", kind: "report" },
+    ]);
+  });
+});

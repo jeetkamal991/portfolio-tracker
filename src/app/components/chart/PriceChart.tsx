@@ -5,6 +5,7 @@ import {
   CandlestickSeries,
   ColorType,
   createChart,
+  createSeriesMarkers,
   HistogramSeries,
   LineSeries,
   LineStyle,
@@ -20,6 +21,9 @@ import { Chip, Panel } from "../ui";
 
 type Ema = "ema20" | "ema50" | "ema200";
 type Lower = "VOLUME" | "RSI" | "MACD";
+
+/** An event pinned on a candle date; `color` is a CSS variable name such as "--down". */
+export interface ChartMarker { time: string; text: string; color: string }
 const LOWERS: Lower[] = ["VOLUME", "RSI", "MACD"];
 
 const EMAS: { id: Ema; label: string; cssVar: string }[] = [
@@ -65,6 +69,7 @@ function ChartCanvas({
   bollinger,
   lower,
   height,
+  markers,
   onHover,
 }: {
   data: ChartData;
@@ -72,6 +77,7 @@ function ChartCanvas({
   bollinger: boolean;
   lower: Lower;
   height: number;
+  markers: ChartMarker[];
   onHover: (time: string | null) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -121,6 +127,15 @@ function ChartCanvas({
     });
     candles.setData(data.candles);
     added.push(candles);
+    // Only events that fall inside the visible range; the library rejects a marker on a time it has no bar for.
+    const inRange = new Set(data.candles.map((c) => c.time));
+    const pins = markers.filter((m) => inRange.has(m.time));
+    if (pins.length > 0) {
+      createSeriesMarkers(
+        candles,
+        pins.map((m) => ({ time: m.time, position: "aboveBar" as const, shape: "circle" as const, color: cssVar(m.color), text: m.text, size: 1 })),
+      );
+    }
     for (const e of EMAS) {
       if (!emas[e.id]) continue;
       const s = chart.addSeries(LineSeries, {
@@ -185,12 +200,14 @@ function ChartCanvas({
       if (chartRef.current !== chart) return;
       for (const s of added) chart.removeSeries(s);
     };
-  }, [data, emas, bollinger, lower]);
+  }, [data, emas, bollinger, lower, markers]);
 
   return <div ref={box} style={{ height }} className="w-full overflow-hidden rounded-lg" />;
 }
 
-export function PriceChart({ days, title, height = 420 }: { days: StoredDay[]; title: string; height?: number }) {
+const NO_MARKERS: ChartMarker[] = [];
+
+export function PriceChart({ days, title, height = 420, markers = NO_MARKERS }: { days: StoredDay[]; title: string; height?: number; markers?: ChartMarker[] }) {
   const [range, setRange] = useState<ChartRange>("6M");
   const [emas, setEmas] = useState<Record<Ema, boolean>>({ ema20: true, ema50: true, ema200: true });
   const [bollinger, setBollinger] = useState(false);
@@ -266,7 +283,7 @@ export function PriceChart({ days, title, height = 420 }: { days: StoredDay[]; t
       <div className="mb-2">
         <OhlcStrip data={data} time={hover} />
       </div>
-      <ChartCanvas data={data} emas={emas} bollinger={bollinger} lower={lower} height={height} onHover={setHover} />
+      <ChartCanvas data={data} emas={emas} bollinger={bollinger} lower={lower} height={height} markers={markers} onHover={setHover} />
     </Panel>
   );
 }

@@ -1,3 +1,4 @@
+import { istDate } from "@/lib/time/ist";
 import { CONDITIONS, fmtAlertTime } from "@/lib/calc/alerts";
 import type { AlertRule } from "@/lib/db/types";
 import { fmtInr } from "./portfolio";
@@ -36,5 +37,41 @@ export function eventKind(message: string): EventKind {
 
 const URGENCY: EventKind[] = ["stop_hit", "near_stop", "target_hit", "near_target", "report", "other"];
 
+/** CSS variable per event kind, shared by the chart pins and the timeline dots. */
+export const KIND_COLOR: Record<EventKind, string> = {
+  stop_hit: "--down",
+  near_stop: "--warn",
+  target_hit: "--up",
+  near_target: "--up",
+  report: "--ema20",
+  other: "--muted",
+};
+
 /** 0 = most urgent. */
 export const urgencyOf = (k: EventKind): number => URGENCY.indexOf(k);
+
+export interface EventMarker {
+  /** A candle date (YYYY-MM-DD) the event is pinned to. */
+  time: string;
+  key: string;
+  kind: EventKind;
+}
+
+/**
+ * Pins alert events onto chart candles: each event goes to the latest candle on or before its IST date,
+ * so an event on a weekend or holiday sits on the session before it. Events before the first candle are dropped.
+ * `candleDates` must be ascending.
+ */
+export function eventMarkers(events: { key: string; firedAt: string; message: string }[], candleDates: string[]): EventMarker[] {
+  const out: EventMarker[] = [];
+  for (const e of events) {
+    const day = istDate(new Date(e.firedAt));
+    let time: string | null = null;
+    for (const d of candleDates) {
+      if (d > day) break;
+      time = d;
+    }
+    if (time) out.push({ time, key: e.key, kind: eventKind(e.message) });
+  }
+  return out;
+}
