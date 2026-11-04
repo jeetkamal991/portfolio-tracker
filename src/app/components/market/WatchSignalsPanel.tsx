@@ -44,7 +44,7 @@ function SignalBox({ title, items, empty }: { title: string; items: WatchSignal[
           onClick={() => setAll((v) => !v)}
           className="self-start font-mono text-xs text-[var(--up)] hover:underline"
         >
-          {all ? "Show fewer" : `Show all ${items.length}`}
+          {all ? "Read less" : `Read more (${items.length - COLLAPSED_ROWS} more)`}
         </button>
       )}
     </div>

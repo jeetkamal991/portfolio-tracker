@@ -2,6 +2,7 @@ import type { MarketEvent, ParsedSummary, WatchNews } from "@/lib/content/claude
 import { fmtDate } from "@/lib/view/dashboard";
 import { fmtShortDate } from "@/lib/view/market";
 import { StockLink } from "../popup/StockLink";
+import { ClampText } from "./ClampText";
 import { SummaryBullets } from "./SummaryBullets";
 import { Chip, Label, Panel } from "../ui";
 
@@ -30,7 +31,7 @@ function EventTile({ n, e }: { n: number; e: MarketEvent }) {
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-sm font-semibold">{e.title}</span>
-        <p className="text-sm leading-relaxed text-[var(--muted)]">{e.explanation}</p>
+        <ClampText text={e.explanation} className="text-sm leading-relaxed text-[var(--muted)]" />
         {e.sourceUrl && (
           <div>
             <SourceChip url={e.sourceUrl} />
@@ -56,7 +57,7 @@ function NewsRow({ n }: { n: WatchNews }) {
           <SourceChip url={n.sourceUrl} />
         </span>
       </div>
-      <p className="text-sm leading-relaxed">{n.note}</p>
+      <ClampText text={n.note} limit={120} className="text-sm leading-relaxed" />
     </li>
   );
 }

@@ -7,7 +7,7 @@ import { StockLink } from "../popup/StockLink";
 import { Chip } from "../ui";
 
 export function StakeCard({ s }: { s: StakeScreener }) {
-  const [all, setAll] = useState(true);
+  const [all, setAll] = useState(false);
   const rows = all ? s.hits : s.hits.slice(0, COLLAPSED_ROWS);
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">
@@ -35,7 +35,7 @@ export function StakeCard({ s }: { s: StakeScreener }) {
       )}
       {s.hits.length > COLLAPSED_ROWS && (
         <button type="button" onClick={() => setAll((v) => !v)} className="self-start font-mono text-xs text-[var(--up)] hover:underline">
-          {all ? "Show fewer" : `Show all ${s.hits.length}`}
+          {all ? "Read less" : `Read more (${s.hits.length - COLLAPSED_ROWS} more)`}
         </button>
       )}
     </div>

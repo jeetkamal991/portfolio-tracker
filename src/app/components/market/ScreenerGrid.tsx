@@ -46,7 +46,7 @@ function ScreenerCard({ s }: { s: ScreenerResult }) {
           onClick={() => setAll((v) => !v)}
           className="self-start font-mono text-xs text-[var(--up)] hover:underline"
         >
-          {all ? "Show fewer" : `Show all ${s.hits.length}`}
+          {all ? "Read less" : `Read more (${s.hits.length - COLLAPSED_ROWS} more)`}
         </button>
       )}
     </div>
@@ -72,7 +72,7 @@ export function ScreenerGrid({
       ) : screeners.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No session data yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {screeners.map((s) => (
             <ScreenerCard key={s.id} s={s} />
           ))}

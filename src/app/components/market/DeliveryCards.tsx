@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ACTIVE_TOP, MIN_PCT, type DeliveryView } from "@/lib/calc/delivery";
 import { fmtDate } from "@/lib/view/dashboard";
+import { COLLAPSED_ROWS } from "@/lib/view/market";
 import { StockLink } from "../popup/StockLink";
 import { Chip } from "../ui";
 
@@ -22,6 +23,15 @@ function Sym({ symbol, names }: { symbol: string; names: Record<string, string> 
   );
 }
 
+function MoreButton({ open, hidden, onClick }: { open: boolean; hidden: number; onClick: () => void }) {
+  if (hidden <= 0) return null;
+  return (
+    <button type="button" onClick={onClick} className="self-start font-mono text-xs text-[var(--up)] hover:underline">
+      {open ? "Read less" : `Read more (${hidden} more)`}
+    </button>
+  );
+}
+
 function Empty({ view }: { view: DeliveryView }) {
   return (
     <p className="text-sm text-[var(--muted)]">
@@ -32,6 +42,8 @@ function Empty({ view }: { view: DeliveryView }) {
 
 /** Today's stocks at 60%+ delivery among the 100 most traded by value. */
 export function TodayDeliveryCard({ view, names }: { view: DeliveryView; names: Record<string, string> }) {
+  const [all, setAll] = useState(false);
+  const rows = all ? view.today : view.today.slice(0, COLLAPSED_ROWS);
   return (
     <div className={CARD}>
       <div className="flex items-center justify-between gap-2">
@@ -47,7 +59,7 @@ export function TodayDeliveryCard({ view, names }: { view: DeliveryView; names: 
         <p className="text-sm text-[var(--muted)]">No stock crossed {MIN_PCT}% today.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {view.today.map((t) => (
+          {rows.map((t) => (
             <li key={t.symbol} className="flex items-center gap-2">
               <Sym symbol={t.symbol} names={names} />
               <span className="whitespace-nowrap font-mono text-xs tabular-nums text-[var(--muted)]">#{t.rank} · ₹{t.turnoverCr.toLocaleString("en-IN")} Cr</span>
@@ -56,6 +68,7 @@ export function TodayDeliveryCard({ view, names }: { view: DeliveryView; names: 
           ))}
         </ul>
       )}
+      <MoreButton open={all} hidden={view.today.length - COLLAPSED_ROWS} onClick={() => setAll((v) => !v)} />
     </div>
   );
 }
@@ -64,6 +77,8 @@ export function TodayDeliveryCard({ view, names }: { view: DeliveryView; names: 
 export function RepeatDeliveryCard({ view, names }: { view: DeliveryView; names: Record<string, string> }) {
   const [win, setWin] = useState(view.shortlists.length - 1);
   const sl = view.shortlists[win]!;
+  const [all, setAll] = useState(false);
+  const rows = all ? sl.hits : sl.hits.slice(0, COLLAPSED_ROWS);
   return (
     <div className={CARD}>
       <div className="flex items-center justify-between gap-2">
@@ -92,7 +107,7 @@ export function RepeatDeliveryCard({ view, names }: { view: DeliveryView; names:
         <p className="text-sm text-[var(--muted)]">No stock has qualified on {sl.minDays} of the last {sl.days} sessions.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {sl.hits.map((h) => {
+          {rows.map((h) => {
             const up = h.latestPer !== null && h.latestPer >= h.avgPer;
             return (
               <li key={h.symbol} className="flex items-center gap-2">
@@ -106,6 +121,7 @@ export function RepeatDeliveryCard({ view, names }: { view: DeliveryView; names:
           })}
         </ul>
       )}
+      <MoreButton open={all} hidden={sl.hits.length - COLLAPSED_ROWS} onClick={() => setAll((v) => !v)} />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
 
   const signalCount = m.watchSignals.crosses.length + m.watchSignals.formations.length;
   const flows = (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <TodayDeliveryCard view={delivery} names={names} />
       <RepeatDeliveryCard view={delivery} names={names} />
       {m.hasUniverse && m.stakes ? (

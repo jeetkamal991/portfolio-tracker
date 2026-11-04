@@ -37,7 +37,7 @@ function HitList({ id, title, hits, tied }: { id: AlphaResult["id"]; title: stri
           onClick={() => setAll((v) => !v)}
           className="self-start font-mono text-xs text-[var(--up)] hover:underline"
         >
-          {all ? "Show fewer" : `Show all ${hits.length}`}
+          {all ? "Read less" : `Read more (${hits.length - COLLAPSED_ROWS} more)`}
         </button>
       )}
     </div>
@@ -85,7 +85,7 @@ export function AlphaGrid({
       title="ALPHA RANKS · NIFTY 200"
       action={session ? <Label>as of {fmtDate(session).slice(0, 6)}</Label> : undefined}
     >
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         {alphas.map((r) => (
           <AlphaCard key={r.id} r={r} />
         ))}
