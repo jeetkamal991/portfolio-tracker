@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <TopBar />
       <QuotesProvider initialOpen={isMarketOpen(now)}>
         <StatusStrip items={items} asOf={asOf} initialNow={now.toISOString()} />
-        <main className="mx-auto max-w-[1560px] px-4 py-6 sm:px-6">{children}</main>
+        <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">{children}</main>
         <Suspense fallback={null}>
           <StockModal />
         </Suspense>

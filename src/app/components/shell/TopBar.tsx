@@ -35,7 +35,7 @@ function Tabs({ className }: { className: string }) {
 export function TopBar() {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--panel)]">
-      <div className="mx-auto flex h-14 max-w-[1560px] items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-baseline gap-2">
           <span className="text-lg font-extrabold tracking-tight">
             NIFTY<span className="text-[var(--up)]">PULSE</span>

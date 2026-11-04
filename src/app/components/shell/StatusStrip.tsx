@@ -37,7 +37,7 @@ export function StatusStrip({
 
   return (
     <div className="border-b border-[var(--border)] bg-[var(--panel-2)]">
-      <div className="mx-auto flex max-w-[1560px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2">
           <Chip tone={PHASE_TONE[phase]}>{phase}</Chip>
           <span className="font-mono text-xs tabular-nums text-[var(--muted)]">{istClock(now)}</span>
