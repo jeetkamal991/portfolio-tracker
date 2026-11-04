@@ -236,7 +236,7 @@ export function StockModal() {
   if (!key) return null;
 
   const current = loaded && loaded.key === key ? loaded : null;
-  const activeTab: TabId = tab.key === key ? tab.id : "chart";
+  const activeTab: TabId = tab.key === key ? tab.id : params?.get("tab") === "deep" ? "deep" : "chart";
 
   async function addToWatchlist(k: string) {
     setAdding(true);

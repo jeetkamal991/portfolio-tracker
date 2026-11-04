@@ -90,6 +90,12 @@ export interface ReportRow {
   error: string | null;
 }
 
+/** A report with the stock it belongs to, for the AI Deep Dive tab. */
+export interface ReportWithStock extends ReportRow {
+  key: string;
+  name: string;
+}
+
 export interface Levels {
   autoSupport: number | null;
   autoResistance: number | null;

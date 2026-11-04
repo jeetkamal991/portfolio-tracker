@@ -44,6 +44,12 @@ export async function handleInstrumentGet(repo: Repo, key: string): Promise<ApiR
   return { status: 200, body: data };
 }
 
+export async function handleReportDelete(repo: Repo, id: string): Promise<ApiResult> {
+  if (!/^\d+$/.test(id)) return { status: 400, body: { error: "invalid_id" } };
+  await repo.deleteReport(Number(id));
+  return { status: 204, body: null };
+}
+
 export async function handleReportPost(repo: Repo, body: unknown): Promise<ApiResult> {
   const parsed = reportBody.safeParse(body);
   if (!parsed.success) return { status: 400, body: { error: "invalid_body" } };

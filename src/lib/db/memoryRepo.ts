@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -204,7 +204,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     },
     async requestReport(instrumentId) {
       const row: ReportRow = {
-        id: reports.length + 1, instrumentId, status: "pending", requestedAt: new Date().toISOString(),
+        id: Math.max(0, ...reports.map((r) => r.id)) + 1, instrumentId, status: "pending", requestedAt: new Date().toISOString(),
         completedAt: null, requestedVia: "site", content: null, error: null,
       };
       reports.push(row);
@@ -212,6 +212,15 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     },
     async listReports(instrumentId) {
       return reports.filter((r) => r.instrumentId === instrumentId).map((r) => ({ ...r })).reverse();
+    },
+    async listAllReports() {
+      return reports
+        .map((r): ReportWithStock => ({ ...r, key: instruments.get(r.instrumentId)?.key ?? "", name: instruments.get(r.instrumentId)?.name ?? "" }))
+        .reverse();
+    },
+    async deleteReport(id) {
+      const i = reports.findIndex((r) => r.id === id);
+      if (i >= 0) reports.splice(i, 1);
     },
     async getDailySummary(date) {
       const s = summaries.get(date);

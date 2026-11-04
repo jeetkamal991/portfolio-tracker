@@ -19,9 +19,10 @@ export function stockHref(pathname: string, params: URLSearchParams | null, key:
 let pushedByApp = false;
 
 /** Opens the pop-up for `key`. Switching stocks while one is open replaces the entry, so one Back closes. */
-export function openStock(key: string) {
+export function openStock(key: string, tab?: string) {
   const { pathname, search } = window.location;
   const params = new URLSearchParams(search);
+  if (tab) params.set("tab", tab);
   const url = stockHref(pathname, params, key);
   if (params.has("stock")) {
     window.history.replaceState(null, "", url);
@@ -42,6 +43,7 @@ export function closeStock() {
     return;
   }
   params.delete("stock");
+  params.delete("tab");
   const qs = params.toString();
   window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
 }

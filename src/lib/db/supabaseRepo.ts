@@ -3,7 +3,7 @@ import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -449,6 +449,20 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         "listReports",
       ) as Row[];
       return rows.map(toReport);
+    },
+    async listAllReports() {
+      const rows = check(
+        await db.from("reports").select("*, instruments(key,name)")
+          .order("requested_at", { ascending: false }).order("id", { ascending: false }),
+        "listAllReports",
+      ) as Row[];
+      return rows.map((r): ReportWithStock => {
+        const inst = r.instruments as { key: string; name: string } | null;
+        return { ...toReport(r), key: inst?.key ?? "", name: inst?.name ?? "" };
+      });
+    },
+    async deleteReport(id) {
+      check(await db.from("reports").delete().eq("id", id), "deleteReport");
     },
     async getDailySummary(date) {
       const r = check(await db.from("daily_summaries").select("*").eq("date", date).maybeSingle(), "getDailySummary");
