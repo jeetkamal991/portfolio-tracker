@@ -134,7 +134,9 @@ The Alerts tab sets alerts on any stock, index or sector, lists every rule, and 
 
 ### Watchlist
 
-Columns: stock, price, day %, EMA 20/50/200 (each green when the price is at or above it, red below; EMA 200 shows "—" with a "not enough history" tooltip for a stock with too few sessions), trend chip (above all / mixed / below all three EMAs), RSI 14, support and resistance (a manual value overrides the auto one), Technical Score with its label, and a 1-month sparkline. Click any column header to sort; click it again to reverse. Empty values always sort last, ties sort by stock key, and the default is score, highest first. During market hours the price and day % update from live quotes every 60 s; a stock Yahoo omits keeps its stored values.
+A summary strip (stocks, up today, average score, crosses in the last 5 sessions, volume shockers) sits above a row of signal tabs, each with a count: **All**, **Top scores** (the 5 highest), **Weakest** (the 5 lowest), **Golden cross**, **Death cross**, **Breakouts** (a new 52-week high or within 3% of it), **RSI extremes** (above 70 or below 30) and **Volume shockers** (at least 2x the 20-day average, up or down). The signal tabs use the same rules as the Market tab's screeners, applied to your watchlist only. A **Sort** menu orders the tiles by score, day %, RSI or name.
+
+Each stock is a tile: a score ring and label, price and day %, EMA 20 / 50 / 200 with a green ABOVE or red BELOW (EMA 200 shows "—" with a "not enough history" tooltip for a stock with too few sessions), support and resistance with how far away each is and a bar showing where the price sits between them, RSI 14, volume against average, distance from the 52-week high, a 1-month sparkline and one signal chip. Click support or resistance to type a manual level (it shows an M; empty clears it). A tile with the price within range of a level has an amber border. The ✕ removes the stock. During market hours the price and day % update from live quotes every 60 s; a stock Yahoo omits keeps its stored values.
 
 ### Market
 

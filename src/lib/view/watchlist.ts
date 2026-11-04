@@ -6,6 +6,7 @@ import {
   isNearLevel,
   type EmaTrend,
 } from "@/lib/calc/levels";
+import { runScreeners } from "@/lib/calc/screeners";
 import type { ScoreLabel } from "@/lib/calc/score";
 import type { Levels, StoredDay } from "@/lib/db/types";
 
@@ -45,6 +46,10 @@ export interface WatchRow {
   spark: number[];
   /** EMA 200 not available yet. */
   notEnoughHistory: boolean;
+  /** Latest volume over its 20-day average; null without both. */
+  volRatio: number | null;
+  /** Price against the 52-week high as a fraction (-0.12 = 12% below); null without a high. */
+  fromHigh: number | null;
 }
 
 const SPARK_POINTS = 21;
@@ -95,6 +100,8 @@ export function buildWatchRow(input: WatchInput, live?: { price: number; changeP
     scorePartial: last.scoreComponents?.partial ?? false,
     spark,
     notEnoughHistory: last.ema200 === null,
+    volRatio: last.volume && last.volAvg20 ? last.volume / last.volAvg20 : null,
+    fromHigh: last.high52w && last.high52w > 0 ? cmp / last.high52w - 1 : null,
   };
 }
 
@@ -115,4 +122,57 @@ export function sortWatchRows(rows: WatchRow[], key: WatchSortKey, dir: "asc" | 
     }
     return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
   });
+}
+
+export type WatchTab = "all" | "top" | "weak" | "golden" | "death" | "breakout" | "rsi" | "volume";
+
+export const WATCH_TABS: { id: WatchTab; label: string; hint: string }[] = [
+  { id: "all", label: "All", hint: "Every stock on your watchlist." },
+  { id: "top", label: "Top scores", hint: "The 5 highest Technical Scores on your list." },
+  { id: "weak", label: "Weakest", hint: "The 5 lowest Technical Scores on your list." },
+  { id: "golden", label: "Golden cross", hint: "EMA 50 crossed above EMA 200 in the last 5 sessions." },
+  { id: "death", label: "Death cross", hint: "EMA 50 crossed below EMA 200 in the last 5 sessions." },
+  { id: "breakout", label: "Breakouts", hint: "At a new 52-week high or within 3% of it." },
+  { id: "rsi", label: "RSI extremes", hint: "RSI above 70 (overbought) or below 30 (oversold)." },
+  { id: "volume", label: "Volume shockers", hint: "Today's volume at least twice its 20-day average, up or down." },
+];
+
+/** Keys of the stocks that match each signal tab, from the same rules as the Market tab's screeners. */
+export type WatchSignals = Record<"golden" | "death" | "breakout" | "rsi" | "volume", string[]>;
+
+export function buildWatchSignals(stocks: { key: string; name: string; days: StoredDay[] }[]): WatchSignals {
+  const session = stocks.map((s) => s.days[s.days.length - 1]?.date ?? "").sort().pop() ?? "";
+  const results = runScreeners(stocks, session, stocks.length || 1);
+  const keys = (id: string) => results.find((r) => r.id === id)?.hits.map((h) => h.key) ?? [];
+  return {
+    golden: keys("golden"),
+    death: keys("death"),
+    breakout: keys("breakout"),
+    rsi: [...keys("rsi_high"), ...keys("rsi_low")],
+    volume: [...keys("vol_up"), ...keys("vol_down")],
+  };
+}
+
+const TOP_N = 5;
+
+/** The rows a tab shows, keeping the order of `rows`. Top and weakest need a score and take 5. */
+export function tabRows(rows: WatchRow[], tab: WatchTab, sig: WatchSignals): WatchRow[] {
+  if (tab === "all") return rows;
+  if (tab === "top" || tab === "weak") {
+    const scored = rows.filter((r) => r.score !== null).sort((a, b) => (tab === "top" ? b.score! - a.score! : a.score! - b.score!) || a.key.localeCompare(b.key));
+    const keep = new Set(scored.slice(0, TOP_N).map((r) => r.key));
+    return rows.filter((r) => keep.has(r.key));
+  }
+  const keep = new Set(sig[tab]);
+  return rows.filter((r) => keep.has(r.key));
+}
+
+/** The one chip a tile shows: the most important signal on the stock, or null. */
+export function signalChip(key: string, sig: WatchSignals): { label: string; tone: "up" | "down" | "warn" } | null {
+  if (sig.death.includes(key)) return { label: "death cross", tone: "down" };
+  if (sig.golden.includes(key)) return { label: "golden cross", tone: "up" };
+  if (sig.breakout.includes(key)) return { label: "breakout", tone: "up" };
+  if (sig.rsi.includes(key)) return { label: "RSI extreme", tone: "warn" };
+  if (sig.volume.includes(key)) return { label: "volume shock", tone: "warn" };
+  return null;
 }

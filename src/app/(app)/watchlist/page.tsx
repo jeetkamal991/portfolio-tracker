@@ -1,7 +1,7 @@
 import { getRepo } from "@/lib/api/server";
-import type { WatchInput } from "@/lib/view/watchlist";
+import { buildWatchSignals, type WatchInput } from "@/lib/view/watchlist";
 import { AddStock } from "../../components/AddStock";
-import { WatchlistTable } from "../../components/WatchlistTable";
+import { WatchlistTiles } from "../../components/WatchlistTiles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export default async function WatchlistPage() {
   return (
     <div className="flex flex-col gap-4">
       <AddStock />
-      <WatchlistTable inputs={inputs} />
+      <WatchlistTiles inputs={inputs} signals={buildWatchSignals(inputs)} />
     </div>
   );
 }

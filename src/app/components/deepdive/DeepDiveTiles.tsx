@@ -5,11 +5,11 @@ import { useState } from "react";
 import { parseReportContent } from "@/lib/content/claude";
 import { deepDiveStats, scoreTone, type ReportTile } from "@/lib/view/deepdive";
 import { StockPicker, type PickHit } from "../portfolio/StockPicker";
+import { ScoreRing } from "../ScoreRing";
 import { openStock } from "../popup/StockLink";
 import { Chip, Label, Panel, type Tone } from "../ui";
 
 const STATUS: Record<ReportTile["status"], Tone> = { pending: "warn", done: "up", failed: "down" };
-const TONE_VAR = { up: "var(--up)", warn: "var(--warn)", down: "var(--down)", muted: "var(--muted)" } as const;
 
 const fmtWhen = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
@@ -19,25 +19,6 @@ function preview(r: ReportTile): string {
   if (r.status === "failed") return r.error ?? "The report failed.";
   const parsed = parseReportContent(r.content);
   return (parsed.ok && parsed.value.summary) || "Open the report to read it.";
-}
-
-function Ring({ score }: { score: number | null }) {
-  const c = 2 * Math.PI * 26;
-  const color = TONE_VAR[scoreTone(score)];
-  return (
-    <div className="relative h-[62px] w-[62px] shrink-0" title={score === null ? "No score yet" : "Technical Score today"}>
-      <svg width="62" height="62" viewBox="0 0 62 62" className="-rotate-90" aria-hidden="true">
-        <circle cx="31" cy="31" r="26" fill="none" stroke="var(--border)" strokeWidth="6" />
-        {score !== null && (
-          <circle cx="31" cy="31" r="26" fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${((score / 100) * c).toFixed(1)} ${c.toFixed(1)}`} />
-        )}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center font-mono leading-none" style={{ color }}>
-        <span className="text-lg font-semibold">{score ?? "—"}</span>
-        <span className="mt-0.5 text-[8px] uppercase tracking-wider text-[var(--muted)]">score</span>
-      </div>
-    </div>
-  );
 }
 
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
@@ -117,7 +98,7 @@ export function DeepDiveTiles({ initial }: { initial: ReportTile[] }) {
           {tiles.map((r) => (
             <article key={r.id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4">
               <div className="flex items-center gap-3">
-                <Ring score={r.score} />
+                <ScoreRing score={r.score} />
                 <div className="min-w-0">
                   <button type="button" onClick={() => openStock(r.key, "deep")} className="line-clamp-2 text-left text-[15px] font-bold leading-snug hover:text-[var(--up)]" title="Open the stock pop-up on its AI Deep Dive tab">
                     {r.name || r.key}

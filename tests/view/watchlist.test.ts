@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWatchRow, sortWatchRows, type WatchInput, type WatchRow } from "@/lib/view/watchlist";
+import { buildWatchRow, signalChip, sortWatchRows, tabRows, type WatchInput, type WatchRow, type WatchSignals } from "@/lib/view/watchlist";
 import type { Levels, StoredDay } from "@/lib/db/types";
 
 const date = (i: number) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
@@ -94,5 +94,38 @@ describe("sortWatchRows", () => {
   it("does not mutate its input", () => {
     sortWatchRows(rows, "score", "desc");
     expect(keys(rows)).toEqual(["B", "A", "C", "A2"]);
+  });
+});
+
+describe("volume ratio and distance from the 52-week high", () => {
+  it("computes both when the inputs exist, null otherwise", () => {
+    const r = buildWatchRow(input([day(0), day(1, { close: 90, volume: 3000, volAvg20: 1000, high52w: 120 })]))!;
+    expect(r.volRatio).toBe(3);
+    expect(r.fromHigh).toBeCloseTo(-0.25, 5);
+    const none = buildWatchRow(input([day(0)]))!;
+    expect(none.volRatio).toBeNull();
+    expect(none.fromHigh).toBeNull();
+  });
+});
+
+describe("tabRows and signalChip", () => {
+  const row = (key: string, score: number | null) => ({ key, name: key, score }) as unknown as WatchRow;
+  const rows = ["A", "B", "C", "D", "E", "F", "G"].map((k, i) => row(k, i === 6 ? null : (i + 1) * 10));
+  const sig: WatchSignals = { golden: ["B"], death: ["C"], breakout: [], rsi: ["D", "E"], volume: ["C", "F"] };
+  it("all keeps everything in order", () => expect(tabRows(rows, "all", sig).map((r) => r.key)).toEqual(["A", "B", "C", "D", "E", "F", "G"]));
+  it("top and weak take 5 by score and skip unscored stocks", () => {
+    expect(tabRows(rows, "top", sig).map((r) => r.key)).toEqual(["B", "C", "D", "E", "F"]);
+    expect(tabRows(rows, "weak", sig).map((r) => r.key)).toEqual(["A", "B", "C", "D", "E"]);
+  });
+  it("signal tabs keep only the matching stocks, and an unmatched tab is empty", () => {
+    expect(tabRows(rows, "death", sig).map((r) => r.key)).toEqual(["C"]);
+    expect(tabRows(rows, "rsi", sig).map((r) => r.key)).toEqual(["D", "E"]);
+    expect(tabRows(rows, "breakout", sig)).toEqual([]);
+  });
+  it("the chip is the most important signal", () => {
+    expect(signalChip("C", sig)).toEqual({ label: "death cross", tone: "down" });
+    expect(signalChip("B", sig)).toEqual({ label: "golden cross", tone: "up" });
+    expect(signalChip("F", sig)).toEqual({ label: "volume shock", tone: "warn" });
+    expect(signalChip("A", sig)).toBeNull();
   });
 });
