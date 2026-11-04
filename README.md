@@ -79,7 +79,7 @@ The cron route's `maxDuration` is 300 seconds (the most Vercel Hobby allows). If
 
 ## Screens
 
-The app shell has seven tabs, each a route; `/login` sits outside the shell.
+The app shell has six tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
@@ -87,8 +87,8 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 | `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
-| `/market` | Market | Today by Claude |
-| `/alerts` | Alerts | Coming soon |
+| `/market` | Market | Today by Claude, signals on your stocks, ten screeners, six alpha ranks, FII/DII stake increases, breadth and India VIX |
+| `/alerts` | Alerts | Alert rules, fired-alert feed and report-ready notices |
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
@@ -131,6 +131,18 @@ The Alerts tab sets alerts on any stock, index or sector, lists every rule, and 
 
 Columns: stock, price, day %, EMA 20/50/200 (each green when the price is at or above it, red below; EMA 200 shows "—" with a "not enough history" tooltip for a stock with too few sessions), trend chip (above all / mixed / below all three EMAs), RSI 14, support and resistance (a manual value overrides the auto one), Technical Score with its label, and a 1-month sparkline. Click any column header to sort; click it again to reverse. Empty values always sort last, ties sort by stock key, and the default is score, highest first. During market hours the price and day % update from live quotes every 60 s; a stock Yahoo omits keeps its stored values.
 
+### Market
+
+The Market tab is the whole-market view, built on the Nifty 200. Everything except Today by Claude is computed on each page load from stored candles, scores and shareholding rows; nothing here has live quotes. The session is NIFTY 50's latest priced date, so a weekend or holiday shows the last trading day.
+
+- **Today by Claude.** The newest `daily_summaries` row, written by the "Nifty daily market summary" routine (`docs/claude-tasks/daily-summary.md`, Mon-Fri 18:07 IST). It shows the day's read of the market, events and news on your stocks. With no row for the session it says "No summary for today" (Claude writes it on trading days around 6 PM IST).
+- **Your stocks - signals.** Over the last 5 sessions, for the watchlist plus portfolio stocks only: *Crosses* (golden/death cross EMA 50/200, EMA 20 vs 50, close vs EMA 200, MACD vs signal) and *Formations* (candle patterns such as engulfing and morning star). Each line shows the date and a bullish/bearish chip. With no watchlist or holdings it asks you to add some.
+- **Screeners.** Ten cards, each listing the top matches in the Nifty 200 with a count and "Show all": volume shockers up/down, 52-week breakout/breakdown zone, golden/death cross, RSI overbought/oversold, and top/bottom Technical Scores. Click a stock to open its pop-up.
+- **Alpha ranks** and **stake-increase screeners** are described in their own sections below.
+- **Breadth** (right column). Advances, declines and unchanged with the A/D ratio, the share of stocks above their EMA 200 (with how many had enough history to have one), and India VIX with its day % and a 21-session sparkline.
+
+Until `NIFTY200.csv` is imported (Stage 2) the screeners, alphas, stakes and breadth show an "appears after the Nifty 200 import" message; Today by Claude and your-stocks signals still work.
+
 ### Market movers
 
 The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and losers by day % and an advance/decline breadth bar with the A/D ratio. It comes from `GET /api/movers`. During market hours it overlays one batched live quote call (refreshed every 60 s and labelled LIVE, or "at close" if the tab stays open past 15:30 IST; on a weekday NSE holiday Yahoo's quotes are the last session's, so it is not labelled LIVE); otherwise it shows the newest stored session, dated from NIFTY 50, so weekends and holidays show the last trading day. A stock with a zero move counts as unchanged and appears in neither list.
@@ -145,7 +157,7 @@ These are short-horizon (about five-day) statistical ranks, not a buy or sell ca
 
 ### Stake-increase screeners
 
-Below the screeners, the Market tab shows "FII increased stake" and "DII increased stake": the ten Nifty 200 stocks whose holding rose most in percentage points versus the previous quarter (for example `48.1% -> 49.6%`, `+1.5 pts`). Only stocks with a row for both quarters count, and the sub-header shows how many of the 200 have reported for the latest quarter (`164 / 200 reported`), so a half-collected quarter is visible. The stock pop-up's indicator table also gets FII holding and DII holding rows with the change versus the previous quarter. Until the first collection the cards say "Shareholding data appears after the quarterly update runs."
+Below the screeners, the Market tab shows "FII increased stake" and "DII increased stake": the 25 Nifty 200 stocks whose holding rose most in percentage points versus the previous quarter (for example `48.1% -> 49.6%`, `+1.5 pts`). Only stocks with a row for both quarters count, and the sub-header shows how many of the 200 have reported for the latest quarter (`164 / 200 reported`) and all 25 rows are shown, so a half-collected quarter is visible. The stock pop-up's indicator table also gets FII holding and DII holding rows with the change versus the previous quarter. Until the first collection the cards say "Shareholding data appears after the quarterly update runs."
 
 The data is collected by a Claude scheduled task that follows `docs/claude-tasks/shareholding.md` (about 50 stocks per run; it writes through `record_shareholding`, and a re-run replaces, never duplicates). To fill or refresh a quarter by hand, tell Claude "run the shareholding task".
 

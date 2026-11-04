@@ -1,23 +1,22 @@
 # Progress notes — Nifty dashboard
 
-_Updated 2026-10-30 — Vibe-Trading sub-projects 1-3 (alpha ranks, backtesting, research assistant) are built on `feat/research-assistant`. The whole stack was merged into `main` and pushed on 30 Oct (`be05340`). Waiting on your signed-in checks. Resume with: "continue from NOTES.md"_
+_Updated 2026-11-04 - the Research assistant and Backtest reports are removed; speed fixes and the 25-row stake lists are pushed to `main`. Resume with: "continue from NOTES.md"_
 
-## Status at a glance (2026-10-30)
+## Status at a glance (2026-11-04)
 **Done**
-- Everything through the research assistant is on `main` and pushed to `origin`. `main` and `origin/main` are both at `be05340` (fast-forwarded from `150a082` on 30 Oct, 49 commits).
-- Merged in that fast-forward: stage 6b (FII/DII stake screeners), alpha ranks, backtesting, research assistant. `feat/research-assistant` now points at the same commit as `main`.
-- Research assistant (2026-10-28 to 30): Research assistant tab, Backtests tab renamed "Backtest reports", `npm run tracker` read-only data tools, `npm run assistant-check`. Migration **0011 applied** to Tracker1.
-- 747 tests; typecheck, lint and build clean on the branch.
+- `main` and `origin/main` are at `1d14c27`, pushed 4 Nov. Vercel deploys from `main`; I did not watch that deploy finish, so check the live site.
+- Speed (4 Nov): the page was slow because every click made 6-7 sequential database round trips of about 300 ms each, from a Vercel function region far from the Supabase database (`ca-central-1`). `vercel.json` now pins `"regions": ["iad1"]`. The layout strip and Dashboard history are memoised for 60 s per lambda (`cached()` in `src/lib/api/server.ts`), and the middleware uses `getClaims()` instead of `getUser()`.
+- Stake-increase lists on the Market tab show the top 25 (was 10), all visible.
+- Removed 4 Nov: the Research assistant (tab, API, `src/lib/assistant/`, `npm run tracker`, `assistant-check`, `assistant/CLAUDE.md`) and Backtest reports (tab, `src/lib/calc/backtest/`, `npm run backtest`), plus `react-markdown` and `remark-gfm`. Migration **0013** dropped `assistant_sessions` and `backtest_runs` on Tracker1 (1 row each). Migrations 0010 and 0011 stay in the folder as history.
+- Cleaned 4 Nov: the two TEST bell events (`alert_events` ids 3 and 4) and 7 merged local branches. 612 tests, typecheck and lint clean.
 
-**What I'm doing now**
-- Nothing running. The dev server is stopped - start it with `npm run dev`.
-
-**Needs to be done**
-- You: the signed-in checks for everything since stage 7 (Alerts, alpha cards, Backtest reports, Research assistant). I cannot sign in; the Claude in Chrome extension is still not connected, so every look so far is a static render.
-- ~~You: apply migration 0010~~ - checked on Tracker1 2026-10-30: every migration 0001-0011 is applied. `backtest_runs` holds the 27 Oct sample run (#1, alpha a101 top 10, hold 5), so the Backtest reports tab and the assistant's report cards have something to show.
-- ~~Me: merge the stack into `main` and push~~ - done 2026-10-30, fast-forward to `be05340`, pushed to `origin`. The code is no longer only on this machine. **Nothing since stage 7 is deployed, though - Vercel still runs the old `main`.**
-- ~~You: apply migration 0012~~ - applied to Tracker1 2026-11-02; trigger `reports_ready_notify` is enabled.
-- Older items: To do 1 and 3-8 below.
+**Open**
+- Telegram: the last fired alert (3 Nov) was still logged `telegram_status = not_configured`, so I could not confirm Telegram works end to end. Check the next fired alert.
+- Time one EOD run on the deployed site. If it takes over about 4 minutes it will hit Vercel's 300 s limit and the EOD job must be split in two (Task 8 of `docs/superpowers/plans/2026-10-18-redesign-stage2-score-universe-popup.md`).
+- The 8 thin-sector history files (`NIFTY_AUTO`, `NIFTY_FIN`, `NIFTY_FMCG`, `NIFTY_MEDIA`, `NIFTY_METAL`, `NIFTY_PSU_BANK`, `NIFTY_PVT_BANK`, `NIFTY_HEALTHCARE`) must be downloaded by hand from niftyindices.com into `data/niftyindices/history/`, then run `npm run import-niftyindices -- --dry-run` and `npm run import-niftyindices`. The site refuses scripted downloads.
+- Unadjusted corporate actions in the stored prices (Yahoo serves them unadjusted too): `MOTILALOFS` on 2024-01-01 (1240.85 to 315.01), `PATANJALI` on 2020-01-27 (111.67 to 5.67), `VEDL` on 2026-04-30 (773.60 to 271.55, a demerger). Returns, EMAs and screeners that look across those dates are wrong for these three until fixed or excluded.
+- Local branch `feat/redesign-stage7-alerts` is still there: it has no commits that `main` lacks, but git will not `-d` it because its remote copy differs. `origin/feat/redesign-stage7-alerts` also still exists.
+- Older items: To do 1 and 3-8 below. The session notes below describe the assistant and backtests as they were before removal.
 
 ## Session 2026-10-19 evening
 - **TODAY BY CLAUDE was empty** because the daily-summary task had never been scheduled (`daily_summaries` had no rows). I wrote the 19 Oct row by hand following `docs/claude-tasks/daily-summary.md` (Nifty −1.11%, PSU Bank the only green sector, 3 market events, no news for your stocks).
