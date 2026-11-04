@@ -4,7 +4,6 @@ import { fmtDate } from "@/lib/view/dashboard";
 import { DailyLog } from "../../components/sectors/DailyLog";
 import { RotationPanel } from "../../components/sectors/RotationPanel";
 import { SectorDetail } from "../../components/sectors/SectorDetail";
-import { SectorMood } from "../../components/sectors/SectorMood";
 import { SectorGrid } from "../../components/sectors/SectorGrid";
 import { Label } from "../../components/ui";
 
@@ -22,7 +21,6 @@ export default async function SectorsPage({ searchParams }: { searchParams: Prom
         <h1 className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Sector Analysis</h1>
         {a.sessionDate && <Label>as of {fmtDate(a.sessionDate)}</Label>}
       </div>
-      <SectorMood tiles={a.tiles} nifty={a.nifty} />
       <SectorGrid tiles={a.tiles} selected={selected?.key ?? null} />
       {selected ? (
         <SectorDetail tile={selected} rows={a.constituents[selected.key] ?? []} />
