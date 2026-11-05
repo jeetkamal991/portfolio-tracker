@@ -156,7 +156,7 @@ function risk(i: ScoreInput): number {
 }
 
 /** FII / DII stake change in percentage points -> points out of `max`: +1 or more all, +0.25 three quarters, within -0.25 half, down to -1 a quarter, below that none. */
-function stakePoints(delta: number, max: number): number {
+export function stakePoints(delta: number, max: number): number {
   const d = Math.round(delta * 100) / 100;
   return d >= 1 ? max : d >= 0.25 ? max * 0.75 : d >= -0.25 ? max * 0.5 : d > -1 ? max * 0.25 : 0;
 }

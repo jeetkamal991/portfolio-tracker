@@ -7,6 +7,11 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/cron/eod")).toBe(true);
     expect(isPublicPath("/api/cron")).toBe(true);
   });
+  it("keeps the new evaluation API and rankings page behind login, and the snapshot cron on the secret", () => {
+    expect(isPublicPath("/api/evaluation/TRENT")).toBe(false);
+    expect(isPublicPath("/rankings")).toBe(false);
+    expect(isPublicPath("/api/cron/snapshots")).toBe(true);
+  });
   it("protects everything else with exact segment matching", () => {
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/api/quotes")).toBe(false);

@@ -21,7 +21,6 @@ export interface PrefillData {
   scoreLabel: ScoreLabel | null;
   support: number | null;
   resistance: number | null;
-  nextResistance: number | null;
   held: HoldingInput | null;
 }
 
@@ -102,9 +101,8 @@ export async function handleHoldingPrefill(repo: Repo, key: string): Promise<Api
     scoreLabel: latest?.scoreLabel ?? null,
     support: levels.supports[0] ?? null,
     resistance: levels.resistances[0] ?? null,
-    nextResistance: levels.resistances[1] ?? null,
     held: held
-      ? { qty: held.qty, avgPrice: held.avgPrice, buyDate: held.buyDate, stopLoss: held.stopLoss, target1: held.target1, target2: held.target2 }
+      ? { qty: held.qty, avgPrice: held.avgPrice, buyDate: held.buyDate, stopLoss: held.stopLoss, target1: held.target1 }
       : null,
   };
   return { status: 200, body: data };

@@ -10,7 +10,7 @@ const instruments = [
   { id: 2, key: "INFY", name: "Infy", type: "stock" as const, yahooTicker: "INFY.NS", active: true },
 ];
 const holding = (o: Partial<{ stopLoss: number | null; target1: number | null }> = {}) =>
-  ({ qty: 1, avgPrice: 3500, buyDate: "2026-10-01", stopLoss: 3400, target1: 3800, target2: null, ...o });
+  ({ qty: 1, avgPrice: 3500, buyDate: "2026-10-01", stopLoss: 3400, target1: 3800, ...o });
 const snap = (price: number) => async (): Promise<Snapshot> => ({
   key: "TCS", price, ema20: null, ema50: null, ema200: null, rsi14: null, score: null, scoreLabel: null, at: new Date(), live: false,
 });

@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HoldingInput } from "@/lib/calc/portfolio";
+import { addDays, istDate } from "@/lib/time/ist";
 import type { Candle } from "@/lib/provider/types";
 import { dedupeLastWins } from "./dedupe";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, InstrumentType, JobRun, JobStatus, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
 
 const PAGE = 1000; // PostgREST response cap
 const CHUNK = 500;
@@ -82,7 +83,7 @@ const toHolding = (r: Row, inst: Row): Holding => ({
   qty: Number(r.quantity),
   avgPrice: Number(r.avg_price),
   buyDate: r.buy_date as string,
-  stopLoss: num(r.stop_loss), target1: num(r.target1), target2: num(r.target2),
+  stopLoss: num(r.stop_loss), target1: num(r.target1),
 });
 type Joined = Row & { instruments: Row | Row[] | null };
 const toAlertRule = (r: Row, inst: Row): AlertRule => ({
@@ -126,6 +127,57 @@ function check<T>(res: { data: T; error: { message: string } | null }, what: str
   return res.data;
 }
 
+const toSnapshot = (r: Row): ScoreSnapshot => ({
+  instrumentId: Number(r.instrument_id), symbol: r.symbol as string, evaluationDate: r.evaluation_date as string, scoringVersion: r.scoring_version as string,
+  technicalScore: num(r.technical_score), tradeQualityScore: num(r.trade_quality_score), fundamentalScore: num(r.fundamental_score), dataConfidence: num(r.data_confidence),
+  categoryBreakdown: r.category_breakdown, dataCoverage: r.data_coverage, dataTimestamp: r.data_timestamp as string, createdAt: r.created_at as string,
+});
+const toScoreRun = (r: Row): ScoreRun => ({
+  id: Number(r.id), runDate: r.run_date as string, scoringVersion: r.scoring_version as string, status: r.status as ScoreRun["status"],
+  total: Number(r.total), nextOffset: Number(r.next_offset), processed: Number(r.processed), failed: (r.failed as ScoreRun["failed"]) ?? [],
+  batches: Number(r.batches), maxBatches: Number(r.max_batches), lockedUntil: (r.locked_until as string | null) ?? null,
+  lastSuccessAt: (r.last_success_at as string | null) ?? null, finishedAt: (r.finished_at as string | null) ?? null, error: (r.error as string | null) ?? null,
+});
+
+const CHART_COLUMNS = "date,open,high,low,close,volume,ema20,ema50,ema200,bb_upper,bb_middle,bb_lower,rsi14,macd,macd_signal,macd_hist";
+
+type PageResult = { data: unknown; error: { message: string } | null; count: number | null };
+/**
+ * Reads a large filtered result in as few sequential round trips as possible, however big it is.
+ * The first wave requests `speculate` pages at once (page 0 also asks for the exact total); if the total shows more pages exist,
+ * every remaining page is requested together as a second wave. Cost: at most two sequential steps. Requesting a page that turns
+ * out to be empty is cheap; waiting a full round trip for the count before asking for page 2 is not (round trips dominate here).
+ * Pass `speculate` as the number of pages the query is expected to fill. The caller's query needs a stable order so pages do
+ * not overlap; `maxRows` caps how much is ever read.
+ */
+async function pagedAll(
+  fetchPage: (from: number, to: number, withCount: boolean) => PromiseLike<PageResult>,
+  what: string,
+  maxRows = Infinity,
+  speculate = 1,
+): Promise<Row[]> {
+  const ok = (r: PageResult) => check(r as { data: Row[]; error: { message: string } | null }, what);
+  const firstStarts: number[] = [];
+  for (let i = 0; i < Math.max(1, speculate) && i * PAGE < maxRows; i++) firstStarts.push(i * PAGE);
+  const wave = await Promise.all(firstStarts.map((from) => fetchPage(from, from + PAGE - 1, from === 0)));
+  const rows: Row[] = [];
+  for (const r of wave) rows.push(...ok(r));
+  const total = Math.min(wave[0]!.count ?? rows.length, maxRows);
+  const covered = firstStarts.length * PAGE;
+  if (total <= covered || rows.length < covered) return rows;
+  const starts: number[] = [];
+  for (let from = covered; from < total; from += PAGE) starts.push(from);
+  const rest = await Promise.all(starts.map(async (from) => ok(await fetchPage(from, from + PAGE - 1, false))));
+  return rows.concat(...rest);
+}
+
+const pagesFor = (rows: number) => Math.max(1, Math.min(4, Math.ceil(rows / PAGE)));
+/** Calendar days between two YYYY-MM-DD dates (inclusive); 0 if either is malformed. */
+const spanDays = (from: string, to: string) => {
+  const d = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
+  return Number.isFinite(d) ? Math.max(0, d) + 1 : 0;
+};
+
 export function createSupabaseRepo(db: SupabaseClient): Repo {
   const upsertDays = async (rows: Row[], what: string) => {
     const unique = dedupeLastWins(rows, (r) => `${r.instrument_id}|${r.date}`);
@@ -139,24 +191,25 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
    * All pages are requested at once: each round trip to the database is ~300 ms, so sequential pages added up to seconds.
    */
   const readDays = async (instrumentId: number, limit: number, columns: string, what: string): Promise<Row[]> => {
-    const starts: number[] = [];
-    for (let from = 0; from < limit; from += PAGE) starts.push(from);
-    const pages = await Promise.all(starts.map(async (from) => {
-      const size = Math.min(PAGE, limit - from);
+    if (limit <= PAGE) {
+      // the common case (a pop-up's year, a strip's ten rows): exactly one request
       const page = check(
-        await db.from("daily_prices").select(columns).eq("instrument_id", instrumentId)
-          .order("date", { ascending: false }).range(from, from + size - 1),
+        await db.from("daily_prices").select(columns).eq("instrument_id", instrumentId).order("date", { ascending: false }).range(0, limit - 1),
         what,
       ) as unknown as Row[];
-      return { page, full: page.length === size };
-    }));
-    const out: Row[] = [];
-    // a short page is the end of the history; later pages are empty
-    for (const { page, full } of pages) {
-      out.push(...page);
-      if (!full) break;
+      return page.reverse();
     }
-    return out.reverse();
+    // long history: the first page also reports how many rows exist, then only the pages that exist are requested, together
+    // (it used to request every possible page up front, most of them empty)
+    const rows = await pagedAll(
+      (from, to, withCount) =>
+        db.from("daily_prices").select(columns, withCount ? { count: "exact" } : undefined).eq("instrument_id", instrumentId)
+          .order("date", { ascending: false }).range(from, Math.min(to, limit - 1)),
+      what,
+      limit,
+      Math.min(3, pagesFor(limit)),
+    );
+    return rows.slice(0, limit).reverse();
   };
 
   return {
@@ -275,23 +328,96 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async getDaysRange(instrumentIds, fromDate, toDate) {
       const out = new Map<number, StoredDay[]>();
-      for (const c of chunks([...new Set(instrumentIds)], 300)) {
-        for (let from = 0; ; from += PAGE) {
-          const page = check(
-            await db.from("daily_prices").select("*").in("instrument_id", c)
-              .gte("date", fromDate).lte("date", toDate)
-              .order("instrument_id").order("date").range(from, from + PAGE - 1),
-            "getDaysRange",
-          ) as Row[];
-          for (const r of page) {
-            const id = Number(r.instrument_id);
-            const list = out.get(id);
-            if (list) list.push(toDay(r)); else out.set(id, [toDay(r)]);
-          }
-          if (page.length < PAGE) break;
-        }
+      const parts = await Promise.all(chunks([...new Set(instrumentIds)], 300).map((c) =>
+        pagedAll(
+          (from, to, withCount) =>
+            db.from("daily_prices").select("*", withCount ? { count: "exact" } : undefined).in("instrument_id", c)
+              .gte("date", fromDate).lte("date", toDate).order("instrument_id").order("date").range(from, to),
+          "getDaysRange",
+          Infinity,
+          pagesFor(c.length * Math.ceil(spanDays(fromDate, toDate) * (5 / 7))),
+        ),
+      ));
+      for (const r of parts.flat()) {
+        const id = Number(r.instrument_id);
+        const list = out.get(id);
+        if (list) list.push(toDay(r)); else out.set(id, [toDay(r)]);
       }
       return out;
+    },
+    async getRecentDays(instrumentIds, perInstrument, windowDays) {
+      const out = new Map<number, StoredDay[]>();
+      const ids = [...new Set(instrumentIds)];
+      if (ids.length === 0) return out;
+      const fromDate = addDays(istDate(new Date()), -(windowDays ?? Math.ceil(perInstrument * 1.5) + 10));
+      const parts = await Promise.all(chunks(ids, 300).map((c) =>
+        pagedAll(
+          (from, to, withCount) =>
+            db.from("daily_prices").select("*", withCount ? { count: "exact" } : undefined).in("instrument_id", c)
+              .gte("date", fromDate).order("instrument_id").order("date").range(from, to),
+          "getRecentDays",
+          Infinity,
+          pagesFor(c.length * perInstrument),
+        ),
+      ));
+      for (const r of parts.flat()) {
+        const id = Number(r.instrument_id);
+        const list = out.get(id);
+        if (list) list.push(toDay(r)); else out.set(id, [toDay(r)]);
+      }
+      for (const [id, list] of out) out.set(id, list.slice(-perInstrument));
+      return out;
+    },
+    async getChartDays(instrumentId, limit) {
+      return (await readDays(instrumentId, limit, CHART_COLUMNS, "getChartDays")).map(toDay);
+    },
+    async getLevelsMany(instrumentIds) {
+      const out = new Map<number, Levels>();
+      const ids = [...new Set(instrumentIds)];
+      for (const id of ids) out.set(id, toLevels(null));
+      if (ids.length === 0) return out;
+      const rows = check(await db.from("levels").select("*").in("instrument_id", ids), "getLevelsMany") as Row[];
+      for (const r of rows) out.set(Number(r.instrument_id), toLevels(r));
+      return out;
+    },
+    async listConstituentsMany(indexKeys) {
+      const out = new Map<string, Instrument[]>(indexKeys.map((k) => [k, []]));
+      if (indexKeys.length === 0) return out;
+      const rows = check(
+        await db.from("index_constituents").select("index_key, instruments(*)").in("index_key", indexKeys),
+        "listConstituentsMany",
+      ) as unknown as { index_key: string; instruments: Row | Row[] | null }[];
+      for (const r of rows) {
+        const i = Array.isArray(r.instruments) ? r.instruments[0] : r.instruments;
+        if (i) out.get(r.index_key)?.push(toInstrument(i));
+      }
+      return out;
+    },
+    async listSnapshotSummaries(f) {
+      // PostgREST JSON-path selects pull only the small parts of data_coverage; category_breakdown (the bulk) is never read.
+      const cols = "instrument_id,symbol,evaluation_date,scoring_version,technical_score,trade_quality_score,fundamental_score,data_confidence,data_timestamp," +
+        "tcov:data_coverage->technical->coverage,qcov:data_coverage->tradeQuality->coverage,qrank:data_coverage->tradeQuality->rankable," +
+        "qobs:data_coverage->tradeQuality->>observation,cstat:data_coverage->confidence->>status,metrics:data_coverage->metrics,shares:data_coverage->categoryShares";
+      const out: ScoreSnapshot[] = [];
+      for (let from = 0; ; from += 500) {
+        const page = check(
+          await db.from("stock_score_snapshots").select(cols).eq("scoring_version", f.version).eq("evaluation_date", f.date).order("instrument_id").range(from, from + 499),
+          "listSnapshotSummaries",
+        ) as unknown as Row[];
+        for (const r of page) {
+          out.push({
+            instrumentId: Number(r.instrument_id), symbol: r.symbol as string, evaluationDate: r.evaluation_date as string, scoringVersion: r.scoring_version as string,
+            technicalScore: num(r.technical_score), tradeQualityScore: num(r.trade_quality_score), fundamentalScore: num(r.fundamental_score), dataConfidence: num(r.data_confidence),
+            categoryBreakdown: {},
+            dataCoverage: {
+              technical: { coverage: r.tcov }, tradeQuality: { coverage: r.qcov, rankable: r.qrank, observation: r.qobs },
+              confidence: { status: r.cstat }, metrics: r.metrics, categoryShares: r.shares,
+            },
+            dataTimestamp: r.data_timestamp as string,
+          });
+        }
+        if (page.length < 500) return out;
+      }
     },
     async getOhlcvRange(instrumentIds, fromDate, toDate) {
       const out = new Map<number, OhlcvDay[]>();
@@ -372,7 +498,7 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         await db.from("holdings").upsert(
           {
             instrument_id: instrumentId, quantity: h.qty, avg_price: h.avgPrice, buy_date: h.buyDate,
-            stop_loss: h.stopLoss, target1: h.target1, target2: h.target2, updated_at: now(),
+            stop_loss: h.stopLoss, target1: h.target1, updated_at: now(),
           },
           { onConflict: "instrument_id" },
         ),
@@ -579,9 +705,11 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         check(await db.from("alert_events").update({ read: true }).in("id", ids), "markAlertsRead");
       }
     },
-    async listShareholding(quarterEnds) {
-      if (quarterEnds.length === 0) return [];
-      const rows = check(await db.from("shareholding").select("*").in("quarter_end", quarterEnds), "listShareholding") as Row[];
+    async listShareholding(quarterEnds, instrumentIds) {
+      if (quarterEnds.length === 0 || instrumentIds?.length === 0) return [];
+      let q = db.from("shareholding").select("*").in("quarter_end", quarterEnds);
+      if (instrumentIds) q = q.in("instrument_id", instrumentIds);
+      const rows = check(await q, "listShareholding") as Row[];
       return rows.map(toShareholding);
     },
     async latestShareholdingQuarter() {
@@ -600,6 +728,94 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
         }))),
         "upsertShareholding",
       );
+    },
+    async upsertSnapshots(rows) {
+      for (const c of chunks(rows, 100)) {
+        check(
+          await db.from("stock_score_snapshots").upsert(
+            c.map((r) => ({
+              instrument_id: r.instrumentId, symbol: r.symbol, evaluation_date: r.evaluationDate, scoring_version: r.scoringVersion,
+              technical_score: r.technicalScore, trade_quality_score: r.tradeQualityScore, fundamental_score: r.fundamentalScore,
+              data_confidence: r.dataConfidence, category_breakdown: r.categoryBreakdown, data_coverage: r.dataCoverage, data_timestamp: r.dataTimestamp,
+            })),
+            { onConflict: "instrument_id,evaluation_date,scoring_version" },
+          ),
+          "upsertSnapshots",
+        );
+      }
+    },
+    async listSnapshots(f) {
+      const out: ScoreSnapshot[] = [];
+      for (let from = 0; ; from += 500) {
+        const page = check(
+          await db.from("stock_score_snapshots").select("*").eq("scoring_version", f.version).eq("evaluation_date", f.date).order("instrument_id").range(from, from + 499),
+          "listSnapshots",
+        ) as Row[];
+        for (const r of page) out.push(toSnapshot(r));
+        if (page.length < 500) return out;
+      }
+    },
+    async getScoreRun(runDate, version) {
+      const r = check(await db.from("score_runs").select("*").eq("run_date", runDate).eq("scoring_version", version).maybeSingle(), "getScoreRun") as Row | null;
+      return r ? toScoreRun(r) : null;
+    },
+    async ensureScoreRun(runDate, version, total, maxBatches) {
+      check(
+        await db.from("score_runs").upsert({ run_date: runDate, scoring_version: version, total, max_batches: maxBatches }, { onConflict: "run_date,scoring_version", ignoreDuplicates: true }),
+        "ensureScoreRun",
+      );
+      return toScoreRun(check(await db.from("score_runs").select("*").eq("run_date", runDate).eq("scoring_version", version).single(), "ensureScoreRun") as Row);
+    },
+    async claimScoreRun(runDate, version, now, leaseMs) {
+      const cur = check(await db.from("score_runs").select("*").eq("run_date", runDate).eq("scoring_version", version).maybeSingle(), "claimScoreRun") as Row | null;
+      if (!cur) return { claimed: false, run: null };
+      const run = toScoreRun(cur);
+      if (run.status === "completed" || run.status === "failed") return { claimed: false, run };
+      if (run.lockedUntil !== null && Date.parse(run.lockedUntil) > now.getTime()) return { claimed: false, run };
+      if (run.batches >= run.maxBatches) {
+        check(await db.from("score_runs").update({ status: "failed", error: `Batch allowance of ${run.maxBatches} used up before the run finished`, finished_at: now.toISOString() }).eq("id", run.id), "claimScoreRun");
+        return { claimed: false, run: { ...run, status: "failed" } };
+      }
+      // Optimistic claim: only succeeds if nobody changed batches since we read it.
+      const got = check(
+        await db.from("score_runs").update({ batches: run.batches + 1, status: "running", locked_until: new Date(now.getTime() + leaseMs).toISOString() }).eq("id", run.id).eq("batches", run.batches).select(),
+        "claimScoreRun",
+      ) as Row[];
+      return got.length === 1 ? { claimed: true, run: toScoreRun(got[0]!) } : { claimed: false, run };
+    },
+    async saveScoreRun(run) {
+      check(
+        await db.from("score_runs").update({
+          status: run.status, next_offset: run.nextOffset, processed: run.processed, failed: run.failed, total: run.total,
+          last_success_at: run.lastSuccessAt, finished_at: run.finishedAt, error: run.error, locked_until: null,
+        }).eq("id", run.id),
+        "saveScoreRun",
+      );
+    },
+    async latestSnapshotDate(version) {
+      const r = check(
+        await db.from("stock_score_snapshots").select("evaluation_date").eq("scoring_version", version).order("evaluation_date", { ascending: false }).limit(1).maybeSingle(),
+        "latestSnapshotDate",
+      ) as Row | null;
+      return r ? (r.evaluation_date as string) : null;
+    },
+    async getSnapshot(instrumentId, version, date) {
+      let q = db.from("stock_score_snapshots").select("*").eq("instrument_id", instrumentId).eq("scoring_version", version);
+      if (date) q = q.eq("evaluation_date", date);
+      const r = check(await q.order("evaluation_date", { ascending: false }).limit(1).maybeSingle(), "getSnapshot") as Row | null;
+      return r ? toSnapshot(r) : null;
+    },
+    async listSnapshotsRange(version, fromDate, toDate) {
+      const out: ScoreSnapshot[] = [];
+      for (let from = 0; ; from += 500) {
+        const page = check(
+          await db.from("stock_score_snapshots").select("*").eq("scoring_version", version).gte("evaluation_date", fromDate).lte("evaluation_date", toDate)
+            .order("evaluation_date").order("instrument_id").range(from, from + 499),
+          "listSnapshotsRange",
+        ) as Row[];
+        for (const r of page) out.push(toSnapshot(r));
+        if (page.length < 500) return out;
+      }
     },
   };
 }

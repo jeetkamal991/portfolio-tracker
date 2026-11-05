@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSupabaseRepo } from "@/lib/db/supabaseRepo";
 import type { Repo } from "@/lib/db/repo";
+import { loadCloses, recomputeInstrument } from "@/lib/jobs/eod";
 import { importConstituentFile, parseIndexHistoryCsv, type IndexHistoryRow } from "@/lib/import/niftyindices";
 import { SECTOR_KEYS } from "@/lib/instruments";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -82,6 +83,11 @@ async function main() {
         if (!inst) { errors.push(`history ${key}: instrument not found`); continue; }
         const CHUNK = 500;
         for (let i = 0; i < candles.length; i += CHUNK) await repo.upsertCandles(inst.id, candles.slice(i, i + CHUNK));
+        // Imported candles carry no indicators: compute EMA/RSI/MACD for every stored day so the sector trend and sector
+        // relative-strength inputs become scorable (until then they stay missing, never zero).
+        const nifty = await repo.getInstrumentByKey("NIFTY50");
+        if (nifty) await recomputeInstrument(repo, inst, await loadCloses(repo, nifty.id), { upsertAll: true });
+        console.log(`history ${key}: indicators recomputed`);
       }
     }
   }

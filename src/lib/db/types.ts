@@ -209,3 +209,42 @@ export interface ShareholdingRow {
   promoterPct: number | null;
   sourceUrl: string | null;
 }
+
+/** One enhanced_v2 evaluation of a stock on one session. Fundamental stays null until a provider is approved. */
+export interface ScoreSnapshot {
+  instrumentId: number;
+  symbol: string;
+  evaluationDate: string;
+  scoringVersion: string;
+  technicalScore: number | null;
+  tradeQualityScore: number | null;
+  fundamentalScore: number | null;
+  dataConfidence: number | null;
+  /** Exact per-category, per-item breakdown of the technical and trade-quality results. */
+  categoryBreakdown: unknown;
+  /** Coverage, status, rankability, flags and missing inputs. */
+  dataCoverage: unknown;
+  /** Timestamp of the newest bar the scores were built from. */
+  dataTimestamp: string;
+  createdAt?: string;
+}
+
+export interface FailedSymbol { key: string; attempts: number; error: string }
+
+/** Progress of one chunked snapshot run (run_date x scoring_version). */
+export interface ScoreRun {
+  id: number;
+  runDate: string;
+  scoringVersion: string;
+  status: "pending" | "running" | "completed" | "failed";
+  total: number;
+  nextOffset: number;
+  processed: number;
+  failed: FailedSymbol[];
+  batches: number;
+  maxBatches: number;
+  lockedUntil: string | null;
+  lastSuccessAt: string | null;
+  finishedAt: string | null;
+  error: string | null;
+}

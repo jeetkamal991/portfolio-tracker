@@ -387,7 +387,7 @@ describe("runEod alert pass", () => {
 
   it("creates the SL/target rules of holdings that have none yet", async () => {
     const repo = await universe();
-    await repo.upsertHolding(3, { qty: 1, avgPrice: 900, buyDate: "2026-10-01", stopLoss: 800, target1: 2000, target2: null });
+    await repo.upsertHolding(3, { qty: 1, avgPrice: 900, buyDate: "2026-10-01", stopLoss: 800, target1: 2000 });
     await runEod({ repo, provider: fakeProvider(), now: NOW });
     expect((await repo.listAlertRules()).map((r) => r.condition)).toEqual(["holding_sl", "holding_target"]);
   });

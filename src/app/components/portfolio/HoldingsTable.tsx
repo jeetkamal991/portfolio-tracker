@@ -8,6 +8,7 @@ import { fmtInr, fmtSignedInr, sortPortfolioRows, type PortfolioRow, type Portfo
 import { ScoreLabelChip } from "../popup/ScoreBadge";
 import { StockLink } from "../popup/StockLink";
 import { Chip, Panel, type Tone } from "../ui";
+import { mutate } from "@/lib/client/cache";
 
 type Dir = "asc" | "desc";
 
@@ -19,10 +20,8 @@ const COLUMNS: { key: PortfolioSortKey | null; label: string; left?: boolean }[]
   { key: "invested", label: "Invested" },
   { key: "value", label: "Value" },
   { key: "pnl", label: "P/L" },
-  { key: "dayPnl", label: "Day P/L" },
   { key: null, label: "SL" },
   { key: null, label: "T1" },
-  { key: null, label: "T2" },
   { key: null, label: "Status" },
   { key: "score", label: "Score" },
 ];
@@ -86,7 +85,7 @@ export function HoldingsTable({
     setBusy(key);
     setError(null);
     try {
-      const res = await fetch(`/api/holdings/${encodeURIComponent(key)}`, { method: "DELETE" });
+      const res = await mutate(`/api/holdings/${encodeURIComponent(key)}`, { method: "DELETE" });
       if (!res.ok) throw new Error(String(res.status));
       setConfirming(null);
       router.refresh();
@@ -114,7 +113,7 @@ export function HoldingsTable({
         </p>
       )}
       <div className="relative overflow-x-auto">
-        <table className="w-full min-w-[1200px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted)]">
             <tr className="text-right">
               {COLUMNS.map((c, i) => {
@@ -137,7 +136,7 @@ export function HoldingsTable({
                   </th>
                 );
               })}
-              <th className="px-2 font-medium">
+              <th className="sticky right-0 z-10 bg-[var(--panel)] px-2 font-medium">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -166,17 +165,13 @@ export function HoldingsTable({
                   <td className={MONO}>
                     <Money pnl={r.pnl} pct={r.pnlPct} />
                   </td>
-                  <td className={MONO}>
-                    <Money pnl={r.dayPnl} />
-                  </td>
                   <td className={MONO}>{fmtInr(r.stopLoss, 2)}</td>
                   <td className={MONO}>{fmtInr(r.target1, 2)}</td>
-                  <td className={MONO}>{fmtInr(r.target2, 2)}</td>
                   <td className="px-2">{st ? <Chip tone={st.tone}>{st.text}</Chip> : "—"}</td>
                   <td className="px-2">
                     {r.score !== null && r.scoreLabel !== null ? <ScoreLabelChip label={r.scoreLabel} score={r.score} /> : "—"}
                   </td>
-                  <td className="whitespace-nowrap px-2 text-xs">
+                  <td className="sticky right-0 z-10 whitespace-nowrap bg-[var(--panel)] px-2 text-xs">
                     {confirming === r.key ? (
                       <span role="group" aria-label={`Confirm removing ${r.name}`} className="inline-flex items-center gap-2">
                         <span className="text-[var(--muted)]">Remove?</span>

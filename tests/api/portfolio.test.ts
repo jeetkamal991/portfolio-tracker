@@ -38,7 +38,7 @@ describe("handleHoldingPost", () => {
     const repo = await setup();
     const r = await handleHoldingPost(deps(repo), body);
     expect(r).toEqual({ status: 200, body: { ok: true, merged: false, warnings: [] } });
-    expect(await repo.getHolding(1)).toMatchObject({ qty: 10, avgPrice: 100, stopLoss: 90, target1: 120, target2: null });
+    expect(await repo.getHolding(1)).toMatchObject({ qty: 10, avgPrice: 100, stopLoss: 90, target1: 120 });
   });
   it("qty 0 -> 400 with errors.qty and nothing saved", async () => {
     const repo = await setup();
@@ -80,7 +80,7 @@ describe("handleHoldingPut / Delete", () => {
     await handleHoldingPost(deps(repo), body);
     const r = await handleHoldingPut(deps(repo), "AAA", { qty: 5, avgPrice: 50, buyDate: "2026-09-01" });
     expect(r.status).toBe(200);
-    expect(await repo.getHolding(1)).toMatchObject({ qty: 5, avgPrice: 50, buyDate: "2026-09-01", stopLoss: null, target1: null, target2: null });
+    expect(await repo.getHolding(1)).toMatchObject({ qty: 5, avgPrice: 50, buyDate: "2026-09-01", stopLoss: null, target1: null });
   });
   it("PUT validates and 404s when not held", async () => {
     const repo = await setup();
@@ -120,11 +120,11 @@ describe("handleHoldingPrefill", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({
       key: "AAA", name: "Aaa Ltd", sectorName: "Nifty IT", cmp: 100, score: null,
-      support: 90, resistance: 112, nextResistance: 120, held: null,
+      support: 90, resistance: 112, held: null,
     } satisfies Partial<PrefillData>);
     await handleHoldingPost(deps(repo), body);
     expect(((await handleHoldingPrefill(repo, "AAA")).body as PrefillData).held).toEqual({
-      qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120, target2: null,
+      qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120,
     });
   });
   it("404s on unknown or non-stock keys", async () => {
@@ -135,7 +135,7 @@ describe("handleHoldingPrefill", () => {
 });
 
 describe("loadHoldingsLatest", () => {
-  const h = { qty: 1, avgPrice: 100, buyDate: "2026-10-01", stopLoss: null, target1: null, target2: null };
+  const h = { qty: 1, avgPrice: 100, buyDate: "2026-10-01", stopLoss: null, target1: null };
   it("empty portfolio gives no holdings", async () => {
     expect(await loadHoldingsLatest(await setup())).toEqual({ holdings: [], latest: [] });
   });

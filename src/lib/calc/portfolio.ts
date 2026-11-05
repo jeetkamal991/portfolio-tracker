@@ -6,7 +6,6 @@ export interface HoldingInput {
   buyDate: string;
   stopLoss: number | null;
   target1: number | null;
-  target2: number | null;
 }
 
 export type HoldingStatus = "OK" | "NEAR_SL" | "SL_HIT" | "NEAR_TARGET" | "TARGET_HIT";
@@ -72,7 +71,6 @@ export function mergeHolding(existing: HoldingInput, incoming: HoldingInput): Ho
     buyDate: existing.buyDate <= incoming.buyDate ? existing.buyDate : incoming.buyDate,
     stopLoss: incoming.stopLoss ?? existing.stopLoss,
     target1: incoming.target1 ?? existing.target1,
-    target2: incoming.target2 ?? existing.target2,
   };
 }
 
@@ -113,7 +111,6 @@ export function validateHoldingInput(
       .refine((d) => !isRealDate(d) || d >= MIN_DATE, MSG.old),
     stopLoss: optional,
     target1: optional,
-    target2: optional,
   });
   const parsed = schema.safeParse(input ?? {});
   if (!parsed.success) {
@@ -128,6 +125,5 @@ export function validateHoldingInput(
   const warnings: string[] = [];
   if (v.stopLoss !== null && v.stopLoss >= v.avgPrice) warnings.push("Stop loss is at or above your buy price");
   if (v.target1 !== null && ctx.cmp !== null && v.target1 <= ctx.cmp) warnings.push("Target 1 is already below the current price");
-  if (v.target2 !== null && v.target1 !== null && v.target2 <= v.target1) warnings.push("Target 2 should be above Target 1");
   return { ok: true, value: v, warnings };
 }

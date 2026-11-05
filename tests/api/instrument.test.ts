@@ -31,7 +31,7 @@ describe("handleInstrumentGet", () => {
   });
   it("includes the holding when the stock is held", async () => {
     const repo = await setup();
-    const h = { qty: 10, avgPrice: 100, buyDate: "2026-01-01", stopLoss: 90, target1: 120, target2: null };
+    const h = { qty: 10, avgPrice: 100, buyDate: "2026-01-01", stopLoss: 90, target1: 120 };
     await repo.upsertHolding(1, h);
     const p = (await handleInstrumentGet(repo, "TCS")).body as PopupData;
     expect(p.holding).toEqual(h);

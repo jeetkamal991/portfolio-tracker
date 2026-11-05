@@ -48,7 +48,7 @@ interface Ctx {
 }
 
 /** Stake changes (percentage points, latest quarter vs the one before) by instrument, for the Flows part. */
-async function loadStakeDeltas(repo: Repo): Promise<Map<number, { fii: number | null; dii: number | null }>> {
+export async function loadStakeDeltas(repo: Repo): Promise<Map<number, { fii: number | null; dii: number | null }>> {
   const out = new Map<number, { fii: number | null; dii: number | null }>();
   const latest = await repo.latestShareholdingQuarter();
   if (!latest) return out;

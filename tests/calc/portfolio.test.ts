@@ -10,7 +10,7 @@ import {
 } from "@/lib/calc/portfolio";
 
 const TODAY = "2026-10-18";
-const base: HoldingInput = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: null, target1: null, target2: null };
+const base: HoldingInput = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: null, target1: null };
 
 describe("holdingMetrics", () => {
   it("computes value, pnl and day pnl from the previous close", () => {
@@ -80,9 +80,9 @@ describe("portfolioTotals", () => {
 
 describe("mergeHolding", () => {
   it("weights the average and keeps the earlier date", () => {
-    const a: HoldingInput = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: 90, target1: null, target2: null };
-    const b: HoldingInput = { qty: 5, avgPrice: 130, buyDate: "2026-03-01", stopLoss: null, target1: 150, target2: null };
-    expect(mergeHolding(a, b)).toEqual({ qty: 15, avgPrice: 110, buyDate: "2026-01-10", stopLoss: 90, target1: 150, target2: null });
+    const a: HoldingInput = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: 90, target1: null };
+    const b: HoldingInput = { qty: 5, avgPrice: 130, buyDate: "2026-03-01", stopLoss: null, target1: 150 };
+    expect(mergeHolding(a, b)).toEqual({ qty: 15, avgPrice: 110, buyDate: "2026-01-10", stopLoss: 90, target1: 150 });
   });
   it("does not round the average", () => {
     const a = { ...base, qty: 3, avgPrice: 101.35 };
@@ -97,7 +97,7 @@ describe("mergeHolding", () => {
 
 describe("validateHoldingInput", () => {
   const ctx = { today: TODAY, cmp: 100 };
-  const good = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: "", target1: null, target2: undefined };
+  const good = { qty: 10, avgPrice: 100, buyDate: "2026-01-10", stopLoss: "", target1: null };
   it("accepts valid input; empty optionals become null", () => {
     const r = validateHoldingInput(good, ctx);
     expect(r).toEqual({ ok: true, value: { ...base }, warnings: [] });
@@ -130,7 +130,5 @@ describe("validateHoldingInput", () => {
     expect(sl.ok && sl.warnings).toEqual(["Stop loss is at or above your buy price"]);
     const t1 = validateHoldingInput({ ...good, target1: 90 }, ctx);
     expect(t1.ok && t1.warnings).toEqual(["Target 1 is already below the current price"]);
-    const t2 = validateHoldingInput({ ...good, target1: 120, target2: 110 }, ctx);
-    expect(t2.ok && t2.warnings).toEqual(["Target 2 should be above Target 1"]);
   });
 });

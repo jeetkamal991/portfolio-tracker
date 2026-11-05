@@ -99,7 +99,7 @@ describe("addStock", () => {
 });
 
 describe("addHolding", () => {
-  const input = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120, target2: null };
+  const input = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120 };
 
   it("new stock: stores candles, saves the holding, scores it, merged false", async () => {
     const repo = setup();

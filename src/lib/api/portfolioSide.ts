@@ -16,13 +16,12 @@ export async function loadPortfolioSide(repo: Repo): Promise<PortfolioSide> {
   const [market, events] = await Promise.all([
     cached("portfolio-side-market", async () => {
       const insts = await repo.listInstruments({ types: ["index", "sector"] });
-      const last = async (id: number) => [...(await repo.getDays(id, 4))].reverse().find((d) => d.close !== null) ?? null;
-      const pct = (d: Awaited<ReturnType<typeof last>>) => (d ? (d.pctChange ?? d.importedPct ?? null) : null);
+      const recent = await repo.getRecentDays(insts.map((i) => i.id), 4, 10);
+      const last = (id: number) => [...(recent.get(id) ?? [])].reverse().find((d) => d.close !== null) ?? null;
+      const pct = (d: ReturnType<typeof last>) => (d ? (d.pctChange ?? d.importedPct ?? null) : null);
       const nifty = insts.find((i) => i.key === "NIFTY50");
-      const niftyDay = nifty ? await last(nifty.id) : null;
-      const sectors = await Promise.all(
-        insts.filter((i) => i.type === "sector").map(async (i) => ({ name: i.name.replace(/^Nifty /, ""), d1: pct(await last(i.id)) })),
-      );
+      const niftyDay = nifty ? last(nifty.id) : null;
+      const sectors = insts.filter((i) => i.type === "sector").map((i) => ({ name: i.name.replace(/^Nifty /, ""), d1: pct(last(i.id)) }));
       sectors.sort((a, b) => (b.d1 ?? -Infinity) - (a.d1 ?? -Infinity));
       return { nifty: niftyDay ? { close: niftyDay.close, dayPct: pct(niftyDay) } : null, sectors };
     }),

@@ -219,7 +219,7 @@ describe("memoryRepo ema20", () => {
 });
 
 describe("memoryRepo holdings", () => {
-  const h = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120, target2: null };
+  const h = { qty: 10, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 90, target1: 120 };
 
   it("upsert then list joins key, name and ticker; get returns it", async () => {
     const r = createMemoryRepo({ instruments: [inst(1, "AAA", "Aaa Ltd")] });

@@ -10,8 +10,10 @@ import { fmtPct, fmtPrice } from "./dashboard";
 
 export interface PopupData {
   instrument: { key: string; name: string; type: InstrumentType; yahooTicker: string; sectorKey: string | null; sectorName: string | null };
-  /** Full stored history, ascending. */
+  /** The newest ~year of stored history, ascending (the full series is fetched on demand for long chart ranges). */
   days: StoredDay[];
+  /** True when older history exists beyond `days`. */
+  historyTruncated?: boolean;
   latest: StoredDay | null;
   score: {
     value: number; label: ScoreLabel; confidence: string; signal: string;

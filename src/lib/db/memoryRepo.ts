@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -28,6 +28,8 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const jobRunsById = new Map<number, JobRun>();
   const reports: ReportRow[] = [];
   const delivery = new Map<string, DeliveryRow>();
+  const snapshots = new Map<string, ScoreSnapshot>();
+  const scoreRuns = new Map<string, ScoreRun>();
   const daysRange = (ids: number[], fromDate: string, toDate: string): Map<number, StoredDay[]> => {
     const out = new Map<number, StoredDay[]>();
     for (const id of new Set(ids)) {
@@ -284,14 +286,97 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async markAlertsRead(ids) {
       for (const e of events) if (ids === "all" || ids.includes(e.id)) e.read = true;
     },
-    async listShareholding(quarterEnds) {
-      return [...shareholding.values()].filter((r) => quarterEnds.includes(r.quarterEnd)).map((r) => ({ ...r }));
+    async listShareholding(quarterEnds, instrumentIds) {
+      return [...shareholding.values()].filter((r) => quarterEnds.includes(r.quarterEnd) && (!instrumentIds || instrumentIds.includes(r.instrumentId))).map((r) => ({ ...r }));
     },
     async latestShareholdingQuarter() {
       return [...shareholding.values()].reduce<string | null>((m, r) => (m === null || r.quarterEnd > m ? r.quarterEnd : m), null);
     },
     async upsertShareholding(rows) {
       for (const r of rows) shareholding.set(`${r.instrumentId}|${r.quarterEnd}`, { ...r });
+    },
+    async upsertSnapshots(rows) {
+      for (const r of rows) {
+        const k = `${r.instrumentId}|${r.evaluationDate}|${r.scoringVersion}`;
+        snapshots.set(k, { ...r, createdAt: snapshots.get(k)?.createdAt ?? new Date().toISOString() });
+      }
+    },
+    async listSnapshots(f) {
+      return [...snapshots.values()].filter((r) => r.scoringVersion === f.version && r.evaluationDate === f.date).map((r) => ({ ...r }));
+    },
+    async getScoreRun(runDate, version) {
+      const r = scoreRuns.get(`${runDate}|${version}`);
+      return r ? { ...r, failed: r.failed.map((f) => ({ ...f })) } : null;
+    },
+    async ensureScoreRun(runDate, version, total, maxBatches) {
+      const k = `${runDate}|${version}`;
+      if (!scoreRuns.has(k)) {
+        scoreRuns.set(k, { id: scoreRuns.size + 1, runDate, scoringVersion: version, status: "pending", total, nextOffset: 0, processed: 0, failed: [], batches: 0, maxBatches, lockedUntil: null, lastSuccessAt: null, finishedAt: null, error: null });
+      }
+      const r = scoreRuns.get(k)!;
+      return { ...r, failed: r.failed.map((f) => ({ ...f })) };
+    },
+    async claimScoreRun(runDate, version, now, leaseMs) {
+      const r = scoreRuns.get(`${runDate}|${version}`);
+      if (!r) return { claimed: false, run: null };
+      const snap = () => ({ ...r, failed: r.failed.map((f) => ({ ...f })) });
+      if (r.status === "completed" || r.status === "failed") return { claimed: false, run: snap() };
+      if (r.lockedUntil !== null && Date.parse(r.lockedUntil) > now.getTime()) return { claimed: false, run: snap() };
+      if (r.batches >= r.maxBatches) {
+        r.status = "failed";
+        r.error = `Batch allowance of ${r.maxBatches} used up before the run finished`;
+        r.finishedAt = now.toISOString();
+        return { claimed: false, run: snap() };
+      }
+      r.batches++;
+      r.status = "running";
+      r.lockedUntil = new Date(now.getTime() + leaseMs).toISOString();
+      return { claimed: true, run: snap() };
+    },
+    async saveScoreRun(run) {
+      scoreRuns.set(`${run.runDate}|${run.scoringVersion}`, { ...run, failed: run.failed.map((f) => ({ ...f })), lockedUntil: null });
+    },
+    async latestSnapshotDate(version) {
+      return [...snapshots.values()].filter((r) => r.scoringVersion === version).reduce<string | null>((m, r) => (m === null || r.evaluationDate > m ? r.evaluationDate : m), null);
+    },
+    async getSnapshot(instrumentId, version, date) {
+      const rows = [...snapshots.values()].filter((r) => r.instrumentId === instrumentId && r.scoringVersion === version && (!date || r.evaluationDate === date));
+      rows.sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate));
+      return rows[0] ? { ...rows[0] } : null;
+    },
+    async listSnapshotsRange(version, fromDate, toDate) {
+      return [...snapshots.values()]
+        .filter((r) => r.scoringVersion === version && r.evaluationDate >= fromDate && r.evaluationDate <= toDate)
+        .sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate) || a.instrumentId - b.instrumentId)
+        .map((r) => ({ ...r }));
+    },
+    async getRecentDays(ids, perInstrument) {
+      const out = new Map<number, StoredDay[]>();
+      for (const id of new Set(ids)) {
+        const rows = [...(days.get(id)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date)).slice(-perInstrument).map((d) => ({ ...d }));
+        if (rows.length) out.set(id, rows);
+      }
+      return out;
+    },
+    async getChartDays(instrumentId, limit) {
+      return [...(days.get(instrumentId)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date)).slice(-limit).map((d) => ({ ...d }));
+    },
+    async getLevelsMany(ids) {
+      return new Map([...new Set(ids)].map((id) => [id, { ...(levels.get(id) ?? emptyLevels()) }]));
+    },
+    async listConstituentsMany(keys) {
+      const out = new Map<string, Instrument[]>();
+      for (const k of keys) out.set(k, await this.listConstituents(k));
+      return out;
+    },
+    async listSnapshotSummaries(f) {
+      return (await this.listSnapshots(f)).map((r) => {
+        const cov = (r.dataCoverage ?? {}) as { technical?: { coverage?: number }; tradeQuality?: { coverage?: number; rankable?: boolean; observation?: string }; confidence?: { status?: string }; metrics?: unknown; categoryShares?: unknown };
+        return {
+          ...r, categoryBreakdown: {},
+          dataCoverage: { technical: { coverage: cov.technical?.coverage }, tradeQuality: { coverage: cov.tradeQuality?.coverage, rankable: cov.tradeQuality?.rankable, observation: cov.tradeQuality?.observation }, confidence: { status: cov.confidence?.status }, metrics: cov.metrics, categoryShares: cov.categoryShares },
+        };
+      });
     },
   };
 }

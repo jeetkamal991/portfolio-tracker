@@ -1,11 +1,13 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { handleInstrumentGet } from "@/lib/api/instrument";
-import { getRepo } from "@/lib/api/server";
+import { cached, getRepo } from "@/lib/api/server";
+import { timedJson } from "@/lib/api/timing";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  const r = await handleInstrumentGet(getRepo(), key);
-  return NextResponse.json(r.body, { status: r.status });
+  const t0 = performance.now();
+  const r = await handleInstrumentGet(getRepo(), key, { memo: cached });
+  return timedJson(r.body, r.status, t0, "instrument");
 }

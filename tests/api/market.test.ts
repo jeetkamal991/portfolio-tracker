@@ -133,7 +133,7 @@ describe("loadMarket", () => {
       expect(m.hasWatchStocks).toBe(false);
       expect(m.watchSignals).toEqual({ crosses: [], formations: [] });
     });
-    it("covers watchlist + holdings once each, in the same range query", async () => {
+    it("covers watchlist + holdings once each: universe stocks reuse the universe read, only outsiders get their own", async () => {
       const repo = await setup();
       await above200(3, repo);
       await repo.addToWatchlist(3);
@@ -141,8 +141,8 @@ describe("loadMarket", () => {
       await repo.upsertHolding(2, holding); // outside the universe → still fetched
       const spy = vi.spyOn(repo, "getDaysRange");
       const m = await loadMarket(repo, "2026-01-09");
-      expect(spy).toHaveBeenCalledTimes(1);
-      expect([...spy.mock.calls[0][0]].sort()).toEqual([2, 3, 4]);
+      expect(spy.mock.calls.flatMap((c) => [...c[0]]).sort()).toEqual([2, 3, 4]); // every stock read exactly once, none twice
+      expect(spy).toHaveBeenCalledTimes(2); // the universe, then the one holding outside it
       expect(m.hasWatchStocks).toBe(true);
       expect(m.watchSignals.crosses).toEqual([
         { key: "AAA", name: "Aaa", date: "2026-01-07", label: "Closed above EMA 200", bias: "bullish" },
@@ -150,6 +150,34 @@ describe("loadMarket", () => {
       expect(m.watchSignals.formations).toEqual([
         { key: "AAA", name: "Aaa", date: "2026-01-09", label: "Doji", bias: "neutral" },
       ]);
+    });
+    it("memo: reuses the universe-wide computation on repeat calls but still reads watchlist and holdings live", async () => {
+      const repo = await setup();
+      await above200(3, repo);
+      const store = new Map<string, Promise<unknown>>();
+      const memo = <T,>(key: string, fn: () => Promise<T>) => {
+        if (!store.has(key)) store.set(key, fn());
+        return store.get(key) as Promise<T>;
+      };
+      const range = vi.spyOn(repo, "getDaysRange");
+      const watch = vi.spyOn(repo, "listWatchlist");
+      const first = await loadMarket(repo, "2026-01-09", { memo });
+      const universeReads = range.mock.calls.length;
+      await repo.addToWatchlist(3); // private state changes between the two calls
+      const second = await loadMarket(repo, "2026-01-09", { memo });
+      expect(range.mock.calls.length).toBe(universeReads); // universe not recomputed
+      expect(watch).toHaveBeenCalledTimes(2); // watchlist re-read every time
+      expect(first.hasWatchStocks).toBe(false);
+      expect(second.hasWatchStocks).toBe(true); // the new watchlist entry shows immediately
+      expect(second.screeners).toEqual(first.screeners);
+    });
+    it("without a memo (the default) every call recomputes from fresh data", async () => {
+      const repo = await setup();
+      await above200(3, repo);
+      const range = vi.spyOn(repo, "getDaysRange");
+      await loadMarket(repo, "2026-01-09");
+      await loadMarket(repo, "2026-01-09");
+      expect(range.mock.calls.length).toBe(2);
     });
     it("works without a Nifty 200 universe", async () => {
       const repo = await setup(false);

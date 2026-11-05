@@ -1,0 +1,238 @@
+symbol,name,nse_industry,current_sector_index,all_index_memberships,sector_index_rows,unmapped_reason,suggested_index,suggestion_basis
+360ONE,360 ONE WAM LIMITED,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+ABB,ABB India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+ABBOTINDIA,Abbott India Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+ABCAPITAL,Aditya Birla Capital Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+ACE,Action Construction Equipment Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+ADANIENSOL,Adani Energy Solutions Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+ADANIENT,Adani Enterprises Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+ADANIGREEN,Adani Green Energy Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+ADANIPORTS,Adani Ports and Special Economic Zone Limited,Services,,,,"No tracked sector index covers the NSE industry ""Services""",,Would need another sector index (history not stored): no suggestion
+ADANIPOWER,Adani Power Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+AJANTPHARM,Ajanta Pharma Limited,Healthcare,NIFTY_PHARMA,NIFTY_PHARMA,2920,,,
+ALKEM,Alkem Laboratories Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+AMBUJACEM,Ambuja Cements Limited,Construction Materials,,,,"No tracked sector index covers the NSE industry ""Construction Materials""",,Would need another sector index (history not stored): no suggestion
+ANANTRAJ,Anant Raj Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+APARINDS,Apar Industries Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+APLAPOLLO,APL Apollo Tubes Limited,Capital Goods,NIFTY_METAL,NIFTY_METAL,698,,,
+APOLLOHOSP,Apollo Hospitals Enterprise Limited,Healthcare,NIFTY_HEALTHCARE,NIFTY_HEALTHCARE,14,"Mapped to NIFTY_HEALTHCARE, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+ASHOKLEY,Ashok Leyland Limited,Capital Goods,NIFTY_AUTO,NIFTY_AUTO,698,,,
+ASIANPAINT,Asian Paints Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+ASTRAL,Astral Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+ATGL,Adani Total Gas Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+AUBANK,AU Small Finance Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK,2921,,,
+AUROPHARMA,Aurobindo Pharma Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+AXISBANK,Axis Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_FIN|NIFTY_PVT_BANK,2921,,,
+BAJAJ-AUTO,Bajaj Auto Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+BAJAJFINSV,Bajaj Finserv Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+BAJAJHLDNG,Bajaj Holdings & Investment Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+BAJFINANCE,Bajaj Finance Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+BANDHANBNK,Bandhan Bank Limited,Financial Services,NIFTY_PVT_BANK,NIFTY_PVT_BANK,14,"Mapped to NIFTY_PVT_BANK, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+BANKBARODA,Bank of Baroda,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PSU_BANK,2921,,,
+BANKINDIA,Bank of India,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+BDL,Bharat Dynamics Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+BEL,Bharat Electronics Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+BHARATFORG,Bharat Forge Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+BHARTIARTL,Bharti Airtel Limited,Telecommunication,,,,"No tracked sector index covers the NSE industry ""Telecommunication""",,Would need another sector index (history not stored): no suggestion
+BHEL,Bharat Heavy Electricals Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+BIOCON,Biocon Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+BLUESTARCO,Blue Star Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+BOSCHLTD,Bosch Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+BPCL,Bharat Petroleum Corporation Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+BRITANNIA,Britannia Industries Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+BSE,BSE Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+CANBK,Canara Bank,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PSU_BANK,2921,,,
+CENTRALBK,Central Bank of India,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+CGPOWER,CG Power and Industrial Solutions Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+CHOLAFIN,Cholamandalam Investment and Finance Company Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+CIPLA,Cipla Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+COALINDIA,Coal India Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+COCHINSHIP,Cochin Shipyard Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+COFORGE,Coforge Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+COLPAL,Colgate Palmolive (India) Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+CONCOR,Container Corporation of India Limited,Services,,,,"No tracked sector index covers the NSE industry ""Services""",,Would need another sector index (history not stored): no suggestion
+CUMMINSIND,Cummins India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+DABUR,Dabur India Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+DBCORP,D.B.Corp Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+DIVISLAB,Divi's Laboratories Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+DIXON,Dixon Technologies (India) Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+DLF,DLF Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+DMART,Avenue Supermarts Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+DRREDDY,Dr. Reddy's Laboratories Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+EICHERMOT,Eicher Motors Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+EMSLIMITED,EMS Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+ENRIN,Siemens Energy India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+ETERNAL,ETERNAL LIMITED,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+EXIDEIND,Exide Industries Limited,Automobile and Auto Components,,,,Not a constituent of NIFTY_AUTO (the index holds only its largest members),NIFTY_AUTO,"NSE industry ""Automobile and Auto Components"" matches exactly one tracked sector index; peer-group benchmark, NOT an index member: confirm before use"
+FEDERALBNK,The Federal Bank  Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PVT_BANK,2921,,,
+FIEMIND,Fiem Industries Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+FORTIS,Fortis Healthcare Limited,Healthcare,NIFTY_HEALTHCARE,NIFTY_HEALTHCARE,14,"Mapped to NIFTY_HEALTHCARE, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+GAIL,GAIL (India) Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+GLAND,Gland Pharma Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+GLENMARK,Glenmark Pharmaceuticals Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+GMRAIRPORT,GMR AIRPORTS LIMITED,Services,,,,"No tracked sector index covers the NSE industry ""Services""",,Would need another sector index (history not stored): no suggestion
+GODFRYPHLP,Godfrey Phillips India Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+GODREJCP,Godrej Consumer Products Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+GODREJPROP,Godrej Properties Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+GRASIM,Grasim Industries Limited,Construction Materials,,,,"No tracked sector index covers the NSE industry ""Construction Materials""",,Would need another sector index (history not stored): no suggestion
+GROWW,Billionbrains Garage Ventures Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+GVT&D,GE Vernova T&D India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+HAL,Hindustan Aeronautics Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+HAVELLS,Havells India Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+HCLTECH,HCL Technologies Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+HDFCAMC,HDFC Asset Management Company Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+HDFCBANK,HDFC Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_FIN|NIFTY_PVT_BANK,2921,,,
+HDFCLIFE,HDFC Life Insurance Company Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+HEROMOTOCO,Hero MotoCorp Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+HINDALCO,Hindalco Industries Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+HINDCOPPER,Hindustan Copper Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+HINDPETRO,Hindustan Petroleum Corporation Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+HINDUNILVR,Hindustan Unilever Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+HINDZINC,Hindustan Zinc Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+HYUNDAI,Hyundai Motor India Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+ICICIAMC,ICICI Prudential Asset Management Company Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+ICICIBANK,ICICI Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_FIN|NIFTY_PVT_BANK,2921,,,
+ICICIGI,ICICI Lombard General Insurance Company Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+IDEA,Vodafone Idea Limited,Telecommunication,,,,"No tracked sector index covers the NSE industry ""Telecommunication""",,Would need another sector index (history not stored): no suggestion
+IDFCFIRSTB,IDFC First Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PVT_BANK,2921,,,
+INDHOTEL,The Indian Hotels Company Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+INDIANB,Indian Bank,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+INDIGO,InterGlobe Aviation Limited,Services,,,,"No tracked sector index covers the NSE industry ""Services""",,Would need another sector index (history not stored): no suggestion
+INDUSINDBK,IndusInd Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PVT_BANK,2921,,,
+INDUSTOWER,Indus Towers Limited,Telecommunication,,,,"No tracked sector index covers the NSE industry ""Telecommunication""",,Would need another sector index (history not stored): no suggestion
+INFY,Infosys Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+IOB,Indian Overseas Bank,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+IOC,Indian Oil Corporation Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+IONEXCHANG,ION Exchange (India) Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+IPCALAB,IPCA Laboratories Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+IRCTC,Indian Railway Catering And Tourism Corporation Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+IREDA,Indian Renewable Energy Development Agency Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+IRFC,Indian Railway Finance Corporation Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+ITC,ITC Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+JINDALSTEL,JINDAL STEEL LIMITED,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+JIOFIN,Jio Financial Services Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+JSL,Jindal Stainless Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+JSWENERGY,JSW Energy Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+JSWSTEEL,JSW Steel Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+JUBLFOOD,Jubilant Foodworks Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+KALYANKJIL,Kalyan Jewellers India Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+KEI,KEI Industries Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+KIMS,Krishna Institute of Medical Sciences Limited,Healthcare,NIFTY_HEALTHCARE,NIFTY_HEALTHCARE,14,"Mapped to NIFTY_HEALTHCARE, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+KOTAKBANK,Kotak Mahindra Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_FIN|NIFTY_PVT_BANK,2921,,,
+KPIGREEN,KPI Green Energy Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+LAURUSLABS,Laurus Labs Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+LENSKART,Lenskart Solutions Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+LGEINDIA,LG Electronics India Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+LICHSGFIN,LIC Housing Finance Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+LICI,Life Insurance Corporation Of India,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+LLOYDSME,Lloyds Metals And Energy Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+LODHA,Lodha Developers Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+LT,Larsen & Toubro Limited,Construction,,,,"No tracked sector index covers the NSE industry ""Construction""",,Would need another sector index (history not stored): no suggestion
+LTF,L&T Finance Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+LTM,LTM Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+LUPIN,Lupin Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+M&M,Mahindra & Mahindra Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+M&MFIN,Mahindra & Mahindra Financial Services Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+MAHABANK,Bank of Maharashtra,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+MANKIND,Mankind Pharma Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+MARICO,Marico Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+MARUTI,Maruti Suzuki India Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+MASFIN,MAS Financial Services Limited,,,,,"Not a member of any tracked sector index, and not in any constituents file (industry unknown)",,
+MAXHEALTH,Max Healthcare Institute Limited,Healthcare,NIFTY_HEALTHCARE,NIFTY_HEALTHCARE,14,"Mapped to NIFTY_HEALTHCARE, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+MAZDOCK,Mazagon Dock Shipbuilders Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+MCX,Multi Commodity Exchange of India Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+MEESHO,Meesho Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+MFSL,Max Financial Services Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+MOTHERSON,Samvardhana Motherson International Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+MOTILALOFS,Motilal Oswal Financial Services Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+MPHASIS,MphasiS Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+MPSLTD,MPS Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+MRF,MRF Limited,Automobile and Auto Components,,,,Not a constituent of NIFTY_AUTO (the index holds only its largest members),NIFTY_AUTO,"NSE industry ""Automobile and Auto Components"" matches exactly one tracked sector index; peer-group benchmark, NOT an index member: confirm before use"
+MUTHOOTFIN,Muthoot Finance Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+NATIONALUM,National Aluminium Company Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+NAUKRI,Info Edge (India) Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+NAZARA,Nazara Technologies Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+NESTLEIND,Nestle India Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+NETWORK18,Network18 Media & Investments Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+NHPC,NHPC Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+NLCINDIA,NLC India Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+NMDC,NMDC Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+NTPC,NTPC Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+NYKAA,FSN E-Commerce Ventures Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+OBEROIRLTY,Oberoi Realty Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+OFSS,Oracle Financial Services Software Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+OIL,Oil India Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+ONGC,Oil & Natural Gas Corporation Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+PAGEIND,Page Industries Limited,Textiles,,,,"No tracked sector index covers the NSE industry ""Textiles""",,Would need another sector index (history not stored): no suggestion
+PATANJALI,Patanjali Foods Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+PAYTM,One 97 Communications Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+PERSISTENT,Persistent Systems Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+PFC,Power Finance Corporation Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+PFOCUS,Prime Focus Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+PHOENIXLTD,The Phoenix Mills Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+PIDILITIND,Pidilite Industries Limited,Chemicals,,,,"No tracked sector index covers the NSE industry ""Chemicals""",,Would need another sector index (history not stored): no suggestion
+PIIND,PI Industries Limited,Chemicals,,,,"No tracked sector index covers the NSE industry ""Chemicals""",,Would need another sector index (history not stored): no suggestion
+PNB,Punjab National Bank,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PSU_BANK,2921,,,
+POLICYBZR,PB Fintech Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+POLYCAB,Polycab India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+POWERGRID,Power Grid Corporation of India Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+POWERINDIA,Hitachi Energy India Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+PPLPHARMA,Piramal Pharma Limited,Healthcare,NIFTY_PHARMA,NIFTY_PHARMA,2920,,,
+PREMIERENE,Premier Energies Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+PRESTIGE,Prestige Estates Projects Limited,Realty,,,,"No tracked sector index covers the NSE industry ""Realty""",,Would need another sector index (history not stored): no suggestion
+PSB,Punjab & Sind Bank,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+PVRINOX,PVR INOX Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+RADICO,Radico Khaitan Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+RBLBANK,RBL Bank Limited,Financial Services,NIFTY_PVT_BANK,NIFTY_PVT_BANK,14,"Mapped to NIFTY_PVT_BANK, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+RECLTD,REC Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+RELIANCE,Reliance Industries Limited,Oil Gas & Consumable Fuels,,,,"No tracked sector index covers the NSE industry ""Oil Gas & Consumable Fuels""",,Would need another sector index (history not stored): no suggestion
+RVNL,Rail Vikas Nigam Limited,Construction,,,,"No tracked sector index covers the NSE industry ""Construction""",,Would need another sector index (history not stored): no suggestion
+SAIL,Steel Authority of India Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+SAILIFE,Sai Life Sciences Limited,Healthcare,NIFTY_PHARMA,NIFTY_PHARMA,2920,,,
+SAREGAMA,Saregama India Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+SBICARD,SBI Cards and Payment Services Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+SBILIFE,SBI Life Insurance Company Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+SBIN,State Bank of India,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_FIN|NIFTY_PSU_BANK,2921,,,
+SHRIRAMFIN,Shriram Finance Limited,Financial Services,NIFTY_FIN,NIFTY_FIN,698,,,
+SIEMENS,Siemens Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+SOLARINDS,Solar Industries India Limited,Chemicals,,,,"No tracked sector index covers the NSE industry ""Chemicals""",,Would need another sector index (history not stored): no suggestion
+SONACOMS,Sona BLW Precision Forgings Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+SRF,SRF Limited,Chemicals,,,,"No tracked sector index covers the NSE industry ""Chemicals""",,Would need another sector index (history not stored): no suggestion
+SUNPHARMA,Sun Pharmaceutical Industries Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+SUNTV,Sun TV Network Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+SUPREMEIND,Supreme Industries Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+SUZLON,Suzlon Energy Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+SWIGGY,Swiggy Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+TATACAP,Tata Capital Limited,Financial Services,,,,"Not a member of Nifty Bank, Financial Services, PSU Bank or Pvt Bank",,"NSE industry Financial Services spans banks, NBFCs, insurers and asset managers: ambiguous, no suggestion"
+TATACOMM,Tata Communications Limited,Telecommunication,,,,"No tracked sector index covers the NSE industry ""Telecommunication""",,Would need another sector index (history not stored): no suggestion
+TATACONSUM,TATA CONSUMER PRODUCTS LIMITED,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+TATAPOWER,Tata Power Company Limited,Power,,,,"No tracked sector index covers the NSE industry ""Power""",,Would need another sector index (history not stored): no suggestion
+TATASTEEL,Tata Steel Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+TCS,Tata Consultancy Services Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+TECHM,Tech Mahindra Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+TIINDIA,Tube Investments of India Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+TIPSMUSIC,Tips Music Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+TITAN,Titan Company Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+TMCV,Tata Motors Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+TMPV,Tata Motors Passenger Vehicles Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+TORNTPHARM,Torrent Pharmaceuticals Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,
+TRENT,Trent Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+TVSMOTOR,TVS Motor Company Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+UBL,United Breweries Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+UCOBANK,UCO Bank,Financial Services,NIFTY_PSU_BANK,NIFTY_PSU_BANK,698,,,
+ULTRACEMCO,UltraTech Cement Limited,Construction Materials,,,,"No tracked sector index covers the NSE industry ""Construction Materials""",,Would need another sector index (history not stored): no suggestion
+UNIONBANK,Union Bank of India,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PSU_BANK,2921,,,
+UNITDSPR,United Spirits Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+UNOMINDA,UNO Minda Limited,Automobile and Auto Components,NIFTY_AUTO,NIFTY_AUTO,698,,,
+UPL,UPL Limited,Chemicals,,,,"No tracked sector index covers the NSE industry ""Chemicals""",,Would need another sector index (history not stored): no suggestion
+VAML,Vedanta Aluminium Metal Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+VBL,Varun Beverages Limited,Fast Moving Consumer Goods,NIFTY_FMCG,NIFTY_FMCG,698,,,
+VEDL,Vedanta Limited,Metals & Mining,NIFTY_METAL,NIFTY_METAL,698,,,
+VMM,Vishal Mega Mart Limited,Consumer Services,,,,"No tracked sector index covers the NSE industry ""Consumer Services""",,Would need another sector index (history not stored): no suggestion
+VOLTAS,Voltas Limited,Consumer Durables,,,,"No tracked sector index covers the NSE industry ""Consumer Durables""",,Would need another sector index (history not stored): no suggestion
+WAAREEENER,Waaree Energies Limited,Capital Goods,,,,"No tracked sector index covers the NSE industry ""Capital Goods""",,Would need another sector index (history not stored): no suggestion
+WIPRO,Wipro Limited,Information Technology,NIFTY_IT,NIFTY_IT,2921,,,
+WOCKPHARMA,Wockhardt Limited,Healthcare,NIFTY_PHARMA,NIFTY_PHARMA,2920,,,
+YESBANK,Yes Bank Limited,Financial Services,NIFTY_BANK,NIFTY_BANK|NIFTY_PVT_BANK,2921,,,
+ZEEL,Zee Entertainment Enterprises Limited,Media Entertainment & Publication,NIFTY_MEDIA,NIFTY_MEDIA,14,"Mapped to NIFTY_MEDIA, but that index has only 14 stored sessions (sector-relative scoring unavailable)",,
+ZYDUSLIFE,Zydus Lifesciences Limited,Healthcare,NIFTY_PHARMA,NIFTY_HEALTHCARE|NIFTY_PHARMA,2920,,,

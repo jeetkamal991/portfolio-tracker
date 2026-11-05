@@ -35,26 +35,45 @@ describe("listInstruments paging", () => {
 });
 
 describe("getDaysRange paging", () => {
-  it("pages past 1000 rows and groups rows per instrument", async () => {
+  // Like real PostgREST: a select with { count: "exact" } also returns the filtered total.
+  function rangeDb(total: number) {
     const ranges: [number, number][] = [];
-    const total = 2100;
+    const counted: boolean[] = [];
     const db = {
       from: () => {
+        let withCount = false;
         const q: Record<string, unknown> = {};
-        q.select = () => q; q.order = () => q; q.in = () => q; q.gte = () => q; q.lte = () => q;
+        q.select = (_c: string, opts?: { count?: string }) => { withCount = opts?.count === "exact"; return q; };
+        q.order = () => q; q.in = () => q; q.gte = () => q; q.lte = () => q; q.not = () => q;
         q.range = (a: number, b: number) => {
           ranges.push([a, b]);
+          counted.push(withCount);
           const data = [];
           for (let i = a; i <= Math.min(b, total - 1); i++) data.push({ instrument_id: 1 + Math.floor(i / 1050), date: `d${i}` });
-          return Promise.resolve({ data, error: null });
+          return Promise.resolve({ data, error: null, count: withCount ? total : null });
         };
         return q;
       },
     } as unknown as SupabaseClient;
+    return { db, ranges, counted };
+  }
+
+  it("pages past 1000 rows and groups rows per instrument", async () => {
+    const { db, ranges } = rangeDb(2100);
     const m = await createSupabaseRepo(db).getDaysRange([1, 2], "a", "b");
     expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
     expect(m.get(1)).toHaveLength(1050);
     expect(m.get(2)).toHaveLength(1050);
+  });
+  it("asks for the total once, with the first page, and requests every remaining page together", async () => {
+    const { db, counted } = rangeDb(4500);
+    await createSupabaseRepo(db).getDaysRange([1], "a", "b");
+    expect(counted).toEqual([true, false, false, false, false]); // 5 pages: 1 counted + 4 in parallel, not 5 in a row
+  });
+  it("a result under one page costs a single request", async () => {
+    const { db, ranges } = rangeDb(300);
+    await createSupabaseRepo(db).getDaysRange([1], "a", "b");
+    expect(ranges).toEqual([[0, 999]]);
   });
 });
 

@@ -9,8 +9,8 @@ describe("handleQuotes", () => {
     const stock = (id: number, key: string): Instrument => ({ id, key, name: key, type: "stock", yahooTicker: `${key}.NS`, active: true });
     const repo = createMemoryRepo({ instruments: [stock(1, "WATCH"), stock(2, "HELD")] });
     await repo.addToWatchlist(1);
-    await repo.upsertHolding(1, { qty: 1, avgPrice: 10, buyDate: "2026-10-01", stopLoss: null, target1: null, target2: null });
-    await repo.upsertHolding(2, { qty: 1, avgPrice: 10, buyDate: "2026-10-01", stopLoss: null, target1: null, target2: null });
+    await repo.upsertHolding(1, { qty: 1, avgPrice: 10, buyDate: "2026-10-01", stopLoss: null, target1: null });
+    await repo.upsertHolding(2, { qty: 1, avgPrice: 10, buyDate: "2026-10-01", stopLoss: null, target1: null });
     let asked: string[] = [];
     const cache = { async get(t: string[]) { asked = t; return []; } };
     await handleQuotes(repo, cache, new Date("2026-10-16T05:00:00Z"));
@@ -27,7 +27,7 @@ describe("handleQuotes intraday alerts", () => {
   async function setup() {
     _resetIntradayClock();
     const repo = createMemoryRepo({ instruments: [stock(1, "HELD"), stock(2, "OTHER")] });
-    await repo.upsertHolding(1, { qty: 1, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 95, target1: null, target2: null });
+    await repo.upsertHolding(1, { qty: 1, avgPrice: 100, buyDate: "2026-10-01", stopLoss: 95, target1: null });
     await repo.createAlertRule({ instrumentId: 1, condition: "holding_sl", value: 95, mode: "repeat", source: "holding", lastState: null, lastLevel: "none" });
     // A price rule on a stock that is neither watched nor held still gets a live quote.
     await repo.createAlertRule({ instrumentId: 2, condition: "price_above", value: 50, mode: "once", source: "user", lastState: false, lastLevel: null });

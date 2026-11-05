@@ -10,6 +10,7 @@ import { fmtInr, fmtSignedInr } from "@/lib/view/portfolio";
 import { ScoreLabelChip } from "../popup/ScoreBadge";
 import { Label } from "../ui";
 import { StockPicker, type PickHit } from "./StockPicker";
+import { mutate } from "@/lib/client/cache";
 
 export interface HeldHolding extends HoldingInput { key: string; name: string }
 
@@ -68,7 +69,6 @@ export function HoldingForm({
   const [date, setDate] = useState(editing ? editing.buyDate : today);
   const [sl, setSl] = useState(editing ? level(editing.stopLoss) : "");
   const [t1, setT1] = useState(editing ? level(editing.target1) : "");
-  const [t2, setT2] = useState(editing ? level(editing.target2) : "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -167,20 +167,19 @@ export function HoldingForm({
   const p = num(price);
   const incoming: HoldingInput | null =
     Number.isInteger(q) && q > 0 && p > 0
-      ? { qty: q, avgPrice: p, buyDate: date, stopLoss: null, target1: null, target2: null }
+      ? { qty: q, avgPrice: p, buyDate: date, stopLoss: null, target1: null }
       : null;
   const invested = incoming ? incoming.qty * incoming.avgPrice : null;
   const value = incoming && cmp !== null ? incoming.qty * cmp : null;
   const pnl = invested !== null && value !== null ? value - invested : null;
   const newAvg = incoming && held ? mergeHolding(held, incoming).avgPrice : null;
-  const check = validateHoldingInput({ qty, avgPrice: price, buyDate: date, stopLoss: sl, target1: t1, target2: t2 }, { today, cmp });
+  const check = validateHoldingInput({ qty, avgPrice: price, buyDate: date, stopLoss: sl, target1: t1 }, { today, cmp });
   const warnings = check.ok ? check.warnings : [];
 
   function useSuggested() {
     if (!prefill) return;
     setSl(level(prefill.support));
     setT1(level(prefill.resistance));
-    setT2(level(prefill.nextResistance));
   }
 
   function clearErr(field: string) {
@@ -200,8 +199,8 @@ export function HoldingForm({
     try {
       // An untouched edit keeps the exact stored average; the box shows it to 2 decimals.
       const avgPrice = editing && !priceTouched.current ? String(editing.avgPrice) : price;
-      const body = { key: picked.key, qty, avgPrice, buyDate: date, stopLoss: sl, target1: t1, target2: t2 };
-      const res = await fetch(mode === "edit" ? `/api/holdings/${encodeURIComponent(picked.key)}` : "/api/holdings", {
+      const body = { key: picked.key, qty, avgPrice, buyDate: date, stopLoss: sl, target1: t1 };
+      const res = await mutate(mode === "edit" ? `/api/holdings/${encodeURIComponent(picked.key)}` : "/api/holdings", {
         method: mode === "edit" ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
@@ -393,26 +392,11 @@ export function HoldingForm({
                     className={INPUT}
                   />
                 </Field>
-                <Field id={`${uid}-t2`} label="Target 2" error={errors.target2}>
-                  <input
-                    id={`${uid}-t2`}
-                    inputMode="decimal"
-                    value={t2}
-                    placeholder={hint("next resistance", prefill?.nextResistance ?? null)}
-                    onChange={(e) => {
-                      setT2(e.target.value);
-                      clearErr("target2");
-                    }}
-                    aria-invalid={!!errors.target2}
-                    aria-describedby={errors.target2 ? `${uid}-t2-err` : undefined}
-                    className={INPUT}
-                  />
-                </Field>
                 <div className="flex items-end">
                   <button
                     type="button"
                     onClick={useSuggested}
-                    disabled={!prefill || (prefill.support === null && prefill.resistance === null && prefill.nextResistance === null)}
+                    disabled={!prefill || (prefill.support === null && prefill.resistance === null)}
                     className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)] hover:border-[var(--up)] hover:text-[var(--up)] disabled:opacity-50 disabled:hover:border-[var(--border)] disabled:hover:text-[var(--muted)]"
                   >
                     Use suggested levels

@@ -43,7 +43,7 @@ from levels l join instruments i on i.id = l.instrument_id where i.key = '$key';
 ```
 
 ```sql
-select h.quantity, h.avg_price, h.stop_loss, h.target1, h.target2
+select h.quantity, h.avg_price, h.stop_loss, h.target1
 from holdings h join instruments i on i.id = h.instrument_id where i.key = '$key';
 ```
 

@@ -33,11 +33,13 @@ export async function loadSectorAnalysis(repo: Repo): Promise<SectorAnalysis> {
   // Only sectors the database knows, in SECTOR_KEYS order (all 11 in production).
   const sectors = SECTOR_KEYS.flatMap((k) => instruments.find((i) => i.key === k) ?? []);
 
-  const [niftyDays, series, memberLists] = await Promise.all([
-    nifty ? repo.getDays(nifty.id, DAYS) : Promise.resolve([] as StoredDay[]),
-    Promise.all(sectors.map(async (s) => ({ key: s.key, name: s.name, days: await repo.getDays(s.id, DAYS) }))),
-    Promise.all(sectors.map((s) => repo.listConstituents(s.key))),
+  const [recent, members] = await Promise.all([
+    repo.getRecentDays([...(nifty ? [nifty.id] : []), ...sectors.map((s) => s.id)], DAYS),
+    repo.listConstituentsMany(sectors.map((s) => s.key)),
   ]);
+  const niftyDays = nifty ? (recent.get(nifty.id) ?? []) : ([] as StoredDay[]);
+  const series = sectors.map((s) => ({ key: s.key, name: s.name, days: recent.get(s.id) ?? [] }));
+  const memberLists = sectors.map((s) => members.get(s.key) ?? []);
   const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
   const sessionDate = niftyDates.at(-1) ?? null;
 

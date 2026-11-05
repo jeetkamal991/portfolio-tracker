@@ -7,7 +7,7 @@ const day = (close: number | null, extra: Partial<StoredDay> = {}): StoredDay =>
 
 const h = (id: number, key: string, o: Partial<Holding> = {}): Holding => ({
   instrumentId: id, key, name: key, yahooTicker: `${key}.NS`,
-  qty: 10, avgPrice: 100, buyDate: "2026-09-01", stopLoss: null, target1: null, target2: null, ...o,
+  qty: 10, avgPrice: 100, buyDate: "2026-09-01", stopLoss: null, target1: null, ...o,
 });
 
 describe("buildPortfolioView", () => {
