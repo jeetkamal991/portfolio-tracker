@@ -17,6 +17,8 @@ const jbMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Nifty Pulse",
   description: "Private Nifty market dashboard",
+  // Private, login-gated app: keep it out of search indexes.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

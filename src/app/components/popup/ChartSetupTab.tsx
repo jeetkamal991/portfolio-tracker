@@ -146,7 +146,7 @@ function Tailwinds({ data }: { data: PopupData }) {
 export function ChartSetupTab({ data }: { data: PopupData }) {
   return (
     <div className="flex flex-col gap-4">
-      <PriceChart days={data.days} title={data.instrument.key} height={360} />
+      <PriceChart days={data.days} title={data.instrument.key} height={360} historyKey={data.instrument.key} moreHistory={!!data.historyTruncated} />
       <div className="grid gap-4 md:grid-cols-3">
         <PrimarySignal score={data.score} />
         <Levels data={data} />

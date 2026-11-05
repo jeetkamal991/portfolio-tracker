@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchCached, historyUrl, TTL_MS } from "@/lib/client/cache";
 import {
   CandlestickSeries,
   ColorType,
@@ -15,7 +16,7 @@ import {
   type SeriesType,
 } from "lightweight-charts";
 import type { StoredDay } from "@/lib/db/types";
-import { buildChartData, RANGES, type ChartData, type ChartRange } from "@/lib/view/chart";
+import { buildChartData, RANGE_BARS, RANGES, type ChartData, type ChartRange } from "@/lib/view/chart";
 import { fmtPrice } from "@/lib/view/dashboard";
 import { Chip, Panel } from "../ui";
 
@@ -207,13 +208,40 @@ function ChartCanvas({
 
 const NO_MARKERS: ChartMarker[] = [];
 
-export function PriceChart({ days, title, height = 420, markers = NO_MARKERS }: { days: StoredDay[]; title: string; height?: number; markers?: ChartMarker[] }) {
+export function PriceChart({
+  days, title, height = 420, markers = NO_MARKERS, historyKey, moreHistory = false,
+}: {
+  days: StoredDay[]; title: string; height?: number; markers?: ChartMarker[];
+  /** Instrument key whose full history can be fetched when a range needs more than `days` holds. */
+  historyKey?: string;
+  /** True when older history exists beyond `days` (the server only sent the latest year). */
+  moreHistory?: boolean;
+}) {
   const [range, setRange] = useState<ChartRange>("6M");
   const [emas, setEmas] = useState<Record<Ema, boolean>>({ ema20: true, ema50: true, ema200: true });
   const [bollinger, setBollinger] = useState(false);
   const [lower, setLower] = useState<Lower>("VOLUME");
   const [hover, setHover] = useState<string | null>(null);
-  const data = useMemo(() => buildChartData(days, range), [days, range]);
+  const [full, setFull] = useState<{ key: string; days: StoredDay[] } | null>(null);
+  const [fullState, setFullState] = useState<"idle" | "loading" | "error">("idle");
+  const pricedHere = useMemo(() => days.filter((d) => d.close !== null).length, [days]);
+  const wanted = RANGE_BARS[range];
+  // Longer than what is loaded (ALL, or a window beyond the sent year): fetch the rest while the chart keeps showing what it has.
+  const needFull = !!historyKey && moreHistory && (wanted === null || wanted > pricedHere) && full?.key !== historyKey;
+  useEffect(() => {
+    if (!needFull || !historyKey) return;
+    const ctrl = new AbortController();
+    setFullState("loading");
+    fetchCached<{ days: StoredDay[] }>(historyUrl(historyKey), { ttlMs: TTL_MS.history, signal: ctrl.signal })
+      .then((r) => {
+        if (ctrl.signal.aborted) return;
+        if (r.ok && r.data) { setFull({ key: historyKey, days: r.data.days }); setFullState("idle"); } else setFullState("error");
+      })
+      .catch(() => { if (!ctrl.signal.aborted) setFullState("error"); });
+    return () => ctrl.abort();
+  }, [needFull, historyKey]);
+  const shown = full && full.key === historyKey ? full.days : days;
+  const data = useMemo(() => buildChartData(shown, range), [shown, range]);
 
   if (data.candles.length < 2) {
     return (
@@ -245,6 +273,8 @@ export function PriceChart({ days, title, height = 420, markers = NO_MARKERS }: 
               {r}
             </button>
           ))}
+          {fullState === "loading" && <span role="status" className="ml-2 self-center font-mono text-[11px] text-[var(--muted)]">Loading full history…</span>}
+          {fullState === "error" && <span role="alert" className="ml-2 self-center font-mono text-[11px] text-[var(--down)]">Could not load the full history</span>}
         </div>
         <div className="flex flex-wrap gap-1" role="group" aria-label="Overlays">
           {EMAS.map((e) => (

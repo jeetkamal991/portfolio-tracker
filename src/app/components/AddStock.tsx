@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { mutate } from "@/lib/client/cache";
 
 interface Hit { key: string; name: string }
 
@@ -43,7 +44,7 @@ export function AddStock() {
     setError(null);
     setAdding(hit.key);
     try {
-      const res = await fetch("/api/watchlist", {
+      const res = await mutate("/api/watchlist", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: hit.key }),

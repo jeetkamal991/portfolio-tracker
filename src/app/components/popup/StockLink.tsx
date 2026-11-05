@@ -1,6 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { useRef } from "react";
+import { prefetchStock } from "@/lib/client/cache";
 import type { MouseEvent, ReactNode } from "react";
 
 /** `?stock=KEY` merged into the current URL's params, on the current path. */
@@ -66,8 +68,26 @@ export function StockLink({ stockKey, children, className = "" }: { stockKey: st
     e.preventDefault();
     openStock(stockKey);
   };
+  // Warm the pop-up data as soon as the pointer settles on the link (or it gets keyboard focus / a touch), so the click opens it at once.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warm = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => prefetchStock(stockKey), 60);
+  };
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+  };
   return (
-    <a href={stockHref(pathname, params, stockKey)} onClick={onClick} className={`hover:text-[var(--up)] ${className}`}>
+    <a
+      href={stockHref(pathname, params, stockKey)}
+      onClick={onClick}
+      onMouseEnter={warm}
+      onMouseLeave={cancel}
+      onFocus={warm}
+      onBlur={cancel}
+      onTouchStart={() => prefetchStock(stockKey)}
+      className={`hover:text-[var(--up)] ${className}`}
+    >
       {children}
     </a>
   );

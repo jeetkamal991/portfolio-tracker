@@ -6,6 +6,7 @@ import { fmtInr } from "@/lib/view/portfolio";
 import type { PopupData } from "@/lib/view/popup";
 import { Chip, Label, type Tone } from "../ui";
 import { titleCase } from "./PatternsTab";
+import { mutate } from "@/lib/client/cache";
 
 type Report = PopupData["reports"][number];
 
@@ -243,7 +244,7 @@ export function DeepDiveTab({ stockKey, reports, onRequested }: { stockKey: stri
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/reports", {
+      const res = await mutate("/api/reports", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: stockKey }),

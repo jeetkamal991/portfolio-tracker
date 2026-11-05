@@ -22,7 +22,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
   const repo = getRepo();
   const today = istDate(new Date());
   const [m, deliveryRows, stockNames] = await Promise.all([
-    loadMarket(repo, today),
+    loadMarket(repo, today, { memo: cached }),
     // 45 calendar days is more than the 20 sessions the longest window needs
     repo.listDelivery(addDays(today, -45)).catch((e) => { console.error("delivery load failed", e); return []; }),
     cached("stock-names", async () => new Map((await repo.listInstruments({ types: ["stock"] })).map((i) => [i.key, i.name])), 600_000),

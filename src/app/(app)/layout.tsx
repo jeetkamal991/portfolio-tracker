@@ -18,7 +18,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       Promise.all(STRIP_KEYS.map((k) => repo.getInstrumentByKey(k))),
       repo.lastJobRun("eod"),
     ]);
-    const stripDays = await Promise.all(insts.map((i) => (i ? repo.getDays(i.id, 10) : Promise.resolve([]))));
+    const recent = await repo.getRecentDays(insts.flatMap((i) => (i ? [i.id] : [])), 10);
+    const stripDays = insts.map((i) => (i ? (recent.get(i.id) ?? []) : []));
     return { insts, lastRun, stripDays };
   });
 

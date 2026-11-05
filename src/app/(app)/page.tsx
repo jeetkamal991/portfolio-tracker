@@ -17,6 +17,9 @@ import { PortfolioSnapshot } from "../components/portfolio/PortfolioSnapshot";
 
 export const dynamic = "force-dynamic";
 
+/** The chart opens on 6 months and the card/log need at most a year; the full series loads on demand (/api/history). */
+const DASH_BARS = 260;
+
 export default async function Dashboard() {
   const repo = getRepo();
   const today = istDate(new Date());
@@ -25,15 +28,13 @@ export default async function Dashboard() {
     cached("dashboard-history", async () => {
       const instruments = await repo.listInstruments({ types: ["index", "sector"] });
       const nifty = instruments.find((i) => i.key === "NIFTY50");
-      const [niftyDays, sectors] = await Promise.all([
-        // Full history for the chart's ALL range (~2,700 sessions since 2015).
-        nifty ? repo.getDays(nifty.id, 5000) : Promise.resolve([]),
-        Promise.all(
-          instruments
-            .filter((i) => i.type === "sector")
-            .map(async (i) => ({ key: i.key, name: i.name, days: await repo.getDays(i.id, 70) })),
-        ),
+      const sectorInsts = instruments.filter((i) => i.type === "sector");
+      // Two reads in all (one year of Nifty; 70 sessions of every sector together), not one per sector.
+      const [niftyDays, recent] = await Promise.all([
+        nifty ? repo.getDays(nifty.id, DASH_BARS) : Promise.resolve([]),
+        repo.getRecentDays(sectorInsts.map((i) => i.id), 70),
       ]);
+      const sectors = sectorInsts.map((i) => ({ key: i.key, name: i.name, days: recent.get(i.id) ?? [] }));
       return { niftyDays, sectors };
     }),
     Promise.all([
@@ -62,7 +63,7 @@ export default async function Dashboard() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <NiftyCard days={niftyDays} />
         <DashboardTimeline events={events} />
-        <PriceChart days={niftyDays} title="NIFTY 50" height={520} markers={markers} />
+        <PriceChart days={niftyDays} title="NIFTY 50" height={520} markers={markers} historyKey="NIFTY50" moreHistory={niftyDays.length >= DASH_BARS} />
         <MoversPanel initial={movers} />
       </div>
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">

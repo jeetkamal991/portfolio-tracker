@@ -1,11 +1,18 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/login/actions";
+import { clearClientCache } from "@/lib/client/cache";
 import { activeTab, TABS } from "@/lib/view/shell";
 import { Bell } from "../alerts/Bell";
 import { SearchBox } from "./SearchBox";
+
+/** Must render inside the <Link>: lights up while that tab's page is loading, so a click is acknowledged at once. */
+function Pending() {
+  const { pending } = useLinkStatus();
+  return pending ? <span role="status" aria-label="Loading" className="ml-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--up)] align-middle" /> : null;
+}
 
 function Tabs({ className }: { className: string }) {
   const active = activeTab(usePathname() ?? "/");
@@ -25,6 +32,7 @@ function Tabs({ className }: { className: string }) {
             }`}
           >
             {t.label}
+            <Pending />
           </Link>
         );
       })}
@@ -48,7 +56,7 @@ export function TopBar() {
         <div className="flex items-center gap-3">
           <SearchBox />
           <Bell />
-          <form action={signOut}>
+          <form action={signOut} onSubmit={() => clearClientCache()}>
             <button type="submit" className="whitespace-nowrap text-sm text-[var(--muted)] hover:text-[var(--text)]">
               Sign out
             </button>

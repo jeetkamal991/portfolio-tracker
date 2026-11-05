@@ -11,12 +11,12 @@ const DAYS = 25;
 export default async function WatchlistPage() {
   const repo = getRepo();
   const watchInstruments = await repo.listWatchlist();
-  const inputs: WatchInput[] = await Promise.all(
-    watchInstruments.map(async (i) => {
-      const [days, levels] = await Promise.all([repo.getDays(i.id, DAYS), repo.getLevels(i.id)]);
-      return { key: i.key, name: i.name, ticker: i.yahooTicker, days, levels };
-    }),
-  );
+  const ids = watchInstruments.map((i) => i.id);
+  // two reads for the whole list, not two per stock
+  const [recent, levels] = await Promise.all([repo.getRecentDays(ids, DAYS), repo.getLevelsMany(ids)]);
+  const inputs: WatchInput[] = watchInstruments.map((i) => ({
+    key: i.key, name: i.name, ticker: i.yahooTicker, days: recent.get(i.id) ?? [], levels: levels.get(i.id)!,
+  }));
 
   return (
     <div className="flex flex-col gap-4">

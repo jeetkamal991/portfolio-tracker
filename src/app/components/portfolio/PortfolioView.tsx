@@ -9,6 +9,7 @@ import { useQuotes } from "../QuotesProvider";
 import { HoldingForm } from "./HoldingForm";
 import { HoldingsTable } from "./HoldingsTable";
 import { PortfolioHero } from "./PortfolioHero";
+import { PositionSizer } from "./PositionSizer";
 import { WarningsBar } from "./WarningsBar";
 
 /*
@@ -74,6 +75,7 @@ export function PortfolioView({
       <PortfolioHero totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} ladder={buildLadder(view.rows)} rows={view.rows} side={side} />
       <WarningsBar warnings={view.warnings} />
       <HoldingsTable rows={view.rows} onAdd={openAdd} onEdit={openEdit} />
+      <PositionSizer />
       {formKey && (
         <HoldingForm
           key={formKey}

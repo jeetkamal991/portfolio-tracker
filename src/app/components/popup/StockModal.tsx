@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { evaluationUrl, fetchCached, invalidate, peek, stockUrl, TTL_MS, mutate } from "@/lib/client/cache";
 import { fmtPrice } from "@/lib/view/dashboard";
 import type { PopupData } from "@/lib/view/popup";
 import { fmtInr } from "@/lib/view/portfolio";
@@ -10,12 +11,13 @@ import { useQuotes } from "../QuotesProvider";
 import { Chip, PctText } from "../ui";
 import { ChartSetupTab } from "./ChartSetupTab";
 import { DeepDiveTab } from "./DeepDiveTab";
+import { EvaluationTab } from "./EvaluationTab";
 import { IndicatorTab } from "./IndicatorTab";
 import { PatternsTab } from "./PatternsTab";
 import { ScoreBadge } from "./ScoreBadge";
 import { closeStock, forgetPushedStock } from "./StockLink";
 
-type TabId = "chart" | "deep" | "patterns" | "indicators";
+type TabId = "chart" | "evaluation" | "deep" | "patterns" | "indicators";
 type Loaded =
   | { key: string; status: "ready"; data: PopupData }
   | { key: string; status: "not_found" }
@@ -176,14 +178,21 @@ export function StockModal() {
   useEffect(() => {
     if (!key) return;
     const ctrl = new AbortController();
+    const url = stockUrl(key);
+    // A copy fetched earlier (hover prefetch, or an earlier open) shows at once, even if stale; a stale one is refreshed behind it.
+    const hit = reload === 0 ? peek<PopupData>(url, TTL_MS.stock) : null;
+    if (hit) setLoaded({ key, status: "ready", data: hit.data });
     (async () => {
       try {
-        const res = await fetch(`/api/instrument/${encodeURIComponent(key)}`, { cache: "no-store", signal: ctrl.signal });
-        if (res.status === 404) return setLoaded({ key, status: "not_found" });
-        if (!res.ok) throw new Error(String(res.status));
-        setLoaded({ key, status: "ready", data: (await res.json()) as PopupData });
+        const r = await fetchCached<PopupData>(url, { ttlMs: TTL_MS.stock, force: reload > 0 || (!!hit && !hit.fresh), signal: ctrl.signal });
+        if (ctrl.signal.aborted) return;
+        if (r.status === 404) return setLoaded({ key, status: "not_found" });
+        if (!r.ok || !r.data) throw new Error(String(r.status));
+        setLoaded({ key, status: "ready", data: r.data });
+        // The Evaluation tab is one click away: have its data ready before it is opened.
+        if (r.data.instrument.type === "stock") void fetchCached(evaluationUrl(key), { ttlMs: TTL_MS.evaluation }).catch(() => {});
       } catch {
-        if (!ctrl.signal.aborted) setLoaded({ key, status: "error" });
+        if (!ctrl.signal.aborted && !hit) setLoaded({ key, status: "error" });
       }
     })();
     return () => ctrl.abort();
@@ -242,13 +251,14 @@ export function StockModal() {
     setAdding(true);
     setAddError(null);
     try {
-      const res = await fetch("/api/watchlist", {
+      const res = await mutate("/api/watchlist", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: k }),
       });
       if (res.ok) {
         setAdded(k);
+        invalidate(stockUrl(k)); // private state changed: never serve the old copy
         setReload((n) => n + 1); // re-read the pop-up: the stock now has history and a score
         router.refresh();
       } else {
@@ -286,6 +296,7 @@ export function StockModal() {
     const hasHistory = data.days.some((d) => d.close !== null);
     const tabs: { id: TabId; label: string }[] = [
       { id: "chart", label: "Chart & Setup" },
+      ...(data.instrument.type === "stock" ? [{ id: "evaluation" as const, label: "Evaluation" }] : []),
       { id: "deep", label: "AI Deep Dive" },
       { id: "patterns", label: `Patterns (${data.patterns.length})` },
       { id: "indicators", label: "Indicator Table" },
@@ -328,6 +339,7 @@ export function StockModal() {
             </div>
             <div role="tabpanel" className="min-w-0">
               {activeTab === "chart" && <ChartSetupTab data={data} />}
+              {activeTab === "evaluation" && <EvaluationTab stockKey={data.instrument.key} />}
               {activeTab === "deep" && (
                 <DeepDiveTab stockKey={data.instrument.key} reports={data.reports} onRequested={() => setReload((n) => n + 1)} />
               )}

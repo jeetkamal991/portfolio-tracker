@@ -8,6 +8,7 @@ import { StockPicker, type PickHit } from "../portfolio/StockPicker";
 import { ScoreRing } from "../ScoreRing";
 import { openStock } from "../popup/StockLink";
 import { Chip, Label, Panel, type Tone } from "../ui";
+import { mutate } from "@/lib/client/cache";
 
 const STATUS: Record<ReportTile["status"], Tone> = { pending: "warn", done: "up", failed: "down" };
 
@@ -40,7 +41,7 @@ export function DeepDiveTiles({ initial }: { initial: ReportTile[] }) {
 
   async function remove(id: number) {
     setError(null);
-    const res = await fetch(`/api/reports/${id}`, { method: "DELETE" }).catch(() => null);
+    const res = await mutate(`/api/reports/${id}`, { method: "DELETE" }).catch(() => null);
     if (res?.ok) setTiles((ts) => ts.filter((r) => r.id !== id));
     else setError("Could not delete that report");
   }
@@ -53,7 +54,7 @@ export function DeepDiveTiles({ initial }: { initial: ReportTile[] }) {
       return;
     }
     setBusy(true);
-    const res = await fetch("/api/reports", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: hit.key }) }).catch(() => null);
+    const res = await mutate("/api/reports", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: hit.key }) }).catch(() => null);
     setBusy(false);
     if (res?.ok) {
       setInfo(`Requested a report for ${hit.name}. Claude checks hourly, so it appears as pending now and done later.`);

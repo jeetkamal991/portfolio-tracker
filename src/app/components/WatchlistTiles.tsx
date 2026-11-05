@@ -21,6 +21,7 @@ import { ScoreRing } from "./ScoreRing";
 import { Sparkline } from "./Sparkline";
 import { StockLink } from "./popup/StockLink";
 import { Chip, Label, Panel } from "./ui";
+import { mutate } from "@/lib/client/cache";
 
 type Side = "support" | "resistance";
 const SORTS: { key: WatchSortKey; label: string; dir: "asc" | "desc" }[] = [
@@ -87,7 +88,7 @@ export function WatchlistTiles({ inputs, signals }: { inputs: WatchInput[]; sign
       manualResistance: side === "resistance" ? parsed.value : levels.manualResistance,
     };
     try {
-      const res = await fetch(`/api/levels/${encodeURIComponent(row.key)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const res = await mutate(`/api/levels/${encodeURIComponent(row.key)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error(String(res.status));
       setEditing(null);
       setError(null);
@@ -99,7 +100,7 @@ export function WatchlistTiles({ inputs, signals }: { inputs: WatchInput[]; sign
 
   async function remove(key: string) {
     try {
-      const res = await fetch(`/api/watchlist/${encodeURIComponent(key)}`, { method: "DELETE" });
+      const res = await mutate(`/api/watchlist/${encodeURIComponent(key)}`, { method: "DELETE" });
       if (!res.ok) throw new Error(String(res.status));
       router.refresh();
     } catch {

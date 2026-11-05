@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { clearClientCache } from "@/lib/client/cache";
 import { signIn, type LoginState } from "./actions";
 
 const initial: LoginState = { error: null };
@@ -11,6 +12,8 @@ const field =
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(signIn, initial);
+  // Reaching the sign-in page (sign-out or an expired session) ends any cached private data in this tab.
+  useEffect(() => clearClientCache(), []);
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <form
