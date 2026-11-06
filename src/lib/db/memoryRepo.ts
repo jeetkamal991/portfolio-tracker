@@ -358,6 +358,9 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       }
       return out;
     },
+    async getCloseEma200(ids, fromDate) { // `sessions` only sizes Supabase page reads
+      return [...daysRange(ids, fromDate, "9999-12-31").values()].flat().map((d) => ({ date: d.date, close: d.close, ema200: d.ema200 }));
+    },
     async getChartDays(instrumentId, limit) {
       return [...(days.get(instrumentId)?.values() ?? [])].sort((a, b) => a.date.localeCompare(b.date)).slice(-limit).map((d) => ({ ...d }));
     },

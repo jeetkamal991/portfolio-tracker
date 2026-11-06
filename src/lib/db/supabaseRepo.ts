@@ -139,7 +139,7 @@ const toScoreRun = (r: Row): ScoreRun => ({
   lastSuccessAt: (r.last_success_at as string | null) ?? null, finishedAt: (r.finished_at as string | null) ?? null, error: (r.error as string | null) ?? null,
 });
 
-const CHART_COLUMNS = "date,open,high,low,close,volume,ema20,ema50,ema200,bb_upper,bb_middle,bb_lower,rsi14,macd,macd_signal,macd_hist";
+const CHART_COLUMNS = "date,open,high,low,close,volume,ema20,ema50,ema200,bb_upper,bb_middle,bb_lower,rsi14,macd,macd_signal,macd_hist,score,score_label";
 
 type PageResult = { data: unknown; error: { message: string } | null; count: number | null };
 /**
@@ -367,6 +367,20 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       }
       for (const [id, list] of out) out.set(id, list.slice(-perInstrument));
       return out;
+    },
+    async getCloseEma200(instrumentIds, fromDate, sessions) {
+      const ids = [...new Set(instrumentIds)];
+      const parts = await Promise.all(chunks(ids, 300).map((c) =>
+        pagedAll(
+          (from, to, withCount) =>
+            db.from("daily_prices").select("date,close,ema200", withCount ? { count: "exact" } : undefined).in("instrument_id", c)
+              .gte("date", fromDate).order("instrument_id").order("date").range(from, to),
+          "getCloseEma200",
+          Infinity,
+          pagesFor(c.length * sessions),
+        ),
+      ));
+      return parts.flat().map((r) => ({ date: r.date as string, close: num(r.close), ema200: num(r.ema200) }));
     },
     async getChartDays(instrumentId, limit) {
       return (await readDays(instrumentId, limit, CHART_COLUMNS, "getChartDays")).map(toDay);

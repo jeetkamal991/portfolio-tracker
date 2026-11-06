@@ -3,10 +3,9 @@ import { loadHoldingsLatest } from "@/lib/api/portfolio";
 import { cached, getRepo, quoteCache } from "@/lib/api/server";
 import { istDate } from "@/lib/time/ist";
 import { parseDailySummary } from "@/lib/content/claude";
-import { eventMarkers, KIND_COLOR } from "@/lib/view/alerts";
 import { buildDailyLog } from "@/lib/view/dailyLog";
 import { buildSectorRows } from "@/lib/view/dashboard";
-import { PriceChart, type ChartMarker } from "../components/chart/PriceChart";
+import { PriceChart } from "../components/chart/PriceChart";
 import { TodayByClaudeCompact } from "../components/dashboard/TodayByClaudeCompact";
 import { DashboardTimeline } from "../components/dashboard/DashboardTimeline";
 import { DailyLogTotals } from "../components/dashboard/DailyLogTotals";
@@ -51,9 +50,6 @@ export default async function Dashboard() {
   const summaryRow = session ? await repo.getDailySummary(session).catch(() => null) : null;
   const summary = summaryRow ? parseDailySummary(summaryRow) : null;
 
-  // Your alert events, pinned on the chart at the session they fired.
-  const markers: ChartMarker[] = eventMarkers(events, niftyDates).map((m) => ({ time: m.time, text: m.key, color: KIND_COLOR[m.kind] }));
-
   // The Daily Sector Log's Total row: this month, or last month while this one has no sessions yet.
   const log = buildDailyLog({ NIFTY50: niftyDays, ...Object.fromEntries(sectors.map((x) => [x.key, x.days])) }, niftyDates, new Date(), 2);
   const logMonth = log[0]?.rows.length ? log[0] : (log[1] ?? null);
@@ -63,7 +59,7 @@ export default async function Dashboard() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <NiftyCard days={niftyDays} />
         <DashboardTimeline events={events} />
-        <PriceChart days={niftyDays} title="NIFTY 50" height={520} markers={markers} historyKey="NIFTY50" moreHistory={niftyDays.length >= DASH_BARS} />
+        <PriceChart days={niftyDays} title="NIFTY 50" height={520} signals historyKey="NIFTY50" moreHistory={niftyDays.length >= DASH_BARS} />
         <MoversPanel initial={movers} />
       </div>
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">

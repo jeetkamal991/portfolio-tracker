@@ -1,5 +1,9 @@
 import type { StoredDay } from "@/lib/db/types";
 
+/** Distance from an EMA, in %: below WARN is normal, WARN to DANGER amber, above DANGER red. */
+export const STRETCH_WARN_PCT = 4;
+export const STRETCH_DANGER_PCT = 6;
+
 export type ChartRange = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
 /** Daily bars per range; 1D/1W show the last 5/10 bars. */
@@ -22,9 +26,16 @@ export interface ChartData {
   macd: LinePoint[];
   macdSignal: LinePoint[];
   macdHist: LinePoint[];
+  /** Days whose stored Technical Score label is bullish (bull) or bearish; Neutral and unscored days are absent. */
+  regime: { time: string; bull: boolean }[];
 }
 
 const VOL_SMA = 20;
+
+/** true = bullish, false = bearish, null = Neutral or no stored label. */
+export function regimeBull(label: StoredDay["scoreLabel"]): boolean | null {
+  return label === "Bullish" || label === "Strong Bullish" ? true : label === "Bearish" || label === "Strong Bearish" ? false : null;
+}
 
 type Priced = StoredDay & { open: number; high: number; low: number; close: number };
 
@@ -73,5 +84,44 @@ export function buildChartData(days: StoredDay[], range: ChartRange): ChartData 
     macd: line((d) => d.macd),
     macdSignal: line((d) => d.macdSignal),
     macdHist: line((d) => d.macdHist),
+    regime: rows.flatMap((d) => { const bull = regimeBull(d.scoreLabel); return bull === null ? [] : [{ time: d.date, bull }]; }),
+  };
+}
+
+export interface Stretch { label: "EMA20" | "EMA50" | "EMA200"; pct: number; tone: "normal" | "amber" | "red" }
+
+/** How far the close sits from each EMA (signed %); tone uses the absolute distance. An EMA that is missing or zero is left out. */
+export function emaStretch(close: number, emas: { ema20: number | null; ema50: number | null; ema200: number | null }): Stretch[] {
+  const out: Stretch[] = [];
+  for (const [label, v] of [["EMA20", emas.ema20], ["EMA50", emas.ema50], ["EMA200", emas.ema200]] as const) {
+    if (v === null || v === 0) continue;
+    const pct = ((close - v) / v) * 100;
+    const a = Math.abs(pct);
+    out.push({ label, pct, tone: a > STRETCH_DANGER_PCT ? "red" : a >= STRETCH_WARN_PCT ? "amber" : "normal" });
+  }
+  return out;
+}
+
+export interface HoverInfo {
+  date: string;
+  close: number;
+  dayPct: number | null;
+  rsi: number | null;
+  score: number | null;
+  scoreLabel: StoredDay["scoreLabel"];
+  /** Close vs EMA 20 in %. */
+  ema20Pct: number | null;
+  breadth: number | null;
+}
+
+/** The hovered day's figures, or null when `date` has no priced bar. `days` must be priced bars, ascending. Missing values stay null. */
+export function hoverInfo(days: { date: string; close: number; rsi14: number | null; ema20: number | null; score: number | null; scoreLabel: StoredDay["scoreLabel"] }[], date: string, breadth: number | null): HoverInfo | null {
+  const i = days.findIndex((d) => d.date === date);
+  if (i < 0) return null;
+  const d = days[i]!, prev = days[i - 1];
+  return {
+    date, close: d.close, rsi: d.rsi14, score: d.score, scoreLabel: d.scoreLabel, breadth,
+    dayPct: prev && prev.close !== 0 ? ((d.close - prev.close) / prev.close) * 100 : null,
+    ema20Pct: d.ema20 ? ((d.close - d.ema20) / d.ema20) * 100 : null,
   };
 }

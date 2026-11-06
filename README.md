@@ -87,13 +87,24 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
-| `/` | Dashboard | Top row: the Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend) and the latest alert events. Second row: the Nifty chart (EMA 20/50/200, ranges 1D-ALL, your alert events pinned as coloured dots: red stop hit, amber near stop, green target, cyan report ready) beside the Nifty 200 market movers (top gainers above top losers, then breadth). Below, two columns: TODAY BY CLAUDE first (highlights as points plus a few news lines; the full write-up with sources is on the Market tab), then SECTORAL PULSE (full sector names, three tiles a row), YOUR PORTFOLIO snapshot and the MONTHLY SECTOR LOG (the Total row of the Daily Sector Log: this month's summed daily % for Nifty and each sector; the full daily log is on Sector Analysis) |
+| `/` | Dashboard | Top row: the Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend) and the latest alert events. Second row: the Nifty chart (EMA 20/50/200, ranges 1D-ALL) beside the Nifty 200 market movers (top gainers above top losers, then breadth). Below, two columns: TODAY BY CLAUDE first (highlights as points plus a few news lines; the full write-up with sources is on the Market tab), then SECTORAL PULSE (full sector names, three tiles a row), YOUR PORTFOLIO snapshot and the MONTHLY SECTOR LOG (the Total row of the Daily Sector Log: this month's summed daily % for Nifty and each sector; the full daily log is on Sector Analysis) |
 | `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles (the two biggest movers get large tiles) with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
 | `/market` | Market | Today by Claude, signals on your stocks, ten screeners, six alpha ranks, FII/DII stake increases, breadth and India VIX |
 | `/deepdive` | AI Deep Dive | A scoreboard of every saved Claude report: summary figures (reports, done, pending, failed, average score), a request box with stock search, and tiles with a score ring (the stock's Technical Score today), status, label and summary. Open report opens the stock pop-up on its AI Deep Dive tab; Delete removes that report immediately (no confirm) |
 | `/alerts` | Alerts | A briefing: how many alerts need you (stop hits first), a ranked action queue with one-click Open stock / Raise stop / Read it / Dismiss, earlier alerts, then the rules and the new-alert form |
+
+### Dashboard chart
+
+The Nifty chart on the Dashboard has extras that the stock pop-up's chart does not. All use stored data only (candles, EMAs, RSI, Technical Score, India VIX, Nifty 200 constituents).
+
+- **Signal markers.** Arrows on the candle where it happened: Golden cross (EMA 50 over 200, green, below the bar), Death cross (red, above), 20/50 up/down (smaller), and Above 200 / Below 200 (close vs EMA 200). One marker per day: golden/death beats close vs 200, which beats 20/50. Days with a missing EMA are skipped.
+- **How stretched.** Under the OHLC strip: the latest close's distance from EMA 20, 50 and 200 in %. Normal under 4%, amber 4-6%, red above 6% (constants at the top of `src/lib/view/chart.ts`).
+- **Breadth pane.** A BREADTH button next to Volume, RSI and MACD: the % of Nifty 200 stocks closing above their own stored EMA 200 (only stocks that have an EMA 200 that day count), with India VIX on the left axis. It loads when you open it, from `GET /api/breadth`, for the chart's range up to about a year (260 sessions); the first load reads about 26k-53k rows and takes a few seconds, then it is cached until the next session.
+- **Key levels.** Faint dashed lines: previous day high/low (PDH, PDL), 52-week high (52W H), and the nearest swing support (S) and resistance (R), found the same way as the Portfolio form's suggested levels.
+- **Regime shading.** A light green or red background on days whose stored Technical Score label is bullish or bearish; Neutral and unscored days get no tint. Scores are stored from 2026-10-16, so older days are untinted.
+- **Hover tooltip.** Date, close and day %, RSI 14, Technical Score with label, breadth % (shown once the Breadth pane has been opened) and distance from EMA 20, with "—" for anything missing. It sits on the half of the chart away from the pointer so it never covers the hovered candle.
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
