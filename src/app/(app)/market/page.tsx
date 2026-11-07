@@ -3,11 +3,10 @@ import { cached, getRepo } from "@/lib/api/server";
 import { buildDelivery } from "@/lib/calc/delivery";
 import { addDays, istDate } from "@/lib/time/ist";
 import { parseView } from "@/lib/view/marketViews";
-import { TodayByClaudeCompact } from "../../components/dashboard/TodayByClaudeCompact";
 import { BreadthPanel } from "../../components/market/BreadthPanel";
 import { ClaudeSummaryCard } from "../../components/market/ClaudeSummaryCard";
 import { RepeatDeliveryCard, TodayDeliveryCard } from "../../components/market/DeliveryCards";
-import { MarketBoard, ViewLink } from "../../components/market/MarketBoard";
+import { MarketBoard } from "../../components/market/MarketBoard";
 import { ScreenerGrid } from "../../components/market/ScreenerGrid";
 import { SignalsSummary } from "../../components/market/SignalsSummary";
 import { StakeCard } from "../../components/market/StakeScreeners";
@@ -53,10 +52,7 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-        <div className="lg:col-span-2">
-          <TodayByClaudeCompact summary={m.summary} session={m.session} details={<ViewLink view="today">Full details →</ViewLink>} />
-        </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <BreadthPanel breadth={m.breadth} hasUniverse={m.hasUniverse} />
         <SignalsSummary signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />
       </div>

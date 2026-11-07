@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { ParsedSummary } from "@/lib/content/claude";
 import { fmtDate } from "@/lib/view/dashboard";
 import { SummaryBullets } from "../market/SummaryBullets";
@@ -10,7 +9,7 @@ const NEWS_SHOWN = 3;
 const EVENTS_SHOWN = 3;
 
 /** The Dashboard's short version: highlights as points, a few news lines, and a link to the full write-up. */
-export function TodayByClaudeCompact({ summary, session, details }: { summary: ParsedSummary | null; session: string | null; details?: ReactNode }) {
+export function TodayByClaudeCompact({ summary, session }: { summary: ParsedSummary | null; session: string | null }) {
   const date = summary?.date ?? session;
   return (
     <Panel
@@ -18,11 +17,9 @@ export function TodayByClaudeCompact({ summary, session, details }: { summary: P
       action={
         <span className="flex items-center gap-2">
           {date && <Label>{fmtDate(date)}</Label>}
-          {details ?? (
-            <Link href="/market" className="font-mono text-xs text-[var(--up)] hover:underline">
-              Full details →
-            </Link>
-          )}
+          <Link href="/market" className="font-mono text-xs text-[var(--up)] hover:underline">
+            Full details →
+          </Link>
         </span>
       }
     >
