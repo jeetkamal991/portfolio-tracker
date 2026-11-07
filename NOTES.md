@@ -181,3 +181,10 @@ Status: code deployed to production (commits 89b03b4 and 39f51d2). Migration 001
 - Housekeeping: drop `daily_prices_splitfix_backup`, delete branch `feat/redesign-stage7-alerts` (both waiting for an explicit yes).
 - Done by the owner (reported 2026-11-07, not checked by me): Supabase sign-ups are off, and the service-role key was rotated. Still to confirm after a rotation: the new key is in Vercel (Production) and `.env.local`, the site was redeployed, and the old key is deleted in Supabase.
 - Nightly snapshots: no automatic run has been seen (only the manual 5 Nov one); check `score_runs` after Monday's 14:30 UTC delivery cron. EOD runs take 30-133 s, Telegram sends work.
+
+## Fundamentals collection (2026-11-08)
+- Migration **0021** (`fundamentals_snapshots`) applied to Tracker1. `npm run collect-fundamentals` (flags `--dry-run`, `--only A,B`, `--report`) stores 15 raw Yahoo fields per stock per day; nothing reads the table yet (no score, ranking or screen). The spec and plan list 15 fields, not the 16 first written.
+- First run, 8 Nov: 242 stocks (205 non-financial, 37 financial), no failed fetches. Same-day re-run overwrote rows (242 stay 242).
+- Coverage below 80% on the first run: non-financials returnOnEquity 77%, returnOnAssets 77%, currentRatio 78%, freeCashflow 73%, operatingCashflow 78%. Financials: debtToEquity 38%, currentRatio 41%, freeCashflow 16%. The rest are 96-100%.
+- Yahoo does return `marketCap` (205/205 and 37/37), so the Rankings page note that no provider supplies market cap is out of date. Not changed.
+- Next: run it about weekly, review after 3-4 runs. Score only if the fields a score would need are at about 80% or better, banks and financials judged separately; a fundamentals score may have to use different fields for financials.
