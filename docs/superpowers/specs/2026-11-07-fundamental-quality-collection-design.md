@@ -7,7 +7,7 @@ Find out whether Yahoo Finance's fundamentals for Indian stocks are complete and
 
 ## Decisions already made
 - Universe: the Nifty 200 plus all holdings and watchlist stocks (about 240).
-- Fields: the 16 below, stored exactly as Yahoo returns them. Nothing is derived or defaulted.
+- Fields: the 15 below, stored exactly as Yahoo returns them. Nothing is derived or defaulted.
 - Run: a local script, run by the owner about once a week. A cron comes later only if the data proves worth scoring.
 - Scoring starts only if per-field coverage is about 80% or better over several weeks, banks and NBFCs judged separately.
 
