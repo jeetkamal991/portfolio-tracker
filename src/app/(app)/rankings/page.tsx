@@ -20,7 +20,12 @@ const NUMERIC_FILTERS = [
   ["rsiMax", "RSI to"], ["minRvol", "Min rel. volume"], ["minTradedCr", "Min traded ₹ cr/day"],
 ] as const;
 
-type SP = Record<string, string | string[] | undefined>;
+const PRESETS = [
+  ["Technical 75+ and Trade 65+", "kind=combined&minTechnical=75&minTrade=65"],
+  ["Technical 75+, above all EMAs", "kind=technical&minTechnical=75&trend=above_all"],
+] as const;
+
+type SP =Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const numParam = (v: string | string[] | undefined) => {
   const s = one(v);
@@ -73,6 +78,13 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
             </Link>
           ))}
         </nav>
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+          <Label>Watch-list presets</Label>
+          {PRESETS.map(([label, query]) => (
+            <Link key={label} href={`/rankings?${query}`} className="rounded-lg border border-[var(--border)] px-2 py-1 text-[var(--muted)] hover:text-[var(--text)]">{label}</Link>
+          ))}
+          <span className="text-[11px] text-[var(--muted)]">A shortlist to study, not a buy or sell signal.</span>
+        </div>
         <p className="mb-3 text-xs text-[var(--muted)]">{help} Only {SCORING_VERSION} scores are ranked here; legacy_v1 is never mixed in.</p>
         <form method="get" className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           <input type="hidden" name="kind" value={kind} />
