@@ -487,6 +487,17 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       const r = check(await db.from("levels").select("*").eq("instrument_id", instrumentId).maybeSingle(), "getLevels");
       return toLevels(r as Row | null);
     },
+    async getResultsDates(instrumentIds) {
+      const out = new Map<number, string>();
+      const ids = [...new Set(instrumentIds)];
+      if (ids.length === 0) return out;
+      const rows = check(await db.from("levels").select("instrument_id,results_date").in("instrument_id", ids).not("results_date", "is", null), "getResultsDates") as Row[];
+      for (const r of rows) out.set(Number(r.instrument_id), String(r.results_date));
+      return out;
+    },
+    async setResultsDate(instrumentId, date) {
+      check(await db.from("levels").upsert({ instrument_id: instrumentId, results_date: date, updated_at: now() }, { onConflict: "instrument_id" }), "setResultsDate");
+    },
     async setAutoLevels(instrumentId, support, resistance) {
       check(
         await db.from("levels").upsert(

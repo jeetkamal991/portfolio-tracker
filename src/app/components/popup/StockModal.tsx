@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { evaluationUrl, fetchCached, invalidate, peek, stockUrl, TTL_MS, mutate } from "@/lib/client/cache";
+import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
+import { istDate } from "@/lib/time/ist";
 import { fmtPrice } from "@/lib/view/dashboard";
 import type { PopupData } from "@/lib/view/popup";
 import { fmtInr } from "@/lib/view/portfolio";
@@ -64,6 +66,7 @@ function Header({ data, titleId, onWatchlist, onAdd, adding, addError, onClose }
   const cmp = q ? q.price : (data.latest?.close ?? null);
   const pct = q ? q.changePct : (data.latest?.pctChange ?? null);
   const isStock = data.instrument.type === "stock";
+  const soon = daysToResults(data.resultsDate, istDate(new Date()));
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 flex-col gap-2">
@@ -73,6 +76,7 @@ function Header({ data, titleId, onWatchlist, onAdd, adding, addError, onClose }
           </h2>
           <Chip tone="neutral">NSE</Chip>
           <span className="font-mono text-xs text-[var(--muted)]">{data.instrument.key}</span>
+          {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
         </div>
         <div className="text-sm text-[var(--muted)]">
           {isStock ? (data.instrument.sectorName ?? "Sector not mapped") : data.instrument.type === "index" ? "Index" : "Sector index"}

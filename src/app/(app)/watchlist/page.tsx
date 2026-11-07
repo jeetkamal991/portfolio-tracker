@@ -13,7 +13,12 @@ export default async function WatchlistPage() {
   const watchInstruments = await repo.listWatchlist();
   const ids = watchInstruments.map((i) => i.id);
   // two reads for the whole list, not two per stock
-  const [recent, levels] = await Promise.all([repo.getRecentDays(ids, DAYS), repo.getLevelsMany(ids)]);
+  const [recent, levels, dates] = await Promise.all([
+    repo.getRecentDays(ids, DAYS),
+    repo.getLevelsMany(ids),
+    repo.getResultsDates(ids).catch(() => new Map<number, string>()), // optional feature: never break the page
+  ]);
+  const results = Object.fromEntries(watchInstruments.flatMap((i) => (dates.has(i.id) ? [[i.key, dates.get(i.id)!]] : [])));
   const inputs: WatchInput[] = watchInstruments.map((i) => ({
     key: i.key, name: i.name, ticker: i.yahooTicker, days: recent.get(i.id) ?? [], levels: levels.get(i.id)!,
   }));
@@ -21,7 +26,7 @@ export default async function WatchlistPage() {
   return (
     <div className="flex flex-col gap-4">
       <AddStock />
-      <WatchlistTiles inputs={inputs} signals={buildWatchSignals(inputs)} />
+      <WatchlistTiles inputs={inputs} signals={buildWatchSignals(inputs)} results={results} />
     </div>
   );
 }

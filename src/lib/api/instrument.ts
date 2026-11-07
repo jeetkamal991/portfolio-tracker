@@ -31,7 +31,7 @@ export async function handleInstrumentGet(repo: Repo, key: string, opts: { memo?
 
   // Every read starts now. Dependent lookups (sector instrument, Nifty latest day, shareholding rows) are chained inside the
   // same parallel group instead of waiting for the others, so the whole pop-up costs about two round trips, not four.
-  const [days, levels, watchlist, nifty, reports, held, sector, quarterRows] = await Promise.all([
+  const [days, levels, watchlist, nifty, reports, held, sector, quarterRows, resultsDates] = await Promise.all([
     repo.getDays(inst.id, POPUP_BARS),
     repo.getLevels(inst.id),
     repo.listWatchlist(),
@@ -45,6 +45,8 @@ export async function handleInstrumentGet(repo: Repo, key: string, opts: { memo?
         })
       : Promise.resolve(null),
     memo("shareholding-quarter", () => repo.latestShareholdingQuarter(), STATIC_TTL_MS).then((q) => (q ? repo.listShareholding([q, previousQuarterEnd(q)], [inst.id]) : [])),
+    // optional feature: a failed read (e.g. the column is not migrated yet) must not take the pop-up down
+    repo.getResultsDates([inst.id]).catch(() => new Map<number, string>()),
   ]);
   const niftyLatest = nifty;
 
@@ -56,7 +58,7 @@ export async function handleInstrumentGet(repo: Repo, key: string, opts: { memo?
       ? { qty: held.qty, avgPrice: held.avgPrice, buyDate: held.buyDate, stopLoss: held.stopLoss, target1: held.target1 }
       : null,
   });
-  return { status: 200, body: { ...data, historyTruncated: days.length >= POPUP_BARS } };
+  return { status: 200, body: { ...data, resultsDate: resultsDates.get(inst.id) ?? null, historyTruncated: days.length >= POPUP_BARS } };
 }
 
 export async function handleReportDelete(repo: Repo, id: string): Promise<ApiResult> {

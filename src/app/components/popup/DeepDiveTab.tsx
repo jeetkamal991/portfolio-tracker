@@ -13,7 +13,7 @@ const titleCase = (s: string) =>
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
     .trim()
-    .replace(/w/g, (c) => c.toUpperCase());
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
 type Report = PopupData["reports"][number];
 

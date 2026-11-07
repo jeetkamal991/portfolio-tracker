@@ -24,6 +24,7 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
   const watchlist = new Set<number>();
   const holdings = new Map<number, HoldingInput>();
   const levels = new Map<number, Levels>();
+  const resultsDates = new Map<number, string>();
   const jobRuns: JobRun[] = [];
   const jobRunsById = new Map<number, JobRun>();
   const reports: ReportRow[] = [];
@@ -170,6 +171,12 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
     async upsertHolding(id, h) { holdings.set(id, { ...h }); },
     async deleteHolding(id) { holdings.delete(id); },
     async getLevels(id) { return { ...(levels.get(id) ?? emptyLevels()) }; },
+    async getResultsDates(ids) {
+      return new Map(ids.flatMap((id) => (resultsDates.has(id) ? [[id, resultsDates.get(id)!] as [number, string]] : [])));
+    },
+    async setResultsDate(id, date) {
+      if (date === null) resultsDates.delete(id); else resultsDates.set(id, date);
+    },
     async setAutoLevels(id, support, resistance) {
       const l = levelsFor(id);
       l.autoSupport = support; l.autoResistance = resistance;

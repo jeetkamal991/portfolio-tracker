@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createMemoryRepo } from "@/lib/db/memoryRepo";
-import { handleLevelsPut } from "@/lib/api/levels";
+import { handleLevelsPut, handleResultsDatePut } from "@/lib/api/levels";
 import { effectiveLevel } from "@/lib/calc/levels";
 
 const setup = async () => {
@@ -47,5 +47,24 @@ describe("handleLevelsPut", () => {
     const repo = await setup();
     const r = await handleLevelsPut(repo, "NOPE", { manualSupport: 1, manualResistance: null });
     expect(r.status).toBe(404);
+  });
+});
+
+describe("handleResultsDatePut", () => {
+  it("stores, reads back and clears a date without touching levels", async () => {
+    const repo = await setup();
+    const r = await handleResultsDatePut(repo, "TCS", { date: "2026-11-14" });
+    expect(r).toEqual({ status: 200, body: { date: "2026-11-14" } });
+    expect(await repo.getResultsDates([1])).toEqual(new Map([[1, "2026-11-14"]]));
+    expect((await repo.getLevels(1)).autoSupport).toBe(90);
+    await handleResultsDatePut(repo, "TCS", { date: null });
+    expect((await repo.getResultsDates([1])).size).toBe(0);
+  });
+  it.each([[{ date: "2026-02-30" }], [{ date: "14-11-2026" }], [{ date: 5 }], [{}], [null]])("rejects invalid body %#", async (body) => {
+    const r = await handleResultsDatePut(await setup(), "TCS", body);
+    expect(r.status).toBe(400);
+  });
+  it("404s for an unknown key", async () => {
+    expect((await handleResultsDatePut(await setup(), "NOPE", { date: null })).status).toBe(404);
   });
 });

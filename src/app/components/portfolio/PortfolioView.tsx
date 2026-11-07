@@ -30,11 +30,14 @@ export function PortfolioView({
   latest,
   today,
   side,
+  results,
 }: {
   holdings: Holding[];
   latest: [number, StoredDay | null][];
   today: string;
   side: PortfolioSide;
+  /** Manual next results date by stock key. */
+  results: Record<string, string>;
 }) {
   const { quotes, open } = useQuotes();
   const pathname = usePathname() ?? "/portfolio";
@@ -74,7 +77,7 @@ export function PortfolioView({
     <div className="flex flex-col gap-4">
       <PortfolioHero totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} ladder={buildLadder(view.rows)} rows={view.rows} side={side} />
       <WarningsBar warnings={view.warnings} />
-      <HoldingsTable rows={view.rows} onAdd={openAdd} onEdit={openEdit} />
+      <HoldingsTable rows={view.rows} results={results} today={today} onAdd={openAdd} onEdit={openEdit} />
       <PositionSizer />
       {formKey && (
         <HoldingForm

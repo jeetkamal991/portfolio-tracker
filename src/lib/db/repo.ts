@@ -41,6 +41,10 @@ export interface Repo {
   /** Insert or replace the position for one instrument; sets updated_at. */
   upsertHolding(instrumentId: number, h: HoldingInput): Promise<void>;
   deleteHolding(instrumentId: number): Promise<void>;
+  /** Manually entered next results dates (YYYY-MM-DD) by instrument id; ids with no date are absent. */
+  getResultsDates(instrumentIds: number[]): Promise<Map<number, string>>;
+  /** Sets or (with null) clears the results date; never touches the levels. */
+  setResultsDate(instrumentId: number, date: string | null): Promise<void>;
   /** All-null if no row. */
   getLevels(instrumentId: number): Promise<Levels>;
   /** Never touches manual_*. */

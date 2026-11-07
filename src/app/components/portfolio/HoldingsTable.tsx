@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { HoldingStatus } from "@/lib/calc/portfolio";
+import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
 import { fmtPct, pctTone } from "@/lib/view/dashboard";
 import { fmtInr, fmtSignedInr, sortPortfolioRows, type PortfolioRow, type PortfolioSortKey } from "@/lib/view/portfolio";
 import { ScoreLabelChip } from "../popup/ScoreBadge";
@@ -62,10 +63,14 @@ function Money({ pnl, pct }: { pnl: number | null; pct?: number | null }) {
 
 export function HoldingsTable({
   rows: input,
+  results,
+  today,
   onAdd,
   onEdit,
 }: {
   rows: PortfolioRow[];
+  results: Record<string, string>;
+  today: string;
   onAdd: (opener: HTMLElement) => void;
   onEdit: (key: string, opener: HTMLElement) => void;
 }) {
@@ -144,6 +149,7 @@ export function HoldingsTable({
           <tbody>
             {rows.map((r) => {
               const st = r.status ? STATUS[r.status] : null;
+              const soon = daysToResults(results[r.key], today);
               return (
                 <tr key={r.key} className="border-t border-[var(--border)] text-right hover:bg-slate-800/40">
                   <td className={`${STICKY} ${STICKY_BG} py-2 pl-2.5 pr-2 text-left sm:static`}>
@@ -151,6 +157,7 @@ export function HoldingsTable({
                       <div className="max-w-[12rem] truncate font-medium hover:text-[var(--up)]">{r.name}</div>
                       <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
                     </StockLink>
+                    {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
                   </td>
                   <td className={MONO}>{r.qty.toLocaleString("en-IN")}</td>
                   <td className={MONO}>{fmtInr(r.avgPrice, 2)}</td>

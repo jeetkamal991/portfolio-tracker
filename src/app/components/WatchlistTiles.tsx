@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
+import { istDate } from "@/lib/time/ist";
 import { fmtPct, fmtPrice, parseLevelInput, pctTone } from "@/lib/view/dashboard";
 import { ladderPos } from "@/lib/view/portfolio";
 import {
@@ -53,7 +55,7 @@ function EmaBox({ label, value, above, note }: { label: string; value: number | 
   );
 }
 
-export function WatchlistTiles({ inputs, signals }: { inputs: WatchInput[]; signals: WatchSignals }) {
+export function WatchlistTiles({ inputs, signals, results }: { inputs: WatchInput[]; signals: WatchSignals; results: Record<string, string> }) {
   const router = useRouter();
   const { quotes } = useQuotes();
   const [tab, setTab] = useState<WatchTab>("all");
@@ -162,6 +164,7 @@ export function WatchlistTiles({ inputs, signals }: { inputs: WatchInput[]; sign
   function tile(r: WatchRow) {
     const pos = ladderPos(r.cmp, r.support, r.resistance);
     const chip = signalChip(r.key, signals);
+    const soon = daysToResults(results[r.key], istDate(new Date()));
     return (
       <article key={r.key} className={`relative flex min-w-0 flex-col gap-3 rounded-xl border bg-[var(--panel)] p-4 ${r.nearLevel ? "border-amber-400/40" : "border-[var(--border)]"}`}>
         <button type="button" onClick={() => void remove(r.key)} aria-label={`Remove ${r.name}`} className="absolute right-3 top-3 text-xs text-[var(--muted)] hover:text-[var(--down)]">
@@ -230,6 +233,7 @@ export function WatchlistTiles({ inputs, signals }: { inputs: WatchInput[]; sign
         <div className="mt-auto flex items-center justify-between gap-2">
           <Sparkline values={r.spark} />
           {chip && <Chip tone={chip.tone}>{chip.label}</Chip>}
+          {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
         </div>
       </article>
     );

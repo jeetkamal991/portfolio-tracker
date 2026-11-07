@@ -13,6 +13,8 @@ export interface PopupData {
   days: StoredDay[];
   /** True when older history exists beyond `days`. */
   historyTruncated?: boolean;
+  /** Manually entered next results date (YYYY-MM-DD); added by the API route. */
+  resultsDate?: string | null;
   latest: StoredDay | null;
   score: {
     value: number; label: ScoreLabel; confidence: string; signal: string;

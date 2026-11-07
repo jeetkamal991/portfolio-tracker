@@ -1,6 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { invalidate, mutate, stockUrl } from "@/lib/client/cache";
+import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
+import { istDate } from "@/lib/time/ist";
 import { COMPONENT_MAX, type ScoreComponents } from "@/lib/calc/score";
 import { fmtPct, fmtPrice } from "@/lib/view/dashboard";
 import type { PopupData } from "@/lib/view/popup";
@@ -112,7 +115,43 @@ function Levels({ data }: { data: PopupData }) {
         <span>{fmtPrice(range52.low)}</span>
         <PctText value={range52.fromLow} className="text-xs" />
       </Row>
+      {data.instrument.type === "stock" && <ResultsDate key={data.instrument.key} stockKey={data.instrument.key} initial={data.resultsDate ?? null} />}
     </Panel>
+  );
+}
+
+/** A typed-in next results date; only a warning chip within 7 days, never part of the score. */
+function ResultsDate({ stockKey, initial }: { stockKey: string; initial: string | null }) {
+  const [date, setDate] = useState(initial ?? "");
+  const [error, setError] = useState(false);
+  async function save(next: string) {
+    const prev = date;
+    setDate(next);
+    setError(false);
+    try {
+      const res = await mutate(`/api/results-date/${encodeURIComponent(stockKey)}`, {
+        method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ date: next || null }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      invalidate(stockUrl(stockKey)); // a reopened pop-up must not show the old date
+    } catch {
+      setDate(prev);
+      setError(true);
+    }
+  }
+  const soon = daysToResults(date, istDate(new Date()));
+  return (
+    <Row label="Next results">
+      {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => save(e.target.value)}
+        aria-label="Next results date"
+        className="rounded border border-[var(--border)] bg-[var(--panel-2)] px-1 text-xs text-[var(--text)]"
+      />
+      {error && <span role="alert" className="text-xs text-[var(--down)]">Could not save</span>}
+    </Row>
   );
 }
 
