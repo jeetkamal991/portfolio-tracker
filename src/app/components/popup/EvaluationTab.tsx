@@ -118,6 +118,20 @@ export function EvaluationPanel({ e, legacy }: { e: EvaluationView; legacy: Payl
 
   return (
     <div className="flex flex-col gap-5">
+      <section aria-label="Trade assessment" className="flex flex-col gap-2">
+        <Label>Trade assessment</Label>
+        <div className="grid gap-x-6 gap-y-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 font-mono text-xs tabular-nums sm:grid-cols-2">
+          <span>Suggested entry zone: {L.entry === null ? "—" : fmtInr(L.entry, 2)} <span className="text-[var(--muted)]">(latest close)</span></span>
+          <span>Stop-loss: {L.stop === null ? "—" : `${fmtInr(L.stop, 2)} (${L.stopSource ?? "—"}) · ${dist(L.stop)}`}</span>
+          <span>Target: {L.target === null ? <span className="text-[var(--muted)]">No valid target (breakout territory)</span> : `${fmtInr(L.target, 2)} (${L.targetSource}) · ${dist(L.target)}`}</span>
+          <span>Reward-to-risk: {L.rewardRisk === null ? <span className="text-[var(--muted)]">not calculable</span> : L.rewardRisk.toFixed(2)}</span>
+          <span>ATR(14): {e.atr?.value == null ? <span className="text-[var(--muted)]">not available</span> : `${fmtInr(e.atr.value, 2)} (${e.atr.pct?.toFixed(2)}% of price)`}</span>
+          <span>Median traded value: {e.liquidity?.medianCr == null ? "—" : `₹${e.liquidity.medianCr.toFixed(1)} cr/day`} <span className="text-[var(--muted)]">(estimate)</span></span>
+        </div>
+        <p className="text-sm">Entry observation: <span className="font-semibold">{tq.observation}</span></p>
+        {tq.flags.map((f) => <p key={f} className="text-xs text-[var(--warn)]">⚠ {f}</p>)}
+      </section>
+
       <p className="font-mono text-[11px] text-[var(--muted)]">
         Scoring version {e.scoringVersion} · evaluated on {e.evaluationDate} · data as of {e.dataTimestamp.slice(0, 16).replace("T", " ")} UTC
         {legacy && <> · legacy_v1 score {legacy.score}{legacy.label ? ` (${legacy.label})` : ""}, shown for comparison only</>}
@@ -145,20 +159,7 @@ export function EvaluationPanel({ e, legacy }: { e: EvaluationView; legacy: Payl
 
       <Breakdown title="Technical strength breakdown" categories={e.technical.categories} />
 
-      <section aria-label="Trade assessment" className="flex flex-col gap-2">
-        <Label>Trade assessment</Label>
-        <div className="grid gap-x-6 gap-y-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 font-mono text-xs tabular-nums sm:grid-cols-2">
-          <span>Suggested entry zone: {L.entry === null ? "—" : fmtInr(L.entry, 2)} <span className="text-[var(--muted)]">(latest close)</span></span>
-          <span>Stop-loss: {L.stop === null ? "—" : `${fmtInr(L.stop, 2)} (${L.stopSource ?? "—"}) · ${dist(L.stop)}`}</span>
-          <span>Target: {L.target === null ? <span className="text-[var(--muted)]">No valid target (breakout territory)</span> : `${fmtInr(L.target, 2)} (${L.targetSource}) · ${dist(L.target)}`}</span>
-          <span>Reward-to-risk: {L.rewardRisk === null ? <span className="text-[var(--muted)]">not calculable</span> : L.rewardRisk.toFixed(2)}</span>
-          <span>ATR(14): {e.atr?.value == null ? <span className="text-[var(--muted)]">not available</span> : `${fmtInr(e.atr.value, 2)} (${e.atr.pct?.toFixed(2)}% of price)`}</span>
-          <span>Median traded value: {e.liquidity?.medianCr == null ? "—" : `₹${e.liquidity.medianCr.toFixed(1)} cr/day`} <span className="text-[var(--muted)]">(estimate)</span></span>
-        </div>
-        <p className="text-sm">Entry observation: <span className="font-semibold">{tq.observation}</span></p>
-        {tq.flags.map((f) => <p key={f} className="text-xs text-[var(--warn)]">⚠ {f}</p>)}
-        <Breakdown title="Trade quality breakdown" categories={tq.categories} />
-      </section>
+      <Breakdown title="Trade quality breakdown" categories={tq.categories} />
 
       {e.missing.length > 0 && (
         <details className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)]">

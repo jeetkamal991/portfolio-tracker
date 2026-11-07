@@ -141,7 +141,7 @@ function ResultsDate({ stockKey, initial }: { stockKey: string; initial: string 
   }
   const soon = daysToResults(date, istDate(new Date()));
   return (
-    <Row label="Next results">
+    <Row label="Next results (enter manually)">
       {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
       <input
         type="date"
