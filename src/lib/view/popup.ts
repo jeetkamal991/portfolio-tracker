@@ -28,7 +28,7 @@ export interface PopupData {
   range52: { high: number | null; low: number | null; fromHigh: number | null; fromLow: number | null };
   tailwinds: { niftyLabel: ScoreLabel | null; niftyLine: string; sectorRs: number | null; sectorLine: string | null };
   /** Last 10 sessions, newest first. */
-  indicatorTable: { label: string; value: string }[];
+  indicatorTable: { label: string; value: string; tone?: "up" | "down" }[];
   onWatchlist: boolean;
   /** The owner's position in this stock, or null when not held. */
   holding: HoldingInput | null;
@@ -52,17 +52,21 @@ export interface PopupInput {
 
 const DASH = "—";
 
-/** "49.6% (+1.5 pts vs Apr–Jun)"; just the percent when the previous quarter is missing. */
-function holdingLine(rows: ShareholdingRow[], pick: (r: ShareholdingRow) => number | null): string {
+type RowTone = "up" | "down" | undefined;
+/** Green for a positive number, red for a negative one, no colour for zero or missing. */
+const signTone = (n: number | null | undefined): RowTone => (n == null || n === 0 ? undefined : n > 0 ? "up" : "down");
+
+/** "49.6% (+1.5 pts vs Apr–Jun)"; just the percent when the previous quarter is missing. Green when the holding rose, red when it fell. */
+function holdingLine(rows: ShareholdingRow[], pick: (r: ShareholdingRow) => number | null): { value: string; tone?: RowTone } {
   const latest = rows.reduce<ShareholdingRow | null>((m, r) => (m === null || r.quarterEnd > m.quarterEnd ? r : m), null);
   const to = latest ? pick(latest) : null;
-  if (!latest || to === null) return DASH;
+  if (!latest || to === null) return { value: DASH };
   const prevEnd = previousQuarterEnd(latest.quarterEnd);
   const prev = rows.find((r) => r.quarterEnd === prevEnd);
   const from = prev ? pick(prev) : null;
-  if (from === null) return `${to}%`;
+  if (from === null) return { value: `${to}%` };
   const diff = Math.round((to - from) * 10) / 10;
-  return `${to}% (${diff > 0 ? "+" : ""}${diff} pts vs ${quarterLabel(prevEnd).replace(/ \d{4}$/, "")})`;
+  return { value: `${to}% (${diff > 0 ? "+" : ""}${diff} pts vs ${quarterLabel(prevEnd).replace(/ \d{4}$/, "")})`, tone: signTone(diff) };
 }
 
 function niftyLine(label: ScoreLabel | null): string {
@@ -93,6 +97,7 @@ export function buildPopupData(input: PopupInput): PopupData {
   const ema = (label: string, v: number | null | undefined) => ({
     label,
     value: v == null || close === null ? DASH : `${fmtPrice(v)} (${fmtPct((close - v) / v)})`,
+    tone: v == null || close === null ? undefined : signTone(close - v), // price above the EMA is green, below is red
   });
   const price = (label: string, v: number | null | undefined) => ({ label, value: fmtPrice(v ?? null) });
   const volRatio = latest?.volume && latest.volAvg20 ? `${(latest.volume / latest.volAvg20).toFixed(2)}×` : DASH;
@@ -141,14 +146,14 @@ export function buildPopupData(input: PopupInput): PopupData {
       ema("EMA 20", latest?.ema20),
       ema("EMA 50", latest?.ema50),
       ema("EMA 200", latest?.ema200),
-      { label: "RSI 14", value: latest?.rsi14 == null ? DASH : latest.rsi14.toFixed(1) },
-      { label: "Volume vs 20-day avg", value: volRatio },
+      { label: "RSI 14", value: latest?.rsi14 == null ? DASH : latest.rsi14.toFixed(1), tone: latest?.rsi14 == null ? undefined : latest.rsi14 < 30 || latest.rsi14 > 70 ? "down" : "up" },
+      { label: "Volume vs 20-day avg", value: volRatio, tone: latest?.volume && latest.volAvg20 && latest.volume >= latest.volAvg20 ? "up" : undefined },
       price("52W high", high),
       price("52W low", low),
-      { label: "RS vs Nifty (4W)", value: fmtPct(latest?.rsVsNifty ?? null) },
-      { label: "RS vs sector (4W)", value: fmtPct(rsVsSector) },
-      { label: "FII holding", value: holdingLine(input.shareholding, (r) => r.fiiPct) },
-      { label: "DII holding", value: holdingLine(input.shareholding, (r) => r.diiPct) },
+      { label: "RS vs Nifty (4W)", value: fmtPct(latest?.rsVsNifty ?? null), tone: signTone(latest?.rsVsNifty) },
+      { label: "RS vs sector (4W)", value: fmtPct(rsVsSector), tone: signTone(rsVsSector) },
+      { label: "FII holding", ...holdingLine(input.shareholding, (r) => r.fiiPct) },
+      { label: "DII holding", ...holdingLine(input.shareholding, (r) => r.diiPct) },
     ],
     onWatchlist: input.onWatchlist,
     holding: input.holding,

@@ -16,12 +16,13 @@ export function IndicatorTab({ rows, date }: { rows: PopupData["indicatorTable"]
             {rows.map((r) => (
               <tr key={r.label} className="border-t border-[var(--border)] hover:bg-slate-800/40">
                 <td className="py-1.5 text-[var(--muted)]">{r.label}</td>
-                <td className="whitespace-nowrap px-2 text-right font-mono tabular-nums">{r.value}</td>
+                <td className={`whitespace-nowrap px-2 text-right font-mono tabular-nums ${r.tone === "up" ? "text-[var(--up)]" : r.tone === "down" ? "text-[var(--down)]" : ""}`}>{r.value}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="text-[11px] text-[var(--muted)]">Green is the healthy side of each rule, red the other side; it is not a buy or sell signal. EMAs: price above or below. RSI: red outside 30-70. Volume: green at or above its 20-day average. RS and holdings: green up, red down.</p>
     </div>
   );
 }

@@ -75,6 +75,19 @@ describe("buildPopupData", () => {
     expect(v("RS vs sector (4W)")).toBe("-2.00%");
   });
 
+  it("colours each row by its rule: green healthy, red not, none when unknown", () => {
+    const tone = (p: ReturnType<typeof buildPopupData>, label: string) => p.indicatorTable.find((r) => r.label === label)!.tone;
+    const good = buildPopupData({ ...base, days: [day(d(1), { close: 100, ema20: 98, ema50: 99, ema200: 95, rsi14: 55, volume: 2000, volAvg20: 1000, rsVsNifty: 0.02, rsVsSector: 0.01 })] });
+    for (const l of ["EMA 20", "EMA 50", "EMA 200", "RSI 14", "Volume vs 20-day avg", "RS vs Nifty (4W)", "RS vs sector (4W)"]) expect(tone(good, l)).toBe("up");
+    const bad = buildPopupData({ ...base, days: [day(d(1), { close: 100, ema20: 102, ema50: 105, ema200: 110, rsi14: 25, volume: 500, volAvg20: 1000, rsVsNifty: -0.02, rsVsSector: -0.01 })] });
+    for (const l of ["EMA 20", "EMA 50", "EMA 200", "RSI 14", "RS vs Nifty (4W)", "RS vs sector (4W)"]) expect(tone(bad, l)).toBe("down");
+    expect(tone(bad, "Volume vs 20-day avg")).toBeUndefined(); // low volume is not unsafe
+    expect(tone(buildPopupData({ ...base, days: [day(d(1), { close: 100, rsi14: 71 })] }), "RSI 14")).toBe("down");
+    expect(tone(buildPopupData({ ...base, days: [day(d(1), { close: 100, rsi14: 70 })] }), "RSI 14")).toBe("up");
+    const empty = buildPopupData({ ...base, days: [day(d(1))] });
+    expect(empty.indicatorTable.filter((r) => r.value === "—").every((r) => r.tone === undefined)).toBe(true);
+  });
+
   it("handles a stock with no priced days", () => {
     const p = buildPopupData({ ...base, days: [] });
     expect(p.latest).toBeNull();
@@ -99,8 +112,8 @@ describe("buildPopupData", () => {
     expect(none.indicatorTable.slice(-2)).toEqual([{ label: "FII holding", value: "—" }, { label: "DII holding", value: "—" }]);
     const both = buildPopupData({ ...base, days: [day(d(1))], shareholding: [sh("2026-06-30", 48.1, 12), sh("2026-09-30", 49.6, 11.5)] });
     expect(both.indicatorTable.slice(-2)).toEqual([
-      { label: "FII holding", value: "49.6% (+1.5 pts vs Apr–Jun)" },
-      { label: "DII holding", value: "11.5% (-0.5 pts vs Apr–Jun)" },
+      { label: "FII holding", value: "49.6% (+1.5 pts vs Apr–Jun)", tone: "up" },
+      { label: "DII holding", value: "11.5% (-0.5 pts vs Apr–Jun)", tone: "down" },
     ]);
     const only = buildPopupData({ ...base, days: [day(d(1))], shareholding: [sh("2026-09-30", 49.6, 11.5)] });
     expect(only.indicatorTable.slice(-2).map((r) => r.value)).toEqual(["49.6%", "11.5%"]);
