@@ -1,0 +1,25 @@
+-- Collect-only Yahoo fundamentals (one row per stock per fetch day). No score, ranking or screen reads this table.
+create table if not exists fundamentals_snapshots (
+  instrument_id bigint not null references instruments on delete cascade,
+  fetched_on date not null,
+  is_financial boolean not null,
+  return_on_equity double precision,
+  return_on_assets double precision,
+  profit_margins double precision,
+  operating_margins double precision,
+  revenue_growth double precision,
+  earnings_growth double precision,
+  debt_to_equity double precision,
+  current_ratio double precision,
+  total_debt double precision,
+  total_cash double precision,
+  free_cashflow double precision,
+  operating_cashflow double precision,
+  trailing_pe double precision,
+  market_cap double precision,
+  price_to_book double precision,
+  missing text[] not null default '{}',
+  raw jsonb,
+  fetched_at timestamptz not null default now(),
+  primary key (instrument_id, fetched_on));
+alter table fundamentals_snapshots enable row level security;
