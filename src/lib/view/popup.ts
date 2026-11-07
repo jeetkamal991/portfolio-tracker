@@ -2,7 +2,6 @@ import { effectiveLevel } from "@/lib/calc/levels";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import { previousQuarterEnd, quarterLabel } from "@/lib/calc/shareholding";
 import { levelStrength } from "@/lib/calc/levelsDetail";
-import type { PatternBias } from "@/lib/calc/patterns";
 import type { ScoreComponents, ScoreLabel } from "@/lib/calc/score";
 import { parseReportContent } from "@/lib/content/claude";
 import type { Instrument, InstrumentType, Levels, ReportRow, ShareholdingRow, StoredDay } from "@/lib/db/types";
@@ -27,7 +26,6 @@ export interface PopupData {
   range52: { high: number | null; low: number | null; fromHigh: number | null; fromLow: number | null };
   tailwinds: { niftyLabel: ScoreLabel | null; niftyLine: string; sectorRs: number | null; sectorLine: string | null };
   /** Last 10 sessions, newest first. */
-  patterns: { date: string; name: string; bias: PatternBias; effect: number }[];
   indicatorTable: { label: string; value: string }[];
   onWatchlist: boolean;
   /** The owner's position in this stock, or null when not held. */
@@ -50,7 +48,6 @@ export interface PopupInput {
   shareholding: ShareholdingRow[];
 }
 
-const PATTERN_SESSIONS = 10;
 const DASH = "—";
 
 /** "49.6% (+1.5 pts vs Apr–Jun)"; just the percent when the previous quarter is missing. */
@@ -73,7 +70,6 @@ function niftyLine(label: ScoreLabel | null): string {
   return "Market score not available";
 }
 
-const near = (close: number, level: number | null) => level !== null && Math.abs(close - level) / close <= 0.01;
 
 export function buildPopupData(input: PopupInput): PopupData {
   const { instrument, sector, levels } = input;
@@ -91,22 +87,6 @@ export function buildPopupData(input: PopupInput): PopupData {
 
   const rsVsSector = latest?.rsVsSector ?? null;
   const niftyLabel = input.niftyLatest?.scoreLabel ?? null;
-
-  const patterns = priced
-    .slice(-PATTERN_SESSIONS)
-    .reverse()
-    .flatMap((d) =>
-      (d.patterns ?? []).map((p) => {
-        let effect = 0;
-        if (p.bias === "bullish") effect = 3.75;
-        else if (p.bias === "bearish") effect = -3.75;
-        else if (p.name === "doji" && d.close !== null) {
-          if (near(d.close, support)) effect = 3.75;
-          else if (near(d.close, resistance)) effect = -3.75;
-        }
-        return { date: d.date, name: p.name, bias: p.bias, effect };
-      }),
-    );
 
   const ema = (label: string, v: number | null | undefined) => ({
     label,
@@ -154,19 +134,12 @@ export function buildPopupData(input: PopupInput): PopupData {
           ? `${rsVsSector >= 0 ? "Outperforming" : "Underperforming"} its sector by ${(Math.abs(rsVsSector) * 100).toFixed(1)}%`
           : null,
     },
-    patterns,
     indicatorTable: [
       price("CMP", close),
       ema("EMA 20", latest?.ema20),
       ema("EMA 50", latest?.ema50),
       ema("EMA 200", latest?.ema200),
       { label: "RSI 14", value: latest?.rsi14 == null ? DASH : latest.rsi14.toFixed(1) },
-      price("MACD", latest?.macd),
-      price("MACD signal", latest?.macdSignal),
-      price("MACD histogram", latest?.macdHist),
-      price("BB upper", latest?.bbUpper),
-      price("BB middle", latest?.bbMiddle),
-      price("BB lower", latest?.bbLower),
       { label: "Volume vs 20-day avg", value: volRatio },
       price("52W high", high),
       price("52W low", low),

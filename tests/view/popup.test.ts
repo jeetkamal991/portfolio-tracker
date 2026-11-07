@@ -58,30 +58,9 @@ describe("buildPopupData", () => {
     expect(idx.tailwinds.sectorLine).toBeNull();
   });
 
-  it("lists patterns of the last 10 sessions newest first with effects", () => {
-    const days = Array.from({ length: 12 }, (_, i) =>
-      day(d(i + 1), { patterns: [{ name: `p${i + 1}`, bias: i % 2 ? "bearish" : "bullish" }] }),
-    );
-    const p = buildPopupData({ ...base, days });
-    expect(p.patterns).toHaveLength(10);
-    expect(p.patterns[0]).toEqual({ date: d(12), name: "p12", bias: "bearish", effect: -3.75 });
-    expect(p.patterns[9].name).toBe("p3");
-    expect(p.patterns[1].effect).toBe(3.75);
-  });
-
-  it("doji only has an effect when near a level", () => {
-    const days = [day(d(1), { close: 100, patterns: [{ name: "doji", bias: "neutral" }] })];
-    const none = buildPopupData({ ...base, days });
-    expect(none.patterns[0].effect).toBe(0);
-    const sup = buildPopupData({ ...base, days, levels: { ...noLevels, autoSupport: 99.5 } });
-    expect(sup.patterns[0].effect).toBe(3.75);
-    const res = buildPopupData({ ...base, days, levels: { ...noLevels, autoResistance: 100.5 } });
-    expect(res.patterns[0].effect).toBe(-3.75);
-  });
-
-  it("indicator table has 18 rows with dashes for nulls", () => {
+  it("indicator table has 12 rows with dashes for nulls", () => {
     const empty = buildPopupData({ ...base, days: [day(d(1))] });
-    expect(empty.indicatorTable).toHaveLength(18);
+    expect(empty.indicatorTable).toHaveLength(12);
     expect(empty.indicatorTable.map((r) => r.label).slice(0, 4)).toEqual(["CMP", "EMA 20", "EMA 50", "EMA 200"]);
     expect(empty.indicatorTable.find((r) => r.label === "EMA 20")!.value).toBe("—");
     expect(empty.indicatorTable.find((r) => r.label === "Volume vs 20-day avg")!.value).toBe("—");
@@ -100,8 +79,7 @@ describe("buildPopupData", () => {
     const p = buildPopupData({ ...base, days: [] });
     expect(p.latest).toBeNull();
     expect(p.score).toBeNull();
-    expect(p.indicatorTable).toHaveLength(18);
-    expect(p.patterns).toEqual([]);
+    expect(p.indicatorTable).toHaveLength(12);
   });
 
   it("exposes the score block", () => {

@@ -12,7 +12,6 @@ export interface WatchSignal {
 
 export interface WatchSignals {
   crosses: WatchSignal[];
-  formations: WatchSignal[];
 }
 
 interface StockInput {
@@ -34,14 +33,7 @@ const CROSSES: CrossDef[] = [
   { a: (d) => d.ema50, b: (d) => d.ema200, up: "Golden cross (EMA 50 / 200)", down: "Death cross (EMA 50 / 200)" },
   { a: (d) => d.ema20, b: (d) => d.ema50, up: "EMA 20 crossed above EMA 50", down: "EMA 20 crossed below EMA 50" },
   { a: (d) => d.close, b: (d) => d.ema200, up: "Closed above EMA 200", down: "Closed below EMA 200" },
-  { a: (d) => d.macd, b: (d) => d.macdSignal, up: "MACD crossed above signal", down: "MACD crossed below signal" },
 ];
-
-/** "bullish_engulfing" / "morningStar" → "Bullish engulfing" / "Morning star". */
-function sentenceCase(s: string): string {
-  const words = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
 
 // -1 below, 1 above, 0 equal or unknown; a cross needs strictly opposite sides on consecutive rows
 function side(d: StoredDay, def: CrossDef): number {
@@ -58,7 +50,6 @@ function byNewestThenKey(x: WatchSignal, y: WatchSignal): number {
 
 export function runWatchSignals(stocks: StockInput[], session: string): WatchSignals {
   const crosses: WatchSignal[] = [];
-  const formations: WatchSignal[] = [];
 
   for (const s of stocks) {
     const rows = s.days.slice(-WINDOW);
@@ -72,14 +63,10 @@ export function runWatchSignals(stocks: StockInput[], session: string): WatchSig
         const up = cur > 0;
         crosses.push({ key: s.key, name: s.name, date: rows[i].date, label: up ? def.up : def.down, bias: up ? "bullish" : "bearish" });
       }
-      for (const p of rows[i].patterns ?? []) {
-        formations.push({ key: s.key, name: s.name, date: rows[i].date, label: sentenceCase(p.name), bias: p.bias });
-      }
     }
   }
 
   // stable sort keeps the definition / stored order within a stock and day
   crosses.sort(byNewestThenKey);
-  formations.sort(byNewestThenKey);
-  return { crosses, formations };
+  return { crosses };
 }

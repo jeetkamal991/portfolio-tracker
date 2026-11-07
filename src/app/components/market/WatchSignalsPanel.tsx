@@ -57,14 +57,7 @@ export function WatchSignalsPanel({ signals, hasWatchStocks }: { signals: WatchS
       {!hasWatchStocks ? (
         <p className="text-sm text-[var(--muted)]">Add stocks to your watchlist to see signals here.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <SignalBox title="Crosses" items={signals.crosses} empty="No crosses on your stocks in the last 5 sessions" />
-          <SignalBox
-            title="Formations"
-            items={signals.formations}
-            empty="No candle patterns on your stocks in the last 5 sessions"
-          />
-        </div>
+        <SignalBox title="Crosses" items={signals.crosses} empty="No crosses on your stocks in the last 5 sessions" />
       )}
     </Panel>
   );

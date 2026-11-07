@@ -13,11 +13,10 @@ import { ChartSetupTab } from "./ChartSetupTab";
 import { DeepDiveTab } from "./DeepDiveTab";
 import { EvaluationTab } from "./EvaluationTab";
 import { IndicatorTab } from "./IndicatorTab";
-import { PatternsTab } from "./PatternsTab";
 import { ScoreBadge } from "./ScoreBadge";
 import { closeStock, forgetPushedStock } from "./StockLink";
 
-type TabId = "chart" | "evaluation" | "deep" | "patterns" | "indicators";
+type TabId = "chart" | "evaluation" | "deep" | "indicators";
 type Loaded =
   | { key: string; status: "ready"; data: PopupData }
   | { key: string; status: "not_found" }
@@ -298,7 +297,6 @@ export function StockModal() {
       { id: "chart", label: "Chart & Setup" },
       ...(data.instrument.type === "stock" ? [{ id: "evaluation" as const, label: "Evaluation" }] : []),
       { id: "deep", label: "AI Deep Dive" },
-      { id: "patterns", label: `Patterns (${data.patterns.length})` },
       { id: "indicators", label: "Indicator Table" },
     ];
     body = (
@@ -343,7 +341,6 @@ export function StockModal() {
               {activeTab === "deep" && (
                 <DeepDiveTab stockKey={data.instrument.key} reports={data.reports} onRequested={() => setReload((n) => n + 1)} />
               )}
-              {activeTab === "patterns" && <PatternsTab patterns={data.patterns} />}
               {activeTab === "indicators" && <IndicatorTab rows={data.indicatorTable} date={data.latest?.date ?? null} />}
             </div>
           </>

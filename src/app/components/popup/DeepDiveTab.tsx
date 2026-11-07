@@ -5,8 +5,15 @@ import type { ReportContent } from "@/lib/content/claude";
 import { fmtInr } from "@/lib/view/portfolio";
 import type { PopupData } from "@/lib/view/popup";
 import { Chip, Label, type Tone } from "../ui";
-import { titleCase } from "./PatternsTab";
 import { mutate } from "@/lib/client/cache";
+
+/** "bullish_engulfing" / "morningStar" → "Bullish Engulfing" / "Morning Star". */
+const titleCase = (s: string) =>
+  s
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/w/g, (c) => c.toUpperCase());
 
 type Report = PopupData["reports"][number];
 

@@ -12,14 +12,14 @@ export interface MarketData {
   screeners: ScreenerResult[];
   breadth: Breadth | null;
   hasUniverse: boolean;
-  /** Crosses and candle patterns on watchlist + portfolio stocks over the last 5 sessions. */
+  /** EMA crosses on watchlist + portfolio stocks over the last 5 sessions. */
   watchSignals: WatchSignals;
   hasWatchStocks: boolean;
   /** Quarterly FII / DII stake increases; null until shareholding data exists. */
   stakes: { fii: StakeScreener; dii: StakeScreener } | null;
 }
 
-const NO_SIGNALS: WatchSignals = { crosses: [], formations: [] };
+const NO_SIGNALS: WatchSignals = { crosses: [] };
 
 async function loadStakes(repo: Repo, members: { id: number; key: string; name: string }[]): Promise<MarketData["stakes"]> {
   const latest = await repo.latestShareholdingQuarter();

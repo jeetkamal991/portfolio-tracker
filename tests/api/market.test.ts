@@ -34,7 +34,7 @@ describe("loadMarket", () => {
     await repo.replaceConstituents("NIFTY200", [3]);
     expect(await loadMarket(repo, "2026-01-09")).toEqual({
       session: null, summary: null, screeners: [], breadth: null, hasUniverse: true,
-      watchSignals: { crosses: [], formations: [] }, hasWatchStocks: false, stakes: null,
+      watchSignals: { crosses: [] }, hasWatchStocks: false, stakes: null,
     });
   });
   it("no constituents gives hasUniverse false and no screeners", async () => {
@@ -101,12 +101,12 @@ describe("loadMarket", () => {
     const holding = { qty: 1, avgPrice: 100, buyDate: "2026-01-02", stopLoss: null, target1: null, target2: null };
     // close 100..106 against a flat EMA 200 of 103.5 → closes above it on 01-07 (row 4 of the window)
     const above200 = (id: number, repo: Awaited<ReturnType<typeof setup>>) =>
-      repo.upsertIndicators(id, dates.map((d, i) => ({ ...ind(d, 0.01), ema200: 103.5, patterns: i === 6 ? [{ name: "doji", bias: "neutral" as const }] : null })));
+      repo.upsertIndicators(id, dates.map((d) => ({ ...ind(d, 0.01), ema200: 103.5 })));
 
     it("no watchlist or holdings gives hasWatchStocks false and empty signals", async () => {
       const m = await loadMarket(await setup(), "2026-01-09");
       expect(m.hasWatchStocks).toBe(false);
-      expect(m.watchSignals).toEqual({ crosses: [], formations: [] });
+      expect(m.watchSignals).toEqual({ crosses: [] });
     });
     it("covers watchlist + holdings once each: universe stocks reuse the universe read, only outsiders get their own", async () => {
       const repo = await setup();
@@ -121,9 +121,6 @@ describe("loadMarket", () => {
       expect(m.hasWatchStocks).toBe(true);
       expect(m.watchSignals.crosses).toEqual([
         { key: "AAA", name: "Aaa", date: "2026-01-07", label: "Closed above EMA 200", bias: "bullish" },
-      ]);
-      expect(m.watchSignals.formations).toEqual([
-        { key: "AAA", name: "Aaa", date: "2026-01-09", label: "Doji", bias: "neutral" },
       ]);
     });
     it("memo: reuses the universe-wide computation on repeat calls but still reads watchlist and holdings live", async () => {

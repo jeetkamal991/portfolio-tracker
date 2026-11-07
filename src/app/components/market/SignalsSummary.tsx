@@ -9,13 +9,13 @@ const SHOWN = 4;
 
 /** The Market tab's top-row card: how many signals your stocks have, and the first few. The full lists are the Your stocks view. */
 export function SignalsSummary({ signals, hasWatchStocks }: { signals: WatchSignals; hasWatchStocks: boolean }) {
-  const all = [...signals.crosses, ...signals.formations];
+  const all = signals.crosses;
   return (
     <Panel title="YOUR STOCKS · SIGNALS" action={<span className="text-xs text-[var(--muted)]">last 5 sessions</span>}>
       {!hasWatchStocks ? (
         <p className="text-sm text-[var(--muted)]">Add stocks to your watchlist to see signals here.</p>
       ) : all.length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">No crosses or candle patterns on your stocks in the last 5 sessions.</p>
+        <p className="text-sm text-[var(--muted)]">No crosses on your stocks in the last 5 sessions.</p>
       ) : (
         <div className="flex flex-col gap-3">
           <ul className="flex flex-col gap-2">

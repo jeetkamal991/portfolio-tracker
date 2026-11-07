@@ -53,25 +53,21 @@ describe("runWatchSignals · crosses", () => {
     expect(runWatchSignals([stock("a", old)], SESSION).crosses).toEqual([]);
   });
 
-  it("detects EMA 20/50, price/EMA 200 and MACD/signal crosses in both directions", () => {
+  it("detects EMA 20/50 and price/EMA 200 crosses in both directions", () => {
     const up = series((i) => ({
       ema20: i >= 5 ? 51 : 49, ema50: 50,
       close: i >= 5 ? 201 : 199, ema200: 200,
-      macd: i >= 5 ? 1 : -1, macdSignal: 0,
     }));
     const down = series((i) => ({
       ema20: i >= 5 ? 49 : 51, ema50: 50,
       close: i >= 5 ? 199 : 201, ema200: 200,
-      macd: i >= 5 ? -1 : 1, macdSignal: 0,
     }));
     const r = runWatchSignals([stock("up", up), stock("dn", down)], SESSION);
     expect(r.crosses.map((s) => `${s.key}:${s.label}:${s.bias}`)).toEqual([
       "dn:EMA 20 crossed below EMA 50:bearish",
       "dn:Closed below EMA 200:bearish",
-      "dn:MACD crossed below signal:bearish",
       "up:EMA 20 crossed above EMA 50:bullish",
       "up:Closed above EMA 200:bullish",
-      "up:MACD crossed above signal:bullish",
     ]);
   });
 
@@ -94,25 +90,8 @@ describe("runWatchSignals · crosses", () => {
     const r = runWatchSignals([stock("c", c), stock("a", a), stock("b", b)], SESSION);
     expect(r.crosses.map((s) => `${s.key}:${s.date}`)).toEqual(["b:2026-10-15", "c:2026-10-15", "a:2026-10-13"]);
   });
-});
-
-describe("runWatchSignals · formations", () => {
-  it("lists stored candle patterns from the last 5 sessions, newest first", () => {
-    const days = series((i) =>
-      i === 0 ? { patterns: [{ name: "doji", bias: "neutral" }] } // row 0 = baseline, outside the 5 sessions
-        : i === 2 ? { patterns: [{ name: "bullish_engulfing", bias: "bullish" }] }
-        : i === 5 ? { patterns: [{ name: "shooting_star", bias: "bearish" }, { name: "doji", bias: "neutral" }] }
-        : {},
-    );
-    const r = runWatchSignals([stock("a", days)], SESSION);
-    expect(r.formations.map((s) => `${s.date}:${s.label}:${s.bias}`)).toEqual([
-      "2026-10-16:Shooting star:bearish",
-      "2026-10-16:Doji:neutral",
-      "2026-10-13:Bullish engulfing:bullish",
-    ]);
-  });
 
   it("returns empty lists for no stocks", () => {
-    expect(runWatchSignals([], SESSION)).toEqual({ crosses: [], formations: [] });
+    expect(runWatchSignals([], SESSION)).toEqual({ crosses: [] });
   });
 });
