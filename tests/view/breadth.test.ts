@@ -47,24 +47,3 @@ describe("buildBreadth", () => {
     expect(buildBreadth([], []).vix).toEqual({ close: null, dayPct: null, spark: [] });
   });
 });
-
-import { breadthSeries } from "@/lib/view/breadth";
-
-describe("breadthSeries", () => {
-  const r = (date: string, close: number | null, ema200: number | null) => ({ date, close, ema200 });
-  it("counts only stocks that have a close and an EMA 200, per day, sorted by date", () => {
-    const s = breadthSeries([
-      r("2026-01-02", 12, 10), r("2026-01-02", 8, 10), r("2026-01-02", 9, null), r("2026-01-02", null, 5), // 2 counted, 1 above
-      r("2026-01-01", 9, null), // nothing counted: day skipped
-      r("2026-01-03", 11, 10), r("2026-01-03", 11, 10), r("2026-01-03", 5, 10), r("2026-01-03", 5, 10), // 2 of 4
-    ]);
-    expect(s).toEqual([
-      { time: "2026-01-02", pct: 50, above: 1, counted: 2 },
-      { time: "2026-01-03", pct: 50, above: 2, counted: 4 },
-    ]);
-  });
-  it("a close equal to the EMA is not above it", () => {
-    expect(breadthSeries([r("d", 10, 10)])[0]!.pct).toBe(0);
-  });
-  it("returns nothing for no rows", () => expect(breadthSeries([])).toEqual([]));
-});

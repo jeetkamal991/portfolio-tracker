@@ -109,8 +109,6 @@ export interface Repo {
    * scan to a calendar window (default 1.5 x perInstrument + 10 days, or `windowDays`), so an instrument idle for longer returns fewer rows.
    */
   getRecentDays(instrumentIds: number[], perInstrument: number, windowDays?: number): Promise<Map<number, StoredDay[]>>;
-  /** Close and stored EMA 200 (date >= fromDate) of many instruments, flat, in as few reads as possible: the input of the breadth line. */
-  getCloseEma200(instrumentIds: number[], fromDate: string, sessions: number): Promise<{ date: string; close: number | null; ema200: number | null }[]>;
   /** Newest `limit` rows with only the columns the price chart draws (date, OHLCV, EMAs, Bollinger, RSI, MACD), ascending. */
   getChartDays(instrumentId: number, limit: number): Promise<StoredDay[]>;
   /** Levels of many instruments in one read; ids with no row get the empty levels. */

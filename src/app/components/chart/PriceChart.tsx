@@ -18,13 +18,12 @@ import {
 import { keyLevels, type KeyLevels } from "@/lib/calc/chartLevels";
 import { chartSignals, type SignalKind } from "@/lib/calc/chartSignals";
 import type { StoredDay } from "@/lib/db/types";
-import type { BreadthResponse } from "@/app/api/breadth/route";
-import { buildChartData, emaStretch, hoverInfo, type HoverInfo, RANGE_BARS, RANGES, type ChartData, type ChartRange } from "@/lib/view/chart";
+import { buildChartData, emaStretch, RANGE_BARS, RANGES, type ChartData, type ChartRange } from "@/lib/view/chart";
 import { fmtPrice } from "@/lib/view/dashboard";
 import { Chip, Panel } from "../ui";
 
 type Ema = "ema20" | "ema50" | "ema200";
-type Lower = "VOLUME" | "RSI" | "MACD" | "BREADTH";
+type Lower = "VOLUME" | "RSI" | "MACD";
 
 /** A marker pinned on a candle date; `color` is a CSS variable name such as "--down". */
 export interface ChartMarker { time: string; text: string; color: string; up: boolean; size: number }
@@ -39,9 +38,6 @@ const SIGNAL_LOOK: Record<SignalKind, { text: string; size: number }> = {
 };
 const BULLISH = new Set<SignalKind>(["golden", "above200", "up2050"]);
 const LOWERS: Lower[] = ["VOLUME", "RSI", "MACD"];
-
-/** Breadth line (% of Nifty 200 above EMA 200) and India VIX, as `/api/breadth` sends them. */
-type BreadthData = { pct: { time: string; value: number }[]; vix: { time: string; value: number }[] };
 
 const EMAS: { id: Ema; label: string; cssVar: string }[] = [
   { id: "ema20", label: "EMA 20", cssVar: "--ema20" },
@@ -99,29 +95,6 @@ function StretchStrip({ data }: { data: ChartData }) {
   );
 }
 
-const dash = "—";
-const num = (v: number | null, d = 1, sign = false) => (v === null ? dash : `${sign && v > 0 ? "+" : ""}${v.toFixed(d)}`);
-
-function Tooltip({ info, side }: { info: HoverInfo; side: "left" | "right" }) {
-  const row = (label: string, value: string, cls = "") => (
-    <div className="flex justify-between gap-4"><span className="text-[var(--muted)]">{label}</span><span className={cls}>{value}</span></div>
-  );
-  const tone = info.dayPct === null ? "" : info.dayPct >= 0 ? "text-[var(--up)]" : "text-[var(--down)]";
-  return (
-    <div
-      className={`pointer-events-none absolute top-2 z-10 w-52 rounded-md border border-[var(--border)] bg-[var(--panel)]/95 p-2 font-mono text-[11px] tabular-nums ${side === "right" ? "right-16" : "left-2"}`}
-    >
-      <div className="mb-1 text-[var(--muted)]">{info.date}</div>
-      {row("Close", fmtPrice(info.close))}
-      {row("Day", info.dayPct === null ? dash : `${num(info.dayPct, 2, true)}%`, tone)}
-      {row("RSI 14", num(info.rsi))}
-      {row("Score", info.score === null ? dash : `${Math.round(info.score)}${info.scoreLabel ? ` ${info.scoreLabel}` : ""}`)}
-      {row("Breadth", info.breadth === null ? dash : `${info.breadth.toFixed(1)}%`)}
-      {row("vs EMA20", info.ema20Pct === null ? dash : `${num(info.ema20Pct, 1, true)}%`)}
-    </div>
-  );
-}
-
 function ChartCanvas({
   data,
   emas,
@@ -129,9 +102,7 @@ function ChartCanvas({
   lower,
   height,
   markers,
-  breadth,
   levels,
-  shade,
   onHover,
 }: {
   data: ChartData;
@@ -140,11 +111,8 @@ function ChartCanvas({
   lower: Lower;
   height: number;
   markers: ChartMarker[];
-  breadth: BreadthData | null;
   levels: KeyLevels | null;
-  shade: boolean;
-  /** `side` is the half of the chart the pointer is NOT in, where a tooltip can sit without covering the candle. */
-  onHover: (h: { time: string; side: "left" | "right" } | null) => void;
+  onHover: (h: { time: string } | null) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -171,7 +139,7 @@ function ChartCanvas({
       timeScale: { borderColor: cssVar("--border") },
     });
     const onMove = (p: MouseEventParams) =>
-      hoverRef.current(typeof p.time === "string" ? { time: p.time, side: (p.point?.x ?? 0) < el.clientWidth / 2 ? "right" : "left" } : null);
+      hoverRef.current(typeof p.time === "string" ? { time: p.time } : null);
     chart.subscribeCrosshairMove(onMove);
     chartRef.current = chart;
     return () => {
@@ -189,16 +157,6 @@ function ChartCanvas({
     const down = cssVar("--down");
     const added: ISeriesApi<SeriesType>[] = [];
 
-    if (shade && data.regime.length > 0) {
-      // Added first so it sits behind the candles: full-height bars on a hidden 0-1 scale, 8% opacity ("14" in hex).
-      const tint = chart.addSeries(HistogramSeries, {
-        priceScaleId: "regime", priceLineVisible: false, lastValueVisible: false,
-        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 1 } }),
-      });
-      chart.priceScale("regime").applyOptions({ visible: false, scaleMargins: { top: 0, bottom: 0 } });
-      tint.setData(data.regime.map((r) => ({ time: r.time, value: 1, color: `${r.bull ? up : down}14` })));
-      added.push(tint);
-    }
     const candles = chart.addSeries(CandlestickSeries, {
       upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down,
     });
@@ -261,17 +219,6 @@ function ChartCanvas({
       );
       avg.setData(data.volSma20);
       added.push(vol, avg);
-    } else if (lower === "BREADTH") {
-      // VIX has its own (left) scale so its level does not flatten the 0-100 breadth line.
-      const seen = (pts: BreadthData["pct"]) => pts.filter((p) => inRange.has(p.time));
-      const line = (color: string, pts: BreadthData["pct"], scale: string) => {
-        const s = chart.addSeries(LineSeries, { color, lineWidth: 2, priceLineVisible: false, crosshairMarkerVisible: false, priceScaleId: scale }, 1);
-        s.setData(seen(pts));
-        return s;
-      };
-      const b = line(cssVar("--ema20"), breadth?.pct ?? [], "right");
-      b.createPriceLine({ price: 50, color: cssVar("--muted"), lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: false, title: "" });
-      added.push(b, line(cssVar("--warn"), breadth?.vix ?? [], "left"));
     } else if (lower === "MACD") {
       const hist = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false }, 1);
       hist.setData(data.macdHist.map((p) => ({ time: p.time, value: p.value, color: p.value >= 0 ? `${up}99` : `${down}99` })));
@@ -294,7 +241,6 @@ function ChartCanvas({
       added.push(rsi);
     }
 
-    chart.priceScale("left").applyOptions({ visible: lower === "BREADTH", borderColor: cssVar("--border") });
     const panes = chart.panes();
     panes[0]?.setStretchFactor(3);
     panes[1]?.setStretchFactor(1);
@@ -304,7 +250,7 @@ function ChartCanvas({
       if (chartRef.current !== chart) return;
       for (const s of added) chart.removeSeries(s);
     };
-  }, [data, emas, bollinger, lower, markers, breadth, levels, shade]);
+  }, [data, emas, bollinger, lower, markers, levels]);
 
   return <div ref={box} style={{ height }} className="w-full overflow-hidden rounded-lg" />;
 }
@@ -326,7 +272,7 @@ export function PriceChart({
   const [emas, setEmas] = useState<Record<Ema, boolean>>({ ema20: true, ema50: true, ema200: true });
   const [bollinger, setBollinger] = useState(false);
   const [lower, setLower] = useState<Lower>("VOLUME");
-  const [hover, setHover] = useState<{ time: string; side: "left" | "right" } | null>(null);
+  const [hover, setHover] = useState<{ time: string } | null>(null);
   const [full, setFull] = useState<{ key: string; days: StoredDay[] } | null>(null);
   const [fullState, setFullState] = useState<"idle" | "loading" | "error">("idle");
   const pricedHere = useMemo(() => days.filter((d) => d.close !== null).length, [days]);
@@ -348,43 +294,13 @@ export function PriceChart({
   const shown = full && full.key === historyKey ? full.days : days;
   const data = useMemo(() => buildChartData(shown, range), [shown, range]);
 
-  // Breadth is fetched only once its pane is opened, for as many sessions as the chart shows.
-  const [breadthRes, setBreadthRes] = useState<BreadthResponse | null>(null);
-  const [breadthState, setBreadthState] = useState<"idle" | "loading" | "error">("idle");
-  const breadthN = data.candles.length;
-  useEffect(() => {
-    if (!signals || lower !== "BREADTH") return;
-    const ctrl = new AbortController();
-    setBreadthState("loading");
-    fetchCached<BreadthResponse>(`/api/breadth?n=${breadthN}`, { ttlMs: TTL_MS.history, signal: ctrl.signal })
-      .then((r) => {
-        if (ctrl.signal.aborted) return;
-        if (r.ok && r.data) { setBreadthRes(r.data); setBreadthState("idle"); } else setBreadthState("error");
-      })
-      .catch(() => { if (!ctrl.signal.aborted) setBreadthState("error"); });
-    return () => ctrl.abort();
-  }, [signals, lower, breadthN]);
   // Computed over all loaded days so the first visible bar still has its previous day to compare with.
   const markers = useMemo<ChartMarker[]>(
     () => signals ? chartSignals(shown).map((x) => ({ time: x.time, ...SIGNAL_LOOK[x.kind], color: BULLISH.has(x.kind) ? "--up" : "--down", up: BULLISH.has(x.kind) })) : NO_MARKERS,
     [shown, signals],
   );
 
-  const priced = useMemo(
-    () =>
-      shown
-        .filter((d): d is StoredDay & { close: number } => d.close !== null)
-        .sort((a, b) => a.date.localeCompare(b.date)),
-    [shown],
-  );
-  const breadthByDate = useMemo(() => new Map((breadthRes?.state === "ok" ? breadthRes.points : []).map((p) => [p.time, p.pct])), [breadthRes]);
-  const tip = signals && hover ? hoverInfo(priced, hover.time, breadthByDate.get(hover.time) ?? null) : null;
   const levels = useMemo(() => (signals ? keyLevels(shown) : null), [shown, signals]);
-  const breadthOk = breadthRes?.state === "ok";
-  const breadth = useMemo<BreadthData | null>(
-    () => (breadthRes?.state === "ok" ? { pct: breadthRes.points.map((p) => ({ time: p.time, value: p.pct })), vix: breadthRes.vix } : null),
-    [breadthRes],
-  );
 
   if (data.candles.length < 2) {
     return (
@@ -446,7 +362,7 @@ export function PriceChart({
           </button>
         </div>
         <div className="flex gap-1" role="group" aria-label="Lower pane">
-          {(signals ? [...LOWERS, "BREADTH" as const] : LOWERS).map((l) => (
+          {LOWERS.map((l) => (
             <button key={l} type="button" onClick={() => setLower(l)} aria-pressed={l === lower} className={btn(l === lower)}>
               {l}
             </button>
@@ -457,19 +373,8 @@ export function PriceChart({
         <OhlcStrip data={data} time={hover?.time ?? null} />
         {signals && <StretchStrip data={data} />}
       </div>
-      {lower === "BREADTH" && (
-        <p role="status" className="mb-2 font-mono text-[11px] text-[var(--muted)]">
-          {breadthState === "loading" ? "Loading breadth…"
-            : breadthState === "error" ? "Could not load breadth"
-            : breadthRes?.state === "no_universe" ? "Breadth appears after the Nifty 200 import."
-            : breadthRes?.state === "no_data" ? "No breadth data yet."
-            : breadthOk && breadthRes.points[0]!.time > data.candles[0]!.time ? "Breadth covers the last year only."
-            : breadthOk ? <><span className="text-[var(--ema20)]">% of Nifty 200 above EMA 200</span> · <span className="text-[var(--warn)]">India VIX (left axis)</span></> : null}
-        </p>
-      )}
       <div className="relative">
-      {tip && hover && <Tooltip info={tip} side={hover.side} />}
-      <ChartCanvas data={data} emas={emas} bollinger={bollinger} lower={lower} height={height} markers={markers} breadth={breadth} levels={levels} shade={signals} onHover={setHover} />
+      <ChartCanvas data={data} emas={emas} bollinger={bollinger} lower={lower} height={height} markers={markers} levels={levels} onHover={setHover} />
       </div>
     </Panel>
   );

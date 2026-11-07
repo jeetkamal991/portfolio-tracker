@@ -366,20 +366,6 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
       for (const [id, list] of out) out.set(id, list.slice(-perInstrument));
       return out;
     },
-    async getCloseEma200(instrumentIds, fromDate, sessions) {
-      const ids = [...new Set(instrumentIds)];
-      const parts = await Promise.all(chunks(ids, 300).map((c) =>
-        pagedAll(
-          (from, to, withCount) =>
-            db.from("daily_prices").select("date,close,ema200", withCount ? { count: "exact" } : undefined).in("instrument_id", c)
-              .gte("date", fromDate).order("instrument_id").order("date").range(from, to),
-          "getCloseEma200",
-          Infinity,
-          pagesFor(c.length * sessions),
-        ),
-      ));
-      return parts.flat().map((r) => ({ date: r.date as string, close: num(r.close), ema200: num(r.ema200) }));
-    },
     async getChartDays(instrumentId, limit) {
       return (await readDays(instrumentId, limit, CHART_COLUMNS, "getChartDays")).map(toDay);
     },

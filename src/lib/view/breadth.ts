@@ -44,21 +44,3 @@ export function buildBreadth(sessionRows: StoredDay[], vixDays: StoredDay[]): Br
     },
   };
 }
-
-export interface BreadthPoint { time: string; /** % of counted stocks closing above their EMA 200 */ pct: number; above: number; counted: number }
-
-/**
- * Daily % of stocks above their own stored EMA 200. A stock with no close or no EMA 200 that day is left out of the
- * denominator (`counted`), so early days with few EMAs are not read as "below". Days with nothing counted are skipped.
- */
-export function breadthSeries(rows: { date: string; close: number | null; ema200: number | null }[]): BreadthPoint[] {
-  const byDate = new Map<string, { above: number; counted: number }>();
-  for (const r of rows) {
-    if (r.close === null || r.ema200 === null) continue;
-    const t = byDate.get(r.date) ?? { above: 0, counted: 0 };
-    t.counted++;
-    if (r.close > r.ema200) t.above++;
-    byDate.set(r.date, t);
-  }
-  return [...byDate].sort(([a], [b]) => a.localeCompare(b)).map(([time, t]) => ({ time, pct: (t.above / t.counted) * 100, ...t }));
-}

@@ -96,32 +96,3 @@ describe("buildChartData", () => {
     expect(m1.bbLower[10]).toEqual({ time: date(29), value: 119 });
   });
 });
-
-describe("regime", () => {
-  it("keeps bullish/bearish days only; Neutral and unscored days get no tint", () => {
-    const labels = ["Strong Bullish", "Bullish", "Neutral", "Bearish", "Strong Bearish", null] as const;
-    const d = buildChartData(labels.map((l, i) => bar(i, { scoreLabel: l })), "ALL");
-    expect(d.regime).toEqual([
-      { time: date(0), bull: true }, { time: date(1), bull: true }, { time: date(3), bull: false }, { time: date(4), bull: false },
-    ]);
-  });
-});
-
-import { hoverInfo } from "@/lib/view/chart";
-
-describe("hoverInfo", () => {
-  const d = (date: string, close: number, o: Partial<{ rsi14: number; ema20: number; score: number }> = {}) => ({
-    date, close, rsi14: null, ema20: null, score: null, scoreLabel: null as null, ...o,
-  });
-  it("gives day %, EMA 20 distance and passes breadth through", () => {
-    const i = hoverInfo([d("a", 100), d("b", 110, { rsi14: 61, ema20: 100, score: 70 })], "b", 52.8)!;
-    expect(i.dayPct).toBeCloseTo(10);
-    expect(i.ema20Pct).toBeCloseTo(10);
-    expect(i).toMatchObject({ rsi: 61, score: 70, breadth: 52.8, close: 110 });
-  });
-  it("keeps missing values null and returns null for an unknown date", () => {
-    const i = hoverInfo([d("a", 100)], "a", null)!;
-    expect(i).toMatchObject({ dayPct: null, rsi: null, score: null, ema20Pct: null, breadth: null });
-    expect(hoverInfo([d("a", 100)], "x", null)).toBeNull();
-  });
-});
