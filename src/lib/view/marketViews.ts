@@ -1,9 +1,8 @@
-export type MarketView = "today" | "screeners" | "alphas" | "flows" | "you";
+export type MarketView = "today" | "screeners" | "flows" | "you";
 
 export const MARKET_VIEWS: { id: MarketView; label: string }[] = [
   { id: "today", label: "Today by Claude" },
   { id: "screeners", label: "Screeners" },
-  { id: "alphas", label: "Alpha ranks" },
   { id: "flows", label: "Institutional flows" },
   { id: "you", label: "Your stocks" },
 ];

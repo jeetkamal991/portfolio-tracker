@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtAlphaScore, fmtShortDate, metricText } from "@/lib/view/market";
+import { fmtShortDate, metricText } from "@/lib/view/market";
 
 describe("metricText", () => {
   it("formats volume ratios", () => {
@@ -27,22 +27,5 @@ describe("fmtShortDate", () => {
   it("shortens ISO dates and passes through junk", () => {
     expect(fmtShortDate("2026-10-04")).toBe("4 Oct");
     expect(fmtShortDate("nope")).toBe("nope");
-  });
-});
-
-describe("fmtAlphaScore", () => {
-  it("shows the combined score as a whole-number mean rank", () => {
-    expect(fmtAlphaScore("combined", 0.874)).toBe("87");
-    expect(fmtAlphaScore("combined", 1)).toBe("100");
-  });
-  it("shows an alpha value to 3 significant digits with a true minus sign", () => {
-    expect(fmtAlphaScore("a012", -0.0123456)).toBe("−0.0123");
-    expect(fmtAlphaScore("a101", 0.5)).toBe("0.500");
-    expect(fmtAlphaScore("a054", 0)).toBe("0.00");
-  });
-  it("shows values of 1000 or more as whole numbers, never in exponent form", () => {
-    expect(fmtAlphaScore("a012", -1550.3)).toBe("−1550");
-    expect(fmtAlphaScore("a012", 12345.6)).toBe("12346");
-    expect(fmtAlphaScore("a012", 999.6)).toBe("1000"); // rounds up to 1000 at 3 significant digits
   });
 });

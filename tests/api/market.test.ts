@@ -34,47 +34,22 @@ describe("loadMarket", () => {
     await repo.replaceConstituents("NIFTY200", [3]);
     expect(await loadMarket(repo, "2026-01-09")).toEqual({
       session: null, summary: null, screeners: [], breadth: null, hasUniverse: true,
-      watchSignals: { crosses: [], formations: [] }, hasWatchStocks: false, stakes: null, alphas: [],
+      watchSignals: { crosses: [], formations: [] }, hasWatchStocks: false, stakes: null,
     });
   });
   it("no constituents gives hasUniverse false and no screeners", async () => {
     const m = await loadMarket(await setup(false), "2026-01-09");
     expect(m.hasUniverse).toBe(false);
     expect(m.screeners).toEqual([]);
-    expect(m.alphas).toEqual([]);
   });
-  it("reads the last 30 priced sessions and returns the combined card plus six alphas", async () => {
+  it("screeners keep their 6 most recent sessions", async () => {
     const many = Array.from({ length: 35 }, (_, i) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10));
     const repo = createMemoryRepo({ instruments });
     for (const id of [1, 3]) await repo.upsertCandles(id, many.map((date, i) => ({ date, open: 100, high: 100, low: 100, close: 100 + i, volume: 1 })));
     await repo.replaceConstituents("NIFTY200", [3]);
     const wide = vi.spyOn(repo, "getDaysRange");
-    const narrow = vi.spyOn(repo, "getOhlcvRange");
-    const m = await loadMarket(repo, many[34]);
-    expect(wide.mock.calls[0][1]).toBe(many[29]); // screeners keep their 6 sessions, with indicators
-    expect(narrow).toHaveBeenCalledTimes(1);
-    expect(narrow.mock.calls[0][0]).toEqual([3]); // the Nifty 200 members only
-    expect(narrow.mock.calls[0][1]).toBe(many[5]); // 30 sessions ending on many[34]
-    expect(m.alphas.map((r) => r.id)).toEqual(["combined", "a001", "a002", "a006", "a012", "a054", "a101"]);
-  });
-  it("a failing alpha fetch drops the alpha section, not the page", async () => {
-    const repo = await setup();
-    vi.spyOn(repo, "getOhlcvRange").mockRejectedValue(new Error("boom"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const m = await loadMarket(repo, "2026-01-09");
-    expect(m.alphas).toEqual([]);
-    expect(m.screeners).toHaveLength(10);
-    expect(m.breadth).not.toBeNull();
-    expect(console.error).toHaveBeenCalled();
-  });
-  it("short history leaves the alphas that need more bars with no stocks, and the page data still loads", async () => {
-    const m = await loadMarket(await setup(), "2026-01-09"); // 7 sessions: a001, a002 and a006 need more
-    const count = (id: string) => m.alphas.find((r) => r.id === id)?.count;
-    expect([count("a001"), count("a002"), count("a006")]).toEqual([0, 0, 0]);
-    expect(count("a054")).toBe(0); // flat bars (high = low) cannot be scored
-    expect([count("a012"), count("a101")]).toEqual([2, 2]);
-    expect(count("combined")).toBe(0); // only two alphas scored, three are needed
-    expect(m.screeners).toHaveLength(10);
+    await loadMarket(repo, many[34]);
+    expect(wide.mock.calls[0][1]).toBe(many[29]);
   });
   it("returns 10 screeners in SCREENERS order, breadth, and calls getDaysRange once", async () => {
     const repo = await setup();

@@ -1,5 +1,4 @@
 import type { Repo } from "@/lib/db/repo";
-import { ALPHA_WINDOW, runAlphas, type AlphaResult } from "@/lib/calc/alpha/run";
 import { runScreeners, type ScreenerResult } from "@/lib/calc/screeners";
 import { runWatchSignals, type WatchSignals } from "@/lib/calc/watchSignals";
 import { previousQuarterEnd, rankStakeIncreases, type StakeScreener } from "@/lib/calc/shareholding";
@@ -18,8 +17,6 @@ export interface MarketData {
   hasWatchStocks: boolean;
   /** Quarterly FII / DII stake increases; null until shareholding data exists. */
   stakes: { fii: StakeScreener; dii: StakeScreener } | null;
-  /** The combined "Alpha rank" card first, then one result per alpha; empty without a universe or session. */
-  alphas: AlphaResult[];
 }
 
 const NO_SIGNALS: WatchSignals = { crosses: [], formations: [] };
@@ -43,7 +40,6 @@ interface UniverseResult {
   screeners: ScreenerResult[];
   breadth: Breadth;
   stakes: MarketData["stakes"];
-  alphas: AlphaResult[];
   /** The stored rows of every universe stock for the screener window, kept so watch signals need no second read for them. */
   range: Map<number, StoredDay[]>;
   fromDate: string;
@@ -53,7 +49,7 @@ interface UniverseResult {
  * The session is NIFTY50's latest priced date, so a weekend shows Friday's data and summary;
  * `today` is accepted for the page's signature but does not pick the session.
  *
- * Only the universe-wide computation (screeners, alphas, breadth, stakes, summary) goes through `opts.memo`: it is public market
+ * Only the universe-wide computation (screeners, breadth, stakes, summary) goes through `opts.memo`: it is public market
  * data, identical for every user, and changes once a day. Watchlist and holdings (private, user-edited) are always read live.
  */
 export async function loadMarket(repo: Repo, today: string, opts: { memo?: Memo } = {}): Promise<MarketData> {
@@ -80,32 +76,27 @@ export async function loadMarket(repo: Repo, today: string, opts: { memo?: Memo 
   const latest = nifty ? await repo.getLatestDay(nifty.id) : null;
   if (!nifty || !latest) {
     const stakes = await stakesP;
-    return { session: null, summary: null, screeners: [], breadth: null, hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes, alphas: [] };
+    return { session: null, summary: null, screeners: [], breadth: null, hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes };
   }
   const session = latest.date;
 
   if (!hasUniverse && !hasWatchStocks) {
     const [vixDays, summaryRow] = await Promise.all([vix ? repo.getDays(vix.id, 25) : Promise.resolve([]), repo.getDailySummary(session)]);
-    return { session, summary: summaryRow ? parseDailySummary(summaryRow) : null, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes: await stakesP, alphas: [] };
+    return { session, summary: summaryRow ? parseDailySummary(summaryRow) : null, screeners: [], breadth: buildBreadth([], vixDays), hasUniverse, watchSignals: NO_SIGNALS, hasWatchStocks, stakes: await stakesP };
   }
 
   const universe = await memo<UniverseResult>(`market-universe:${session}:${constituents.length}:${constituents[0]?.id ?? 0}`, async () => {
     const [niftyDays, vixDays, summaryRow] = await Promise.all([
-      repo.getDays(nifty.id, ALPHA_WINDOW + 10), // spare rows for unpriced days
+      repo.getDays(nifty.id, 16), // spare rows for unpriced days
       vix ? repo.getDays(vix.id, 25) : Promise.resolve([]),
       repo.getDailySummary(session),
     ]);
     // Newer or unpriced rows must not shrink the windows: keep priced sessions up to `session`.
-    // Screeners need indicators for the last 6; the alphas need only OHLCV for 30, fetched alongside.
+    // Screeners need indicators for the last 6 sessions.
     const priced = niftyDays.filter((d) => d.close !== null && d.date <= session);
     const fromDate = priced.slice(-6)[0]?.date ?? session;
-    const alphaFrom = priced.slice(-ALPHA_WINDOW)[0]?.date ?? session;
-    const [range, ohlcv, stakes] = await Promise.all([
+    const [range, stakes] = await Promise.all([
       repo.getDaysRange(constituents.map((c) => c.id), fromDate, session),
-      // a failed alpha fetch must not take the screeners, breadth and watch signals down with it
-      hasUniverse
-        ? repo.getOhlcvRange(constituents.map((c) => c.id), alphaFrom, session).catch((e) => { console.error("alpha fetch failed", e); return null; })
-        : Promise.resolve(null),
       stakesP,
     ]);
     const stocks = constituents.map((c) => ({ key: c.key, name: c.name, days: range.get(c.id) ?? [] }));
@@ -115,7 +106,6 @@ export async function loadMarket(repo: Repo, today: string, opts: { memo?: Memo 
       screeners: hasUniverse ? runScreeners(stocks, session) : [],
       breadth: buildBreadth(sessionRows, vixDays),
       stakes,
-      alphas: ohlcv ? runAlphas(constituents.map((c) => ({ key: c.key, name: c.name, days: ohlcv.get(c.id) ?? [] })), session) : [],
       range,
       fromDate,
     };
@@ -134,6 +124,5 @@ export async function loadMarket(repo: Repo, today: string, opts: { memo?: Memo 
     watchSignals: runWatchSignals(watchStocks, session),
     hasWatchStocks,
     stakes: universe.stakes,
-    alphas: universe.alphas,
   };
 }

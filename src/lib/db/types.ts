@@ -46,9 +46,6 @@ export interface StoredDay {
   scoreSignal: string | null;
 }
 
-/** What the alphas read: the date, OHLCV and the day's % change. */
-export type OhlcvDay = Pick<StoredDay, "date" | "open" | "high" | "low" | "close" | "volume" | "pctChange" | "importedPct">;
-
 export interface IndicatorRow {
   date: string;
   pctChange: number | null;

@@ -4,7 +4,6 @@ import { buildDelivery } from "@/lib/calc/delivery";
 import { addDays, istDate } from "@/lib/time/ist";
 import { parseView } from "@/lib/view/marketViews";
 import { TodayByClaudeCompact } from "../../components/dashboard/TodayByClaudeCompact";
-import { AlphaGrid } from "../../components/market/AlphaGrid";
 import { BreadthPanel } from "../../components/market/BreadthPanel";
 import { ClaudeSummaryCard } from "../../components/market/ClaudeSummaryCard";
 import { RepeatDeliveryCard, TodayDeliveryCard } from "../../components/market/DeliveryCards";
@@ -63,11 +62,10 @@ export default async function MarketPage({ searchParams }: { searchParams: Promi
       </div>
       <MarketBoard
         initial={parseView(v)}
-        counts={{ screeners: m.screeners.length, alphas: m.alphas.length, you: signalCount }}
+        counts={{ screeners: m.screeners.length, you: signalCount }}
         views={{
           today: <ClaudeSummaryCard summary={m.summary} session={m.session} />,
           screeners: <ScreenerGrid screeners={m.screeners} session={m.session} hasUniverse={m.hasUniverse} />,
-          alphas: <AlphaGrid alphas={m.alphas} session={m.session} hasUniverse={m.hasUniverse} />,
           flows,
           you: <WatchSignalsPanel signals={m.watchSignals} hasWatchStocks={m.hasWatchStocks} />,
         }}

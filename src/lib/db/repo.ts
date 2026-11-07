@@ -1,7 +1,7 @@
 import type { Candle } from "@/lib/provider/types";
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { AlertCondition } from "@/lib/calc/alerts";
-import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, DeliveryRow, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, OhlcvDay, PriceBar, ReportRow, ReportWithStock, ScoreRow, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, AlertStateUpdate, DailySummary, DeliveryRow, Holding, NewAlertEvent, NewAlertRule, Instrument, InstrumentType, IndicatorRow, JobRun, JobRunResult, Levels, PriceBar, ReportRow, ReportWithStock, ScoreRow, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
 
 export interface Repo {
   listInstruments(f?: { types?: InstrumentType[]; activeOnly?: boolean }): Promise<Instrument[]>;
@@ -29,8 +29,6 @@ export interface Repo {
   getDaysOn(instrumentIds: number[], date: string): Promise<Map<number, StoredDay>>;
   /** Rows with fromDate <= date <= toDate for the given ids, ascending per instrument; ids with no rows are absent. */
   getDaysRange(instrumentIds: number[], fromDate: string, toDate: string): Promise<Map<number, StoredDay[]>>;
-  /** Like getDaysRange but only the OHLCV and day % columns, fetched in parallel; for long ranges that need no indicators. */
-  getOhlcvRange(instrumentIds: number[], fromDate: string, toDate: string): Promise<Map<number, OhlcvDay[]>>;
   /** Newest row with a non-null close. */
   getLatestDay(instrumentId: number): Promise<StoredDay | null>;
   /** Writes importedPct only (creates the row if absent). */

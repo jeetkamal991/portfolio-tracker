@@ -1,7 +1,7 @@
 import type { HoldingInput } from "@/lib/calc/portfolio";
 import type { Candle } from "@/lib/provider/types";
 import type { Repo } from "./repo";
-import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, JobRun, Levels, OhlcvDay, ReportRow, ReportWithStock, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
+import type { AlertEvent, AlertRule, DailySummary, DeliveryRow, Holding, Instrument, JobRun, Levels, ReportRow, ReportWithStock, ScoreRun, ScoreSnapshot, ShareholdingRow, StoredDay } from "./types";
 
 const emptyDay = (date: string): StoredDay => ({
   date, open: null, high: null, low: null, close: null, volume: null,
@@ -149,13 +149,6 @@ export function createMemoryRepo(seed?: { instruments?: Instrument[] }): Repo & 
       return out;
     },
     getDaysRange: async (ids, fromDate, toDate) => daysRange(ids, fromDate, toDate),
-    async getOhlcvRange(ids, fromDate, toDate) {
-      const out = new Map<number, OhlcvDay[]>();
-      for (const [id, rows] of daysRange(ids, fromDate, toDate)) {
-        out.set(id, rows.map(({ date, open, high, low, close, volume, pctChange, importedPct }) => ({ date, open, high, low, close, volume, pctChange, importedPct })));
-      }
-      return out;
-    },
     async getLatestDay(id) {
       const priced = [...(days.get(id)?.values() ?? [])].filter((d) => d.close !== null);
       priced.sort((a, b) => a.date.localeCompare(b.date));

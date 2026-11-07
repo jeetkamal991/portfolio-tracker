@@ -1,4 +1,3 @@
-import type { AlphaResult } from "@/lib/calc/alpha/run";
 import type { ScreenerHit, ScreenerId } from "@/lib/calc/screeners";
 
 const MINUS = "−";
@@ -45,12 +44,3 @@ export function metricText(id: ScreenerId, hit: Pick<ScreenerHit, "metric" | "da
 
 /** Rows visible before "Show all". */
 export const COLLAPSED_ROWS = 5;
-
-/** Combined card: the mean rank as 0-100. An alpha card: the raw value to 3 significant digits. */
-export function fmtAlphaScore(id: AlphaResult["id"], score: number): string {
-  if (id === "combined") return String(Math.round(score * 100));
-  const abs = Math.abs(score);
-  // 3 significant digits, but whole numbers from 1000 up so toPrecision never switches to exponent form
-  const text = Number(abs.toPrecision(3)) >= 1000 ? String(Math.round(abs)) : abs.toPrecision(3);
-  return score < 0 ? `${MINUS}${text}` : text;
-}
