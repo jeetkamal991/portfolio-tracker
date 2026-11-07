@@ -7,7 +7,6 @@ import { buildDailyLog } from "@/lib/view/dailyLog";
 import { buildSectorRows } from "@/lib/view/dashboard";
 import { PriceChart } from "../components/chart/PriceChart";
 import { TodayByClaudeCompact } from "../components/dashboard/TodayByClaudeCompact";
-import { DashboardTimeline } from "../components/dashboard/DashboardTimeline";
 import { DailyLogTotals } from "../components/dashboard/DailyLogTotals";
 import { MoversPanel } from "../components/dashboard/MoversPanel";
 import { NiftyCard } from "../components/dashboard/NiftyCard";
@@ -22,8 +21,8 @@ const DASH_BARS = 260;
 export default async function Dashboard() {
   const repo = getRepo();
   const today = istDate(new Date());
-  // History only changes at end of day, so it is memoised; movers, holdings and alerts stay live.
-  const [history, [movers, portfolio], events] = await Promise.all([
+  // History only changes at end of day, so it is memoised; movers and holdings stay live.
+  const [history, [movers, portfolio]] = await Promise.all([
     cached("dashboard-history", async () => {
       const instruments = await repo.listInstruments({ types: ["index", "sector"] });
       const nifty = instruments.find((i) => i.key === "NIFTY50");
@@ -40,7 +39,6 @@ export default async function Dashboard() {
       handleMovers(repo, quoteCache, new Date()).catch((): MoversResponse => ({ state: "no_data", date: null })),
       loadHoldingsLatest(repo),
     ]),
-    repo.listAlertEvents(50).catch(() => []),
   ]);
   const { niftyDays, sectors } = history;
   const niftyDates = niftyDays.filter((d) => d.close !== null).map((d) => d.date);
@@ -57,8 +55,9 @@ export default async function Dashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <NiftyCard days={niftyDays} />
-        <DashboardTimeline events={events} />
+        <div className="xl:col-span-2">
+          <NiftyCard days={niftyDays} />
+        </div>
         <PriceChart days={niftyDays} title="NIFTY 50" height={520} signals historyKey="NIFTY50" moreHistory={niftyDays.length >= DASH_BARS} />
         <MoversPanel initial={movers} />
       </div>

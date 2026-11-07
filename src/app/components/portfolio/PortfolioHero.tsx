@@ -99,20 +99,6 @@ export function PortfolioHero({
             <p className="text-sm text-[var(--muted)]">No Nifty data yet.</p>
           )}
         </Panel>
-        <Panel title="Waiting for you" action={<Link href="/alerts" className="text-xs text-[var(--muted)] hover:text-[var(--up)]">All alerts</Link>}>
-          {side.unreadCount === 0 ? (
-            <p className="text-sm text-[var(--muted)]">Nothing waiting.</p>
-          ) : (
-            <ul className="flex flex-col gap-2 text-sm">
-              {side.unread.map((u) => (
-                <li key={u.id} className="flex items-baseline gap-2">
-                  <StockLink stockKey={u.key} className="min-w-0 flex-1 truncate">{u.message.replace(/^[^\p{L}\p{N}]+/u, "").split(" · ")[0]}</StockLink>
-                </li>
-              ))}
-              {side.unreadCount > side.unread.length && <li className="text-xs text-[var(--muted)]">+{side.unreadCount - side.unread.length} more</li>}
-            </ul>
-          )}
-        </Panel>
         <Panel title="Sectors">
           {side.sectors.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">No sector data yet.</p>
