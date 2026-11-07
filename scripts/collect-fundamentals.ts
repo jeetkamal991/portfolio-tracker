@@ -1,6 +1,7 @@
 import YahooFinance from "yahoo-finance2";
-import { coverage, FIELDS, formatCoverage, isFinancial, toRow, type FundamentalsRow } from "@/lib/calc/fundamentals";
+import { coverage, FIELDS, formatCoverage, isFinancial, toRow } from "@/lib/calc/fundamentals";
 import { createSupabaseRepo } from "@/lib/db/supabaseRepo";
+import { storeRows, type StoredRow } from "@/lib/jobs/fundamentals";
 import { pool } from "@/lib/jobs/pool";
 import { withRetry } from "@/lib/provider/retry";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,6 @@ import { listUniverseStocks } from "@/lib/universe/stocks";
 const TABLE = "fundamentals_snapshots";
 const CONCURRENCY = 4;
 const PAUSE_MS = 300;
-const BATCH = 100;
 const MODULES = ["financialData", "summaryDetail", "defaultKeyStatistics"] as const;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -53,7 +53,7 @@ async function main() {
 
   const fetchedOn = istDate(new Date());
   const yf = new YahooFinance({ suppressNotices: ["yahooSurvey", "ripHistorical"] });
-  const rows: FundamentalsRow[] = [];
+  const rows: StoredRow[] = [];
   const keyOf = new Map<number, string>();
   const failed: string[] = [];
   console.log(`Fetching ${stocks.length} stocks for ${fetchedOn}${dryRun ? " (dry run: nothing is written)" : ""}`);
@@ -62,31 +62,23 @@ async function main() {
     keyOf.set(s.id, s.key);
     try {
       const summary = await withRetry(() => yf.quoteSummary(s.yahooTicker, { modules: [...MODULES] }, { validateResult: false }), 3, 1000);
-      rows.push(toRow(summary, ctx));
+      rows.push({ row: toRow(summary, ctx), failed: false });
     } catch (e) {
       // an unknown or failing symbol is stored with every field missing, never skipped
       failed.push(`${s.key} (${s.yahooTicker}): ${e instanceof Error ? e.message : String(e)}`.slice(0, 160));
-      rows.push(toRow(null, ctx));
+      rows.push({ row: toRow(null, ctx), failed: true });
     }
     await sleep(PAUSE_MS);
   });
 
   if (!dryRun) {
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const records = rows.slice(i, i + BATCH).map((r) => ({
-        instrument_id: r.instrumentId, fetched_on: r.fetchedOn, is_financial: r.isFinancial,
-        ...Object.fromEntries(FIELDS.map((f) => [f.column, r.values[f.key]])),
-        missing: r.missing, raw: r.raw, fetched_at: new Date().toISOString(),
-      }));
-      const { error } = await db.from(TABLE).upsert(records, { onConflict: "instrument_id,fetched_on" });
-      if (error) throw new Error(`write failed: ${error.message}`);
-    }
+    await storeRows(db, rows, new Date());
     console.log(`Stored ${rows.length} rows`);
   }
 
   console.log(`Failed fetches: ${failed.length}${failed.length ? "\n  " + failed.join("\n  ") : ""}`);
-  console.log(formatCoverage(coverage(rows)));
-  const worst = [...rows].sort((a, b) => b.missing.length - a.missing.length).slice(0, 10);
+  console.log(formatCoverage(coverage(rows.map((r) => r.row))));
+  const worst = rows.map((r) => r.row).sort((a, b) => b.missing.length - a.missing.length).slice(0, 10);
   console.log("Most missing fields:");
   for (const r of worst) console.log(`  ${(keyOf.get(r.instrumentId) ?? String(r.instrumentId)).padEnd(14)} ${r.missing.length}/${FIELDS.length} missing${r.isFinancial ? " (financial)" : ""}`);
 }
