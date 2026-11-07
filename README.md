@@ -87,24 +87,21 @@ The app shell has seven tabs, each a route; `/login` sits outside the shell.
 
 | Route | Tab | Contents |
 | --- | --- | --- |
-| `/` | Dashboard | Top row: the Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend) and the latest alert events. Second row: the Nifty chart (EMA 20/50/200, ranges 1D-ALL) beside the Nifty 200 market movers (top gainers above top losers, then breadth). Below, two columns: TODAY BY CLAUDE first (highlights as points plus a few news lines; the full write-up with sources is on the Market tab), then SECTORAL PULSE (full sector names, three tiles a row), YOUR PORTFOLIO snapshot and the MONTHLY SECTOR LOG (the Total row of the Daily Sector Log: this month's summed daily % for Nifty and each sector; the full daily log is on Sector Analysis) |
+| `/` | Dashboard | Top row: the Nifty card (price, day move, prev close, day and 52-week high/low, EMA 20/50/200 above/below with trend), full width. Second row: the Nifty chart (EMA 20/50/200, ranges 1D-ALL) beside the Nifty 200 market movers (top gainers above top losers, then breadth). Below, two columns: TODAY BY CLAUDE first (highlights as points plus a few news lines; the full write-up with sources is on the Market tab), then SECTORAL PULSE (full sector names, three tiles a row), YOUR PORTFOLIO snapshot and the MONTHLY SECTOR LOG (the Total row of the Daily Sector Log: this month's summed daily % for Nifty and each sector; the full daily log is on Sector Analysis) |
 | `/portfolio` | Portfolio | Summary cards, risk alerts, sortable holdings table, add/edit form (`?add=1`, `?add=<KEY>`, `?edit=<KEY>`) |
 | `/watchlist` | Watchlist | Add stock, sortable watchlist table with score, EMAs, RSI, levels (manual overrides) and a 1-month sparkline |
 | `/sectors` | Sector Analysis | Sector tiles (the two biggest movers get large tiles) with top-mover previews, the selected sector's detail and constituents (`?s=<KEY>`), sector rotation ranking, daily sector log (`?m=<YYYY-MM>`) |
-| `/market` | Market | Today by Claude, signals on your stocks, ten screeners, six alpha ranks, FII/DII stake increases, breadth and India VIX |
+| `/market` | Market | Breadth and India VIX, signals on your stocks, Today by Claude (full write-up), ten screeners, institutional flows (delivery, FII/DII stake increases) |
 | `/deepdive` | AI Deep Dive | A scoreboard of every saved Claude report: summary figures (reports, done, pending, failed, average score), a request box with stock search, and tiles with a score ring (the stock's Technical Score today), status, label and summary. Open report opens the stock pop-up on its AI Deep Dive tab; Delete removes that report immediately (no confirm) |
 | `/alerts` | Alerts | A briefing: how many alerts need you (stop hits first), a ranked action queue with one-click Open stock / Raise stop / Read it / Dismiss, earlier alerts, then the rules and the new-alert form |
 
 ### Dashboard chart
 
-The Nifty chart on the Dashboard has extras that the stock pop-up's chart does not. All use stored data only (candles, EMAs, RSI, Technical Score, India VIX, Nifty 200 constituents).
+The Nifty chart on the Dashboard has extras that the stock pop-up's chart does not. All use stored data only (candles and EMAs).
 
 - **Signal markers.** Arrows on the candle where it happened: Golden cross (EMA 50 over 200, green, below the bar), Death cross (red, above), 20/50 up/down (smaller), and Above 200 / Below 200 (close vs EMA 200). One marker per day: golden/death beats close vs 200, which beats 20/50. Days with a missing EMA are skipped.
 - **How stretched.** Under the OHLC strip: the latest close's distance from EMA 20, 50 and 200 in %. Normal under 4%, amber 4-6%, red above 6% (constants at the top of `src/lib/view/chart.ts`).
-- **Breadth pane.** A BREADTH button next to Volume, RSI and MACD: the % of Nifty 200 stocks closing above their own stored EMA 200 (only stocks that have an EMA 200 that day count), with India VIX on the left axis. It loads when you open it, from `GET /api/breadth`, for the chart's range up to about a year (260 sessions); the first load reads about 26k-53k rows and takes a few seconds, then it is cached until the next session.
 - **Key levels.** Faint dashed lines: previous day high/low (PDH, PDL), 52-week high (52W H), and the nearest swing support (S) and resistance (R), found the same way as the Portfolio form's suggested levels.
-- **Regime shading.** A light green or red background on days whose stored Technical Score label is bullish or bearish; Neutral and unscored days get no tint. Scores are stored from 2026-10-16, so older days are untinted.
-- **Hover tooltip.** Date, close and day %, RSI 14, Technical Score with label, breadth % (shown once the Breadth pane has been opened) and distance from EMA 20, with "—" for anything missing. It sits on the half of the chart away from the pointer so it never covers the hovered candle.
 
 The top bar holds the tabs (a horizontal scroller under 1024 px). The status strip under it shows the market phase (PRE-OPEN / OPEN / CLOSED) with the IST clock, Nifty, Bank Nifty and India VIX (live during market hours), and the "Data as of" badge (amber when stale).
 
@@ -112,7 +109,7 @@ The chart uses TradingView [`lightweight-charts`](https://github.com/tradingview
 
 ### Portfolio
 
-The Portfolio tab tracks the owner's holdings, one position per stock. The top of the tab is a money-first hero: portfolio value, today's P/L, overall P/L, and status chips (at stop, near stop, at target). Under it a risk ladder draws each holding as a bar from its stop loss (left) to Target 1 (right) with a pin at the current price, most urgent first; a holding without a stop or Target 1 links to its edit form instead. A side column shows the Nifty close, the newest unread alerts and the best and worst sectors.
+The Portfolio tab tracks the owner's holdings, one position per stock. The top of the tab is a money-first hero: portfolio value, today's P/L, overall P/L, and status chips (at stop, near stop, at target). Under it a risk ladder draws each holding as a bar from its stop loss (left) to Target 1 (right) with a pin at the current price, most urgent first; a holding without a stop or Target 1 links to its edit form instead. A side column shows the Nifty close and the best and worst sectors.
 
 - **Adding.** "Add holding" opens a form with a stock search. Picking a stock fills in the current price, score, and suggested stop loss and Target 1 from recent swing lows and highs ("Use suggested levels"). Quantity must be a whole number above 0, the buy date can't be in the future, and stop loss / Target 1 are optional. The form warns, without blocking, when the stop loss is at or above the buy price or Target 1 is already below the current price. Adding a stock you already hold merges into one position: the quantities add, the average price is the weighted average, the earlier buy date is kept, and any new stop loss or Target 1 replaces the old one.
 - **New stocks.** A stock with no stored prices gets its history fetched when it is added. From then on, holdings are priced and scored by the nightly EOD job and included in the live quotes during market hours.
@@ -151,28 +148,22 @@ Each stock is a tile: a score ring and label, price and day %, EMA 20 / 50 / 200
 
 ### Market
 
-The Market tab is the whole-market view, built on the Nifty 200. The top row is always visible: Today by Claude (highlights), Breadth with India VIX, and a summary of signals on your stocks. Under it a switch picks one view at a time, kept in the URL as `?v=` (`today`, `screeners`, `alphas`, `flows`, `you`): the full Claude write-up, the ten screeners, the alpha ranks, institutional flows (high delivery today, repeat names, FII and DII stake increases) and your stocks' signals, the screeners and alphas as a board of 3 columns on a wide screen (2 and 1 on smaller ones) and the flows cards 2 per row. Long lists and long text are cut short with Read more / Read less. The sections below describe each part. Everything except Today by Claude is computed on each page load from stored candles, scores and shareholding rows; nothing here has live quotes. The session is NIFTY 50's latest priced date, so a weekend or holiday shows the last trading day.
+The Market tab is the whole-market view, built on the Nifty 200. The top row is always visible: Breadth with India VIX, and a summary of signals on your stocks. Under it a switch picks one view at a time, kept in the URL as `?v=` (`today`, `screeners`, `flows`, `you`; anything else opens the screeners): the full Claude write-up, the ten screeners, institutional flows (high delivery today, repeat names, FII and DII stake increases) and your stocks' signals, the screeners as a board of 3 columns on a wide screen (2 and 1 on smaller ones) and the flows cards 2 per row. Long lists and long text are cut short with Read more / Read less. The sections below describe each part. Everything except Today by Claude is computed on each page load from stored candles, scores and shareholding rows; nothing here has live quotes. The session is NIFTY 50's latest priced date, so a weekend or holiday shows the last trading day.
 
-- **Today by Claude.** The newest `daily_summaries` row, written by the "Nifty daily market summary" routine (`docs/claude-tasks/daily-summary.md`, Mon-Fri 18:07 IST). It shows the day's read of the market, events and news on your stocks. With no row for the session it says "No summary for today" (Claude writes it on trading days around 6 PM IST).
-- **Your stocks - signals.** Over the last 5 sessions, for the watchlist plus portfolio stocks only: *Crosses* (golden/death cross EMA 50/200, EMA 20 vs 50, close vs EMA 200, MACD vs signal) and *Formations* (candle patterns such as engulfing and morning star). Each line shows the date and a bullish/bearish chip. With no watchlist or holdings it asks you to add some.
+- **Today by Claude** (the `today` view; the Dashboard shows the short version). The newest `daily_summaries` row, written by the "Nifty daily market summary" routine (`docs/claude-tasks/daily-summary.md`, Mon-Fri 18:07 IST). It shows the day's read of the market, events and news on your stocks. With no row for the session it says "No summary for today" (Claude writes it on trading days around 6 PM IST).
+- **Your stocks - signals.** Over the last 5 sessions, for the watchlist plus portfolio stocks only: *Crosses* (golden/death cross EMA 50/200, EMA 20 vs 50, close vs EMA 200). Each line shows the date and a bullish/bearish chip. With no watchlist or holdings it asks you to add some.
 - **Screeners.** Ten cards, each listing the top matches in the Nifty 200 with a count and "Show all": volume shockers up/down, 52-week breakout/breakdown zone, golden/death cross, RSI overbought/oversold, and top/bottom Technical Scores. Click a stock to open its pop-up.
 - **High delivery.** From NSE's daily file (`sec_bhavdata_full`, EQ series, all stocks), kept for the 100 most traded stocks by value per day in `delivery_daily` (migration 0014). *Today*: stocks at 60%+ delivery, highest first. *Repeat names*: stocks in the top 30 by traded value with 60%+ delivery on at least 5 of the last 10 sessions, or 8 of the last 20 (the 10D/20D toggle), with days, average delivery % and an arrow for whether the latest session is above that average. The constants are at the top of `src/lib/calc/delivery.ts`. The file is published in the evening, so it has its own cron (`/api/cron/delivery`, 14:30 UTC / 8 PM IST) that also fills any missed weekday of the last 7. To back-fill: `npm run backfill-delivery -- --days 35`. Stocks not tracked in this app show their NSE symbol without a pop-up.
-- **Alpha ranks** and **stake-increase screeners** are described in their own sections below.
+- **Stake-increase screeners** are described in their own section below.
 - **Breadth** (right column). Advances, declines and unchanged with the A/D ratio, the share of stocks above their EMA 200 (with how many had enough history to have one), and India VIX with its day % and a 21-session sparkline.
 
-Until `NIFTY200.csv` is imported (Stage 2) the screeners, alphas, stakes and breadth show an "appears after the Nifty 200 import" message; Today by Claude and your-stocks signals still work.
+Until `NIFTY200.csv` is imported (Stage 2) the screeners, stakes and breadth show an "appears after the Nifty 200 import" message; Today by Claude and your-stocks signals still work.
 
 ### Market movers
 
 The Dashboard's MARKET MOVERS panel lists the five biggest Nifty 200 gainers and losers by day % and an advance/decline breadth bar with the A/D ratio. It comes from `GET /api/movers`. During market hours it overlays one batched live quote call (refreshed every 60 s and labelled LIVE, or "at close" if the tab stays open past 15:30 IST; on a weekday NSE holiday Yahoo's quotes are the last session's, so it is not labelled LIVE); otherwise it shows the newest stored session, dated from NIFTY 50, so weekends and holidays show the last trading day. A stock with a zero move counts as unchanged and appears in neither list.
 
 The panel depends on the Nifty 200 import (Stage 2 above). Until `NIFTY200.csv` has been imported it says "Market movers appear after the Nifty 200 list is imported."; with the list but no prices for the session date it says "No session data yet."
-
-### Alpha ranks
-
-Below the screeners, the Market tab shows an "Alpha rank" card and six alpha cards. Each alpha scores every Nifty 200 stock priced on the session from its last 30 sessions of open, high, low, close and volume, and the card lists the ten highest and ten lowest. The formulas are alphas #1, 2, 6, 12, 54 and 101 from Z. Kakushadze (2015), "101 Formulaic Alphas" (arXiv:1601.00991), written in `src/lib/calc/alpha/`. The "Alpha rank" card is each stock's mean rank across the alphas that scored it (0 to 100, only for stocks scored by at least three).
-
-These are short-horizon (about five-day) statistical ranks, not a buy or sell call. Two limits to know: alphas #1 and #54 take only a few distinct values, so many stocks tie and the lists show an alphabetical slice of the tied group; and a stock needs an alpha's minimum history (25 sessions for #1, 10 for #2 and #6) to be scored by it, so recently listed stocks drop out of those cards. The alphas are computed on each Market page load from stored candles, with no stored results and no new table.
 
 ### Stake-increase screeners
 
@@ -192,7 +183,7 @@ Constituents come from the niftyindices import (Stage 2). Until then the preview
 
 ### Stock pop-up
 
-Clicking a stock opens a pop-up with its score, chart setup, patterns and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names, sector constituent names and a sector's View chart button. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
+Clicking a stock opens a pop-up with its score, chart setup and indicators. It opens from the top-bar search, the Nifty card, watchlist names, market-mover names, sector constituent names and a sector's View chart button. The URL gets `?stock=<KEY>`, so a pop-up can be bookmarked or shared (it still needs the owner's sign-in).
 
 ## Known data caveat
 
