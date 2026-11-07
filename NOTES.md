@@ -149,3 +149,16 @@ Plan: `docs/superpowers/plans/2026-10-18-redesign-stage7-alerts-telegram.md`. Le
 - The pop-up shows pattern effects for 10 sessions but the score counts only 3; its payload is heavy (full history).
 - The EOD job retries a symbol Yahoo doesn't know until the next `backfill --universe` marks it inactive.
 - The dev server is stopped; start it with `npm run dev` (http://localhost:3000).
+
+## Next steps agreed on 2026-11-05 (continue tomorrow)
+
+Status: code deployed to production (commits 89b03b4 and 39f51d2). Migration 0016 (drop holdings.target2) was APPLIED on 2026-11-07 (column gone, all 17 holdings rows intact). The re-test in step 1 is still open. Pre-checks done: no function, view, trigger or index depends on the column; Target 2 values saved to Desktop file Target2-values-before-0016.txt (ASIANPAINT 2475.1, RELIANCE 2000); owner confirmed the stock-report task and a restorable backup.
+
+1. ~~Apply 0016~~ (done 2026-11-07), then re-test: portfolio page, add/edit/remove holding, holdings API, position-size panel, reports, stock-report routine, next EOD and delivery runs.
+2. Check tonight's automatic snapshot run: score_runs completed, no failures, scripts/snapshot-report.ts matches.
+3. Confirm real speed on production using Server-Timing headers; click through Rankings, Evaluation tab, tab skeletons, chart ALL range.
+4. TMPV: keep current handling (score only post-demerger prices, with a data-quality note). Revisit only if an official NSE adjustment factor is found.
+5. Fundamental Quality: collect-only first. Separate table fed from Yahoo Finance (existing package), review coverage over a few weeks (banks and NBFCs separately), cross-check about 20 stocks against a manual Screener export (no scraping), score only if coverage is about 80% or better.
+6. Event risk: start with a small manual list of results dates for holdings and watchlist only, shown as a warning (for example results within 7 days) before any scoring. Later, NSE calendar from a local machine or GitHub Actions.
+7. BUY/SELL labels: not yet. Wait for months of snapshots and a cost-aware backtest. Meanwhile add preset filters in Rankings (for example Technical 75+ and Trade 65+) labelled as a watch list, with no BUY wording.
+8. Sector data: Media, Pvt Bank, Healthcare stay missing until official CSVs are placed in data/niftyindices/history/ and npm run import-niftyindices is run.
