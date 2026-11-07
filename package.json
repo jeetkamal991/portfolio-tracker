@@ -17,6 +17,7 @@
     "compare-import": "tsx scripts/compare-import.ts",
     "telegram-setup": "tsx scripts/telegram-setup.ts",
     "backfill-delivery": "tsx scripts/backfill-delivery.ts",
+    "collect-fundamentals": "tsx scripts/collect-fundamentals.ts",
     "compare-scores": "tsx scripts/compare-scores.ts"
   },
   "dependencies": {

@@ -53,6 +53,10 @@ Run in this order from the repo root. They read `.env.local`. The input files li
 4. `npm run import-history -- --dry-run` - parses `data/history.xlsx` and prints the report without writing. Check the report, then run `npm run import-history` to write the rows.
 5. `npm run compare-import` - compares imported history with the stored data. Look for differences; none should exceed 0.0005.
 
+### Fundamentals collection (collect-only)
+
+`npm run collect-fundamentals` fetches 15 raw fundamentals fields per stock from Yahoo Finance (return on equity and assets, margins, growth, debt-to-equity, current ratio, debt, cash, cash flow, P/E, market cap, price-to-book) for the stock universe (about 255 stocks) and stores one row per stock per day in `fundamentals_snapshots` (migration 0021). Values are stored exactly as Yahoo returns them, and the fields that came back empty are listed on each row. It prints per-field coverage, banks and financials separately, flagging fields under 80%. Flags: `--dry-run` (write nothing), `--only TCS,INFY`, `--report` (coverage of the latest stored run, no fetching). Run it about weekly. Nothing reads this table yet: no score, ranking or screen uses it, and scoring is considered only once coverage looks good over several weeks.
+
 ### Stage 2: Nifty 200 universe, sector history and scores
 
 Stage 2 adds stock data for the Nifty 200 and the sector constituents. The files come from niftyindices.com (download them by hand) and go in `data/niftyindices/`, which is git-ignored. Name them by key so the importer needs no guessing:
