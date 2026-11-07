@@ -178,4 +178,6 @@ Status: code deployed to production (commits 89b03b4 and 39f51d2). Migration 001
 - Confirm the automatic nightly snapshot run (only the manual 5 Nov run exists) and read the Vercel cron logs; time one EOD run against the 300 s limit.
 - Telegram still unconfirmed end to end.
 - Fundamental Quality (collect-only), BUY/SELL labels (not yet), missing sector history CSVs.
-- Housekeeping: drop `daily_prices_splitfix_backup`, delete branch `feat/redesign-stage7-alerts`, rotate the Supabase service-role key, turn off sign-ups.
+- Housekeeping: drop `daily_prices_splitfix_backup`, delete branch `feat/redesign-stage7-alerts` (both waiting for an explicit yes).
+- Done by the owner (reported 2026-11-07, not checked by me): Supabase sign-ups are off, and the service-role key was rotated. Still to confirm after a rotation: the new key is in Vercel (Production) and `.env.local`, the site was redeployed, and the old key is deleted in Supabase.
+- Nightly snapshots: no automatic run has been seen (only the manual 5 Nov one); check `score_runs` after Monday's 14:30 UTC delivery cron. EOD runs take 30-133 s, Telegram sends work.
