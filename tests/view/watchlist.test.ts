@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWatchRow, signalChip, sortWatchRows, tabRows, type WatchInput, type WatchRow, type WatchSignals } from "@/lib/view/watchlist";
+import { buildWatchRow, buildWatchSignals, signalChip, sortWatchRows, tabRows, type WatchInput, type WatchRow, type WatchSignals } from "@/lib/view/watchlist";
 import type { Levels, StoredDay } from "@/lib/db/types";
 
 const date = (i: number) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
@@ -108,10 +108,20 @@ describe("volume ratio and distance from the 52-week high", () => {
   });
 });
 
+describe("buildWatchSignals · stage 2", () => {
+  const stage = (n: 1 | 2 | 3 | 4, freshBreakout = false) => ({ stage: n, freshBreakout, ma30: 100, slope: 0.02, weeksInStage: 2 });
+  it("keeps only stage-2 stocks, fresh breakouts first then by key, and ignores stocks with no stage", () => {
+    const stocks = ["C", "A", "B", "D", "E"].map((key) => ({ key, name: key, days: [] }));
+    const s = buildWatchSignals(stocks, { A: stage(2), B: stage(2, true), C: stage(3), D: stage(2, true) });
+    expect(s.stage2).toEqual(["B", "D", "A"]);
+    expect(buildWatchSignals(stocks).stage2).toEqual([]);
+  });
+});
+
 describe("tabRows and signalChip", () => {
   const row = (key: string, score: number | null) => ({ key, name: key, score }) as unknown as WatchRow;
   const rows = ["A", "B", "C", "D", "E", "F", "G"].map((k, i) => row(k, i === 6 ? null : (i + 1) * 10));
-  const sig: WatchSignals = { golden: ["B"], death: ["C"], breakout: [], rsi: ["D", "E"], volume: ["C", "F"] };
+  const sig: WatchSignals = { golden: ["B"], death: ["C"], breakout: [], stage2: ["F", "A"], rsi: ["D", "E"], volume: ["C", "F"] };
   it("all keeps everything in order", () => expect(tabRows(rows, "all", sig).map((r) => r.key)).toEqual(["A", "B", "C", "D", "E", "F", "G"]));
   it("top and weak take 5 by score and skip unscored stocks", () => {
     expect(tabRows(rows, "top", sig).map((r) => r.key)).toEqual(["B", "C", "D", "E", "F"]);
@@ -121,6 +131,9 @@ describe("tabRows and signalChip", () => {
     expect(tabRows(rows, "death", sig).map((r) => r.key)).toEqual(["C"]);
     expect(tabRows(rows, "rsi", sig).map((r) => r.key)).toEqual(["D", "E"]);
     expect(tabRows(rows, "breakout", sig)).toEqual([]);
+  });
+  it("the Stage 2 tab lists its stocks in the signal's order (fresh breakouts first), not the table order", () => {
+    expect(tabRows(rows, "stage2", sig).map((r) => r.key)).toEqual(["F", "A"]);
   });
   it("the chip is the most important signal", () => {
     expect(signalChip("C", sig)).toEqual({ label: "death cross", tone: "down" });

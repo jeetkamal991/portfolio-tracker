@@ -2,6 +2,9 @@ import { alertMessage, CONDITIONS, evaluateRule, initialState, type AlertConditi
 import type { Repo } from "@/lib/db/repo";
 import type { AlertRule, AlertStateUpdate, NewAlertEvent, StoredDay } from "@/lib/db/types";
 import type { Sender } from "@/lib/notify/telegram";
+import { loadStages } from "@/lib/api/stages";
+import type { StageResult } from "@/lib/calc/stage";
+import { istDate } from "@/lib/time/ist";
 
 /** A stored day as an alert snapshot: price = close. */
 export function snapshotFromDay(key: string, day: StoredDay | null, at: Date): Snapshot {
@@ -101,14 +104,18 @@ export async function runAlerts(deps: AlertRunDeps): Promise<{ evaluated: number
   const rules = loaded.filter((r) => r.active && (mode === "eod" || INTRADAY_CONDITIONS.includes(r.condition)));
 
   const snapshots = new Map<number, Snapshot | null>();
+  let stages = new Map<number, StageResult>();
   if (mode === "eod") {
     const days = await latestDays(repo, [...new Set(rules.map((r) => r.instrumentId))]);
+    // weekly history is read only for instruments that have a stage rule
+    stages = await loadStages(repo, rules.filter((r) => r.condition === "enters_stage2").map((r) => r.instrumentId), istDate(now));
     for (const [id, day] of days) snapshots.set(id, day ? snapshotFromDay("", day, now) : null);
   }
   const snapshotOf = (r: AlertRule): Snapshot | null => {
     if (mode === "eod") {
       const s = snapshots.get(r.instrumentId);
-      return s ? { ...s, key: r.key } : null;
+      const stage = stages.get(r.instrumentId);
+      return s ? { ...s, key: r.key, ...(stage && { stage }) } : null;
     }
     const q = deps.quotes?.[r.yahooTicker];
     if (!q) return null;

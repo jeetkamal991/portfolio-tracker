@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { HoldingStatus } from "@/lib/calc/portfolio";
 import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
+import type { StageResult } from "@/lib/calc/stage";
 import { fmtPct, pctTone } from "@/lib/view/dashboard";
 import { fmtInr, fmtSignedInr, sortPortfolioRows, type PortfolioRow, type PortfolioSortKey } from "@/lib/view/portfolio";
 import { ScoreLabelChip } from "../popup/ScoreBadge";
+import { StageChip } from "../StageChip";
 import { StockLink } from "../popup/StockLink";
 import { Chip, Panel, type Tone } from "../ui";
 import { mutate } from "@/lib/client/cache";
@@ -64,12 +66,14 @@ function Money({ pnl, pct }: { pnl: number | null; pct?: number | null }) {
 export function HoldingsTable({
   rows: input,
   results,
+  stages,
   today,
   onAdd,
   onEdit,
 }: {
   rows: PortfolioRow[];
   results: Record<string, string>;
+  stages: Record<string, StageResult>;
   today: string;
   onAdd: (opener: HTMLElement) => void;
   onEdit: (key: string, opener: HTMLElement) => void;
@@ -157,7 +161,10 @@ export function HoldingsTable({
                       <div className="max-w-[12rem] truncate font-medium hover:text-[var(--up)]">{r.name}</div>
                       <div className="font-mono text-xs text-[var(--muted)]">{r.key}</div>
                     </StockLink>
-                    {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      <StageChip stage={stages[r.key]} />
+                      {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
+                    </div>
                   </td>
                   <td className={MONO}>{r.qty.toLocaleString("en-IN")}</td>
                   <td className={MONO}>{fmtInr(r.avgPrice, 2)}</td>

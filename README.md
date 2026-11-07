@@ -127,6 +127,7 @@ The Alerts tab sets alerts on any stock, index or sector, lists every rule, and 
 | Crosses EMA 20 / 50 / 200 | the close moves from one side of the EMA to the other, either way | end of day |
 | RSI goes above 70 / below 30 | RSI 14 moves past the level | end of day |
 | Score turns Bullish / Bearish | the label becomes Bullish or Strong Bullish (Bearish or Strong Bearish) | end of day |
+| Enters Stage 2 | the stock's weekly stage changes from anything else to Stage 2 (see Stage analysis); the message adds "fresh breakout" when flagged. Works on stocks, indices and sectors | end of day only |
 | Holding stop loss / target (automatic) | the price comes within 2% of the holding's stop loss or Target 1, or reaches it | live and end of day |
 
 - **When an alert fires.** An alert fires only on a change. A stock that stays above its EMA 200 for weeks fires once, on the day it crosses. A new rule records where things stand now and doesn't fire; if the condition is already true, the form says so, and the alert fires the next time it becomes true. If data is missing (no price, no EMA yet), the alert is skipped and keeps its last state.
@@ -142,9 +143,15 @@ The Alerts tab sets alerts on any stock, index or sector, lists every rule, and 
 
 ### Watchlist
 
-A summary strip (stocks, up today, average score, crosses in the last 5 sessions, volume shockers) sits above a row of signal tabs, each with a count: **All**, **Top scores** (the 5 highest), **Weakest** (the 5 lowest), **Golden cross**, **Death cross**, **Breakouts** (a new 52-week high or within 3% of it), **RSI extremes** (above 70 or below 30) and **Volume shockers** (at least 2x the 20-day average, up or down). The signal tabs use the same rules as the Market tab's screeners, applied to your watchlist only. A **Sort** menu orders the tiles by score, day %, RSI or name.
+A summary strip (stocks, up today, average score, crosses in the last 5 sessions, volume shockers) sits above a row of signal tabs, each with a count: **All**, **Top scores** (the 5 highest), **Weakest** (the 5 lowest), **Golden cross**, **Death cross**, **Breakouts** (a new 52-week high or within 3% of it), **Stage 2** (see Stage analysis below), **RSI extremes** (above 70 or below 30) and **Volume shockers** (at least 2x the 20-day average, up or down). The signal tabs use the same rules as the Market tab's screeners, applied to your watchlist only. A **Sort** menu orders the tiles by score, day %, RSI or name.
 
 Each stock is a tile: a score ring and label, price and day %, EMA 20 / 50 / 200 with a green ABOVE or red BELOW (EMA 200 shows "—" with a "not enough history" tooltip for a stock with too few sessions), support and resistance with how far away each is and a bar showing where the price sits between them, RSI 14, volume against average, distance from the 52-week high, a 1-month sparkline and one signal chip. Click support or resistance to type a manual level (it shows an M; empty clears it). A tile with the price within range of a level has an amber border. The ✕ removes the stock. During market hours the price and day % update from live quotes every 60 s; a stock Yahoo omits keeps its stored values.
+
+### Stage analysis
+
+Watchlist tiles and Portfolio rows show a Weinstein stage chip: **S1** grey (base after a decline), **S2** green (uptrend), **S3** amber (top), **S4** red (downtrend), with **BO** added on S2 for a fresh breakout. Hover for the 30-week average, its 4-week slope and the weeks spent in the stage; "—" means under 34 completed weeks of history. The **Stage 2** tab lists the S2 stocks, fresh breakouts first.
+
+The maths is in `src/lib/calc/stage.ts`, with every threshold named at the top. Weekly bars (Mon-Fri) come from stored daily candles and only completed weeks count: a week is complete once its last stored session is a Friday or the next week has begun, so a stage changes at most once a week. There is no holiday calendar, so a week that ends early (a Friday holiday) counts from the following week. Stage 2 is a close above a rising 30-week average (a flat average also counts right after Stage 1); Stage 4 is a close below a falling one; anything else is Stage 1 if the average is below its value 26 weeks ago, else Stage 3 (with under 56 weeks of data the oldest available average is used). A fresh breakout is a weekly close within the last 4 weeks above a tight base (8-26 weeks, range of 25% or less) on at least 2x its average weekly volume, no more than 8% above the base high. It reads about 90 weeks of candles per stock, and no table or migration is needed.
 
 ### Market
 

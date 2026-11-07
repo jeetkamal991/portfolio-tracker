@@ -1,9 +1,10 @@
 import type { ScoreLabel } from "@/lib/calc/score";
+import type { StageResult } from "@/lib/calc/stage";
 
 export type AlertCondition =
   | "price_above" | "price_below" | "cross_ema20" | "cross_ema50" | "cross_ema200"
   | "rsi_above_70" | "rsi_below_30" | "score_turns_bullish" | "score_turns_bearish"
-  | "holding_sl" | "holding_target";
+  | "enters_stage2" | "holding_sl" | "holding_target";
 export type HoldingLevel = "none" | "near" | "hit";
 
 export const CONDITIONS: { id: AlertCondition; label: string; needsValue: boolean; intraday: boolean; userCreatable: boolean }[] = [
@@ -16,6 +17,7 @@ export const CONDITIONS: { id: AlertCondition; label: string; needsValue: boolea
   { id: "rsi_below_30", label: "RSI goes below 30", needsValue: false, intraday: false, userCreatable: true },
   { id: "score_turns_bullish", label: "Score turns Bullish", needsValue: false, intraday: false, userCreatable: true },
   { id: "score_turns_bearish", label: "Score turns Bearish", needsValue: false, intraday: false, userCreatable: true },
+  { id: "enters_stage2", label: "Enters Stage 2", needsValue: false, intraday: false, userCreatable: true },
   { id: "holding_sl", label: "Near / hit stop loss", needsValue: true, intraday: true, userCreatable: false },
   { id: "holding_target", label: "Near / hit target", needsValue: true, intraday: true, userCreatable: false },
 ];
@@ -30,6 +32,8 @@ export interface Snapshot {
   rsi14: number | null;
   score: number | null;
   scoreLabel: ScoreLabel | null;
+  /** Weinstein stage; only loaded for stage rules in the nightly run. */
+  stage?: StageResult;
   at: Date;
   /** From a live quote: only intraday conditions are evaluated. */
   live: boolean;
@@ -85,6 +89,8 @@ function stateNow(c: AlertCondition, value: number | null, s: Snapshot): boolean
       return s.scoreLabel === null ? null : BULLISH.includes(s.scoreLabel);
     case "score_turns_bearish":
       return s.scoreLabel === null ? null : BEARISH.includes(s.scoreLabel);
+    case "enters_stage2":
+      return s.stage?.stage == null ? null : s.stage.stage === 2;
     default:
       return null;
   }
@@ -163,6 +169,8 @@ export function alertMessage(key: string, condition: AlertCondition, ev: Evaluat
     case "score_turns_bullish":
     case "score_turns_bearish":
       return `🔔 ${key} score turned ${snap.scoreLabel} (${snap.score === null ? "—" : Math.round(snap.score)}) · ${tail}`;
+    case "enters_stage2":
+      return `📈 ${key} entered Stage 2 (Weinstein)${snap.stage?.freshBreakout ? " · fresh breakout" : ""} · ${tail}`;
     case "holding_sl":
       return ev.level === "hit" ? `🛑 ${key} stop loss hit ${inr(value)} · ${tail}` : `⚠️ ${key} near stop loss ${inr(value)} · ${tail}`;
     case "holding_target":

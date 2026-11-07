@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRef } from "react";
+import type { StageResult } from "@/lib/calc/stage";
 import type { Holding, StoredDay } from "@/lib/db/types";
 import type { PortfolioSide } from "@/lib/api/portfolioSide";
 import { buildLadder, buildPortfolioView } from "@/lib/view/portfolio";
@@ -31,6 +32,7 @@ export function PortfolioView({
   today,
   side,
   results,
+  stages,
 }: {
   holdings: Holding[];
   latest: [number, StoredDay | null][];
@@ -38,6 +40,8 @@ export function PortfolioView({
   side: PortfolioSide;
   /** Manual next results date by stock key. */
   results: Record<string, string>;
+  /** Weinstein stage by stock key. */
+  stages: Record<string, StageResult>;
 }) {
   const { quotes, open } = useQuotes();
   const pathname = usePathname() ?? "/portfolio";
@@ -77,7 +81,7 @@ export function PortfolioView({
     <div className="flex flex-col gap-4">
       <PortfolioHero totals={view.totals} live={open && view.totals.count - view.totals.unpriced > 0} ladder={buildLadder(view.rows)} rows={view.rows} side={side} />
       <WarningsBar warnings={view.warnings} />
-      <HoldingsTable rows={view.rows} results={results} today={today} onAdd={openAdd} onEdit={openEdit} />
+      <HoldingsTable rows={view.rows} results={results} stages={stages} today={today} onAdd={openAdd} onEdit={openEdit} />
       <PositionSizer />
       {formKey && (
         <HoldingForm

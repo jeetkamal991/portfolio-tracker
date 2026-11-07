@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { CONDITIONS, initialState, type AlertCondition } from "@/lib/calc/alerts";
 import type { Repo } from "@/lib/db/repo";
+import { loadStages } from "./stages";
 import type { ScoreLabel } from "@/lib/calc/score";
 import type { AlertRule, Instrument } from "@/lib/db/types";
 import { snapshotFromDay } from "@/lib/jobs/alerts";
 import type { Quote } from "@/lib/provider/types";
-import { isMarketOpen } from "@/lib/time/ist";
+import { isMarketOpen, istDate } from "@/lib/time/ist";
 import type { ApiResult } from "./levels";
 
 const EVENTS_LIMIT = 100;
@@ -64,6 +65,7 @@ export async function handleAlertCreate(
       // keep the stored close
     }
   }
+  if (condition === "enters_stage2") snap.stage = (await loadStages(deps.repo, [inst.id], istDate(deps.now))).get(inst.id);
   const { state, level } = initialState(condition, value, snap);
   const rule = await deps.repo.createAlertRule({ instrumentId: inst.id, condition, value, mode, source: "user", lastState: state, lastLevel: level });
   return { status: 201, body: { rule, alreadyTrue: state === true } };

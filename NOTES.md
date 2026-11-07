@@ -162,3 +162,20 @@ Status: code deployed to production (commits 89b03b4 and 39f51d2). Migration 001
 6. Event risk: start with a small manual list of results dates for holdings and watchlist only, shown as a warning (for example results within 7 days) before any scoring. Later, NSE calendar from a local machine or GitHub Actions.
 7. BUY/SELL labels: not yet. Wait for months of snapshots and a cost-aware backtest. Meanwhile add preset filters in Rankings (for example Technical 75+ and Trade 65+) labelled as a watch list, with no BUY wording.
 8. Sector data: Media, Pvt Bank, Healthcare stay missing until official CSVs are placed in data/niftyindices/history/ and npm run import-niftyindices is run.
+
+## Session 2026-11-07
+**Done**
+- Migrations **0016** (drop `holdings.target2`) and **0020** (`levels.results_date`, nullable date) applied to Tracker1.
+- Removed (one commit each): Alpha ranks; duplicate alert surfaces on Dashboard and Portfolio; the duplicate Today by Claude card on the Market tab; pop-up Patterns tab and MACD/Bollinger table rows plus the Formations list and MACD cross in Your stocks signals; chart breadth pane, regime shading and hover tooltip (also removed `/api/breadth`, which fixed `npm run build`). README updated. The chart's MACD pane and Bollinger overlay are still there.
+- Rankings: two preset links (watch list, not a signal).
+- Results-date warning: manual date in the pop-up (Chart & Setup tab), amber chip within 7 days on pop-up, Watchlist and Portfolio. No scoring effect, nothing fetched automatically.
+- Evaluation tab: Trade assessment is now first. Indicator Table: values coloured green/red (EMAs by price side, RSI red outside 30-70, volume green at 1.0x or more, RS and FII/DII by sign).
+- Weinstein stage analysis: `src/lib/calc/stage.ts` (weekly bars, MA30, stages 1-4, fresh breakout), stage chip on Watchlist tiles and Portfolio rows, Watchlist "Stage 2" tab, alert condition "Enters Stage 2" (nightly only). No migration needed (`alerts.condition` is plain text). **Not yet compared with real charts.** Shortcuts: no holiday calendar (a week ending early counts from the next week); with under 56 weeks of data the oldest MA30 stands in for the 26-week-ago one.
+- Deployed to `main` by fast-forward push (`git push origin HEAD:main`).
+
+**Open**
+- Signed-in checks: 0016 re-test (portfolio, add/edit/remove holding, position sizer, reports), the results-date field, stage chips against a few real charts.
+- Confirm the automatic nightly snapshot run (only the manual 5 Nov run exists) and read the Vercel cron logs; time one EOD run against the 300 s limit.
+- Telegram still unconfirmed end to end.
+- Fundamental Quality (collect-only), BUY/SELL labels (not yet), missing sector history CSVs.
+- Housekeeping: drop `daily_prices_splitfix_backup`, delete branch `feat/redesign-stage7-alerts`, rotate the Supabase service-role key, turn off sign-ups.

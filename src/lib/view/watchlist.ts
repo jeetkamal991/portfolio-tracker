@@ -8,6 +8,7 @@ import {
 } from "@/lib/calc/levels";
 import { runScreeners } from "@/lib/calc/screeners";
 import type { ScoreLabel } from "@/lib/calc/score";
+import type { StageResult } from "@/lib/calc/stage";
 import type { Levels, StoredDay } from "@/lib/db/types";
 
 /** `days` ascending, up to ~25 recent rows. */
@@ -124,7 +125,7 @@ export function sortWatchRows(rows: WatchRow[], key: WatchSortKey, dir: "asc" | 
   });
 }
 
-export type WatchTab = "all" | "top" | "weak" | "golden" | "death" | "breakout" | "rsi" | "volume";
+export type WatchTab = "all" | "top" | "weak" | "golden" | "death" | "breakout" | "stage2" | "rsi" | "volume";
 
 export const WATCH_TABS: { id: WatchTab; label: string; hint: string }[] = [
   { id: "all", label: "All", hint: "Every stock on your watchlist." },
@@ -133,14 +134,16 @@ export const WATCH_TABS: { id: WatchTab; label: string; hint: string }[] = [
   { id: "golden", label: "Golden cross", hint: "EMA 50 crossed above EMA 200 in the last 5 sessions." },
   { id: "death", label: "Death cross", hint: "EMA 50 crossed below EMA 200 in the last 5 sessions." },
   { id: "breakout", label: "Breakouts", hint: "At a new 52-week high or within 3% of it." },
+  { id: "stage2", label: "Stage 2", hint: "Weinstein Stage 2 on weekly bars: close above a rising 30-week average. Fresh breakouts come first." },
   { id: "rsi", label: "RSI extremes", hint: "RSI above 70 (overbought) or below 30 (oversold)." },
   { id: "volume", label: "Volume shockers", hint: "Today's volume at least twice its 20-day average, up or down." },
 ];
 
 /** Keys of the stocks that match each signal tab, from the same rules as the Market tab's screeners. */
-export type WatchSignals = Record<"golden" | "death" | "breakout" | "rsi" | "volume", string[]>;
+export type WatchSignals = Record<"golden" | "death" | "breakout" | "stage2" | "rsi" | "volume", string[]>;
 
-export function buildWatchSignals(stocks: { key: string; name: string; days: StoredDay[] }[]): WatchSignals {
+/** `stages` by stock key; stocks without one are never in the Stage 2 list. */
+export function buildWatchSignals(stocks: { key: string; name: string; days: StoredDay[] }[], stages: Record<string, StageResult> = {}): WatchSignals {
   const session = stocks.map((s) => s.days[s.days.length - 1]?.date ?? "").sort().pop() ?? "";
   const results = runScreeners(stocks, session, stocks.length || 1);
   const keys = (id: string) => results.find((r) => r.id === id)?.hits.map((h) => h.key) ?? [];
@@ -148,6 +151,7 @@ export function buildWatchSignals(stocks: { key: string; name: string; days: Sto
     golden: keys("golden"),
     death: keys("death"),
     breakout: keys("breakout"),
+    stage2: [...stocks.map((s) => s.key).filter((k) => stages[k]?.stage === 2)].sort((a, b) => Number(stages[b]!.freshBreakout) - Number(stages[a]!.freshBreakout) || a.localeCompare(b)),
     rsi: [...keys("rsi_high"), ...keys("rsi_low")],
     volume: [...keys("vol_up"), ...keys("vol_down")],
   };
@@ -164,7 +168,9 @@ export function tabRows(rows: WatchRow[], tab: WatchTab, sig: WatchSignals): Wat
     return rows.filter((r) => keep.has(r.key));
   }
   const keep = new Set(sig[tab]);
-  return rows.filter((r) => keep.has(r.key));
+  const kept = rows.filter((r) => keep.has(r.key));
+  // the stage list is ordered fresh breakouts first; the other tabs keep the table order
+  return tab === "stage2" ? kept.sort((a, b) => sig.stage2.indexOf(a.key) - sig.stage2.indexOf(b.key)) : kept;
 }
 
 /** The one chip a tile shows: the most important signal on the stock, or null. */

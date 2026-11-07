@@ -61,6 +61,16 @@ describe("evaluateRule · RSI and score", () => {
     expect(ev(rule("score_turns_bearish", { lastState: false }), snap({ scoreLabel: "Strong Bearish", score: 20 })).fire).toBe(true);
     expect(ev(rule("score_turns_bearish"), snap()).known).toBe(false);
   });
+  const stage = (n: 1 | 2 | 3 | 4 | null, freshBreakout = false) => ({ stage: n, freshBreakout, ma30: 100, slope: 0.02, weeksInStage: 3 });
+  it("enters Stage 2 fires on the change only, and skips when the stage is unknown", () => {
+    expect(ev(rule("enters_stage2", { lastState: false }), snap({ stage: stage(2) }))).toMatchObject({ known: true, state: true, fire: true });
+    expect(ev(rule("enters_stage2", { lastState: true }), snap({ stage: stage(2) })).fire).toBe(false); // stays in Stage 2
+    expect(ev(rule("enters_stage2", { lastState: false }), snap({ stage: stage(3) }))).toMatchObject({ state: false, fire: false });
+    expect(ev(rule("enters_stage2", { lastState: null }), snap({ stage: stage(2) })).fire).toBe(false); // a new rule records, never fires
+    expect(ev(rule("enters_stage2", { lastState: false }), snap({ stage: stage(null) })).known).toBe(false);
+    expect(ev(rule("enters_stage2", { lastState: false }), snap()).known).toBe(false);
+    expect(ev(rule("enters_stage2", { lastState: false }), snap({ stage: stage(2), live: true })).known).toBe(false); // nightly only
+  });
 });
 
 describe("evaluateRule · holdings", () => {
@@ -130,6 +140,8 @@ describe("alertMessage", () => {
     expect(msg("RELIANCE", "rsi_below_30", snap({ rsi14: 28.1 }), null)).toBe("🔔 RELIANCE RSI below 30 (28.1) · ₹1,352.40 · 17 Oct 15:30");
     expect(msg("RELIANCE", "score_turns_bullish", snap({ scoreLabel: "Bullish", score: 64 }), null)).toBe("🔔 RELIANCE score turned Bullish (64) · ₹1,352.40 · 17 Oct 15:30");
     expect(msg("RELIANCE", "score_turns_bearish", snap({ scoreLabel: "Bearish", score: 41 }), null)).toBe("🔔 RELIANCE score turned Bearish (41) · ₹1,352.40 · 17 Oct 15:30");
+    expect(msg("TCS", "enters_stage2", snap({ stage: { stage: 2, freshBreakout: false, ma30: 1, slope: 0, weeksInStage: 1 } }), null)).toBe("📈 TCS entered Stage 2 (Weinstein) · ₹1,352.40 · 17 Oct 15:30");
+    expect(msg("TCS", "enters_stage2", snap({ stage: { stage: 2, freshBreakout: true, ma30: 1, slope: 0, weeksInStage: 1 } }), null)).toBe("📈 TCS entered Stage 2 (Weinstein) · fresh breakout · ₹1,352.40 · 17 Oct 15:30");
     expect(msg("TCS", "holding_sl", snap({ price: 3412 }), 3400)).toBe("⚠️ TCS near stop loss ₹3,400.00 · ₹3,412.00 · 17 Oct 15:30");
     expect(msg("TCS", "holding_sl", snap({ price: 3390 }), 3400)).toBe("🛑 TCS stop loss hit ₹3,400.00 · ₹3,390.00 · 17 Oct 15:30");
     expect(msg("INFY", "holding_target", snap({ price: 1680 }), 1700)).toBe("🎯 INFY near target ₹1,700.00 · ₹1,680.00 · 17 Oct 15:30");

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { daysToResults, resultsLabel } from "@/lib/calc/resultsRisk";
+import type { StageResult } from "@/lib/calc/stage";
+import { StageChip } from "./StageChip";
 import { istDate } from "@/lib/time/ist";
 import { fmtPct, fmtPrice, parseLevelInput, pctTone } from "@/lib/view/dashboard";
 import { ladderPos } from "@/lib/view/portfolio";
@@ -55,7 +57,7 @@ function EmaBox({ label, value, above, note }: { label: string; value: number | 
   );
 }
 
-export function WatchlistTiles({ inputs, signals, results }: { inputs: WatchInput[]; signals: WatchSignals; results: Record<string, string> }) {
+export function WatchlistTiles({ inputs, signals, results, stages }: { inputs: WatchInput[]; signals: WatchSignals; results: Record<string, string>; stages: Record<string, StageResult> }) {
   const router = useRouter();
   const { quotes } = useQuotes();
   const [tab, setTab] = useState<WatchTab>("all");
@@ -232,6 +234,7 @@ export function WatchlistTiles({ inputs, signals, results }: { inputs: WatchInpu
 
         <div className="mt-auto flex items-center justify-between gap-2">
           <Sparkline values={r.spark} />
+          <StageChip stage={stages[r.key]} />
           {chip && <Chip tone={chip.tone}>{chip.label}</Chip>}
           {soon !== null && <Chip tone="warn">{resultsLabel(soon)}</Chip>}
         </div>
