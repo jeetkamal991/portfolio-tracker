@@ -16,7 +16,7 @@ import { listUniverseStocks } from "@/lib/universe/stocks";
 const TABLE = "fundamentals_snapshots";
 const CONCURRENCY = 4;
 const PAUSE_MS = 300;
-const MODULES = ["financialData", "summaryDetail", "defaultKeyStatistics"] as const;
+const MODULES = ["assetProfile", "financialData", "summaryDetail", "defaultKeyStatistics"] as const;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 async function report(db: ReturnType<typeof createAdminClient>) {
@@ -62,7 +62,7 @@ async function main() {
     keyOf.set(s.id, s.key);
     try {
       const summary = await withRetry(() => yf.quoteSummary(s.yahooTicker, { modules: [...MODULES] }, { validateResult: false }), 3, 1000);
-      rows.push({ row: toRow(summary, ctx), failed: false });
+      rows.push({ row: toRow(summary, { ...ctx, isFinancial: isFinancial(indexesOf.get(s.id) ?? [], summary) }), failed: false });
     } catch (e) {
       // an unknown or failing symbol is stored with every field missing, never skipped
       failed.push(`${s.key} (${s.yahooTicker}): ${e instanceof Error ? e.message : String(e)}`.slice(0, 160));

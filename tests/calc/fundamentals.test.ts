@@ -26,6 +26,10 @@ describe("isFinancial", () => {
     expect(isFinancial(["NIFTY_FIN"])).toBe(true);
     expect(isFinancial(["NIFTY_PSU_BANK", "NIFTY200"])).toBe(true);
   });
+  it("is true when Yahoo's sector is Financial Services, whatever the indexes", () => {
+    expect(isFinancial(["NIFTY200"], { assetProfile: { sector: "Financial Services" } })).toBe(true);
+    expect(isFinancial(["NIFTY200"], { assetProfile: { sector: "Industrials" } })).toBe(false);
+  });
   it("is false otherwise", () => {
     expect(isFinancial(["NIFTY200", "NIFTY_AUTO"])).toBe(false);
     expect(isFinancial([])).toBe(false);

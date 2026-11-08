@@ -116,7 +116,7 @@ export default async function RankingsPage({ searchParams }: { searchParams: Pro
           </div>
         </form>
         <p className="mt-2 text-[11px] text-[var(--muted)]">
-          Market capitalisation is not available from any current data provider, so there is no market-cap filter. A stock whose value for a filter is unknown does not pass that filter.
+          There is no market-cap filter yet: market cap is collected but not used by any ranking. A stock whose value for a filter is unknown does not pass that filter.
         </p>
       </Panel>
 

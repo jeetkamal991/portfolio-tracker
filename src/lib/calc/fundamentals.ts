@@ -1,6 +1,6 @@
 // Collect-only Yahoo fundamentals: raw values in, a typed row and coverage out. No unit conversion, no defaults, nothing derived.
 
-export type YahooModule = "financialData" | "summaryDetail" | "defaultKeyStatistics";
+export type YahooModule = "assetProfile" | "financialData" | "summaryDetail" | "defaultKeyStatistics";
 export interface Field { key: string; column: string; module: YahooModule }
 
 export const FIELDS: Field[] = [
@@ -23,7 +23,14 @@ export const FIELDS: Field[] = [
 
 export const FINANCIAL_INDEXES = ["NIFTY_FIN", "NIFTY_PVT_BANK", "NIFTY_PSU_BANK"];
 /** Banks, NBFCs and other financials: ratios like debt-to-equity mean little for them, so coverage is judged separately. */
-export const isFinancial = (indexKeys: string[]): boolean => indexKeys.some((k) => FINANCIAL_INDEXES.includes(k));
+export const isFinancial = (indexKeys: string[], summary?: unknown): boolean =>
+  indexKeys.some((k) => FINANCIAL_INDEXES.includes(k)) || sectorOf(summary) === "Financial Services";
+
+/** Yahoo's own sector catches financials outside the three indexes (AUBANK, LICI, IRFC, HDFCAMC...). */
+const sectorOf = (summary: unknown): unknown => {
+  const p = isObj(summary) ? summary.assetProfile : undefined;
+  return isObj(p) ? p.sector : undefined;
+};
 
 export interface FundamentalsRow {
   instrumentId: number;
